@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import init_db
+from sqlmodel import Session
+from app.core.database import init_db, engine
+from app.core.seed import seed_database
 from app.routers import auth, crud, sensing, alerts, analytics
 
 app = FastAPI(
@@ -28,6 +30,8 @@ app.include_router(analytics.router)
 @app.on_event("startup")
 def on_startup():
     init_db()
+    with Session(engine) as session:
+        seed_database(session)
 
 @app.get("/")
 def read_root():
