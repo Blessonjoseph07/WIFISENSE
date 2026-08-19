@@ -117,7 +117,7 @@ export default function App() {
   const [orgScope, setOrgScope] = useState("all"); 
 
   // System Dark/Light Mode state
-  const [darkMode, setDarkMode] = useState(localStorage.getItem("darkMode") === "true");
+  const [darkMode, setDarkMode] = useState(false);
 
   // Asset Collections (Loaded from Real APIs)
   const [organizations, setOrganizations] = useState([]);
@@ -696,13 +696,13 @@ export default function App() {
           <div className="absolute top-4 right-4 flex items-center gap-2 bg-surface-container dark:bg-slate-900 px-3 py-1.5 rounded-full border dark:border-slate-800">
             <span className="text-xs font-semibold text-outline">Org Scope:</span>
             <select
-              className="bg-transparent text-xs font-bold focus:outline-none dark:text-white"
+              className="bg-surface-container dark:bg-slate-800 text-on-surface dark:text-white text-xs font-bold focus:outline-none"
               value={orgScope}
               onChange={(e) => setOrgScope(e.target.value)}
             >
-              <option value="all" className="dark:bg-slate-900">Blesson Byju (All)</option>
-              <option value="ajce" className="dark:bg-slate-900">Abhinand M A (AJCE Corporate)</option>
-              <option value="lab" className="dark:bg-slate-900">Abhinanth Pillai (Elder Care)</option>
+              <option value="all" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Blesson Byju (All)</option>
+              <option value="ajce" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Abhinand M A (AJCE Corporate)</option>
+              <option value="lab" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Abhinanth Pillai (Elder Care)</option>
             </select>
           </div>
 
@@ -981,13 +981,13 @@ export default function App() {
 
           <div className="flex items-center gap-4">
             <select
-              className="bg-transparent text-xs font-bold border border-outline-variant dark:border-slate-800 px-3 py-1.5 rounded-full dark:text-white focus:outline-none"
+              className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white text-xs font-bold border border-outline-variant dark:border-slate-700 px-3 py-1.5 rounded-full focus:outline-none"
               value={orgScope}
               onChange={(e) => setOrgScope(e.target.value)}
             >
-              <option value="all">Global view (All Orgs)</option>
-              <option value="ajce">AJCE (Corporate)</option>
-              <option value="lab">WiFi Sense Lab (Elder-Care)</option>
+              <option value="all" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Global view (All Orgs)</option>
+              <option value="ajce" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">AJCE (Corporate)</option>
+              <option value="lab" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">WiFi Sense Lab (Elder-Care)</option>
             </select>
 
             <button
