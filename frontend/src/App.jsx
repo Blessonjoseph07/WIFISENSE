@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 
 const API_BASE = "http://localhost:8000";
 
@@ -9,7 +9,7 @@ export default function App() {
   const [role, setRole] = useState(localStorage.getItem("role") || "");
   
   // Navigation State
-  const [currentView, setCurrentView] = useState("dashboard"); // 'dashboard' (Central Monitoring), 'assets', 'devices', 'residents', 'alerts', 'analytics'
+  const [currentView, setCurrentView] = useState("dashboard"); // 'dashboard' (Central Monitoring), 'corporate', 'family', 'assets', 'devices', 'residents', 'alerts', 'analytics'
   
   // Multi-tenant Org Scope Switcher
   const [orgScope, setOrgScope] = useState("all"); 
@@ -31,6 +31,10 @@ export default function App() {
 
   // Selected visual active telemetry activity
   const [activeTelemetryActivity, setActiveTelemetryActivity] = useState("Empty");
+
+  // Privacy toggles state for Family Portal view
+  const [strictPrivacy, setStrictPrivacy] = useState(false);
+  const [contextualVisibility, setContextualVisibility] = useState(true);
 
   // Analytics Aggregates
   const [occupancySummary, setOccupancySummary] = useState({
@@ -610,7 +614,7 @@ export default function App() {
           <div className="z-10 mt-8 ml-8">
             <div className="flex items-center gap-stack-sm mb-4">
               <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 animate-pulse" style={{ fontSize: "36px" }}>sensors</span>
-              <span className="font-headline-md text-headline-md text-slate-900 dark:text-slate-100">Wi-Fi Sense</span>
+              <span className="font-headline-md text-headline-md text-slate-900 dark:text-slate-100 font-bold">Wi-Fi Sense</span>
             </div>
             <p className="font-headline-sm text-headline-sm text-slate-500 dark:text-slate-300 max-w-sm mt-4">
               Indoor Human Sensing and Fall Tracking via Channel State Information.
@@ -682,7 +686,7 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center justify-between pt-4">
-                  <button type="button" onClick={() => setIsRegistering(true)} className="text-teal-600 dark:text-teal-400 font-medium text-xs hover:underline">
+                  <button type="button" onClick={() => setIsRegistering(true)} className="text-teal-600 dark:text-teal-400 font-medium text-xs hover:underline font-semibold">
                     Create new registration
                   </button>
                   <button type="submit" className="flex items-center gap-2 justify-center py-2 px-6 border border-transparent rounded font-label-caps text-label-caps text-white bg-teal-600 hover:bg-teal-700 transition-colors font-semibold">
@@ -771,7 +775,7 @@ export default function App() {
       {/* Toast Notification */}
       {toastMessage && (
         <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 transition-all transform translate-y-0 ${
-          toastMessage.type === "error" ? "bg-red-600 text-white" : "bg-teal-600 text-white"
+          toastMessage.type === "error" ? "bg-red-650 text-white" : "bg-teal-600 text-white"
         }`}>
           <span className="material-symbols-outlined">{toastMessage.type === "error" ? "error" : "check_circle"}</span>
           <span className="text-xs font-bold">{toastMessage.text}</span>
@@ -782,25 +786,46 @@ export default function App() {
       <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
         {/* Logo / Header */}
         <div className="p-gutter flex items-center gap-stack-sm border-b border-slate-200 dark:border-slate-800">
-          <div className="w-10 h-10 rounded bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
-            <span className="material-symbols-outlined fill">wifi_tethering</span>
+          <div className="w-10 h-10 rounded bg-teal-55 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
+            <span className="material-symbols-outlined fill text-[20px]">sensors</span>
           </div>
           <div className="text-left">
-            <h1 className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold leading-tight">Wi-Fi Sense</h1>
-            <p className="text-label-caps font-label-caps text-slate-500 dark:text-slate-400">AI Monitoring Active</p>
+            <h1 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold leading-tight">Wi-Fi Sense</h1>
+            <p className="text-[10px] text-secondary font-bold uppercase tracking-wider block">AI Monitoring Active</p>
           </div>
         </div>
 
         {/* Navigation items */}
-        <div className="flex-1 overflow-y-auto py-stack-md px-3 flex flex-col gap-1">
+        <div className="flex-1 overflow-y-auto py-stack-lg px-3 flex flex-col gap-2">
+          
           <button
             onClick={() => { setCurrentView("dashboard"); }}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
               currentView === "dashboard" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
             }`}
           >
-            <span className="material-symbols-outlined fill" data-icon="sensors">sensors</span>
+            <span className="material-symbols-outlined fill">sensors</span>
             Live Monitoring
+          </button>
+
+          <button
+            onClick={() => { setCurrentView("corporate"); }}
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+              currentView === "corporate" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            }`}
+          >
+            <span className="material-symbols-outlined">dashboard</span>
+            Corporate Staff
+          </button>
+
+          <button
+            onClick={() => { setCurrentView("family"); }}
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+              currentView === "family" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            }`}
+          >
+            <span className="material-symbols-outlined">lock</span>
+            Family Portal
           </button>
 
           <button
@@ -815,7 +840,7 @@ export default function App() {
           <button
             onClick={() => setCurrentView("residents")}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "residents" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+              currentView === "residents" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
             }`}
           >
             <span className="material-symbols-outlined">group</span> User Management
@@ -833,7 +858,7 @@ export default function App() {
           <button
             onClick={() => setCurrentView("alerts")}
             className={`flex items-center justify-between gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "alerts" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+              currentView === "alerts" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -860,9 +885,9 @@ export default function App() {
         <div className="p-gutter border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 flex flex-col gap-4">
           <button
             onClick={triggerEmergencyProtocol}
-            className="w-full bg-red-650 text-white py-2 px-4 rounded text-xs font-bold uppercase hover:bg-red-750 transition-colors flex items-center justify-center gap-2 shadow-sm"
+            className="w-full bg-red-650 text-white py-2 px-4 rounded text-xs font-bold uppercase hover:bg-red-750 transition-colors flex items-center justify-center gap-2 shadow-sm font-semibold"
           >
-            <span className="material-symbols-outlined text-[18px]">warning</span>
+            <span className="material-symbols-outlined text-[18px]">emergency</span>
             Emergency Protocol
           </button>
 
@@ -1054,7 +1079,7 @@ export default function App() {
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-body-md font-body-md">
                         {occupancySummary.occupied_room_details.map(rm => {
                           const isAlert = rm.is_occupied && rm.current_activity === "Fall_Detected";
-                          const isWarning = rm.is_occupied && rm.current_activity === "Sitting"; // Simulating warning on sitting for nursing
+                          const isWarning = rm.is_occupied && rm.current_activity === "Sitting"; 
                           return (
                             <tr 
                               key={rm.room_id} 
@@ -1070,7 +1095,7 @@ export default function App() {
                               </td>
                               <td className="p-4">
                                 {rm.is_occupied ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400 text-xs font-bold uppercase tracking-wider">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400 text-xs font-bold uppercase tracking-wider">
                                     <span className="material-symbols-outlined text-[14px]">person</span>
                                     Occupied
                                   </span>
@@ -1158,7 +1183,7 @@ export default function App() {
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded border border-slate-200 dark:border-slate-850">
                         <div className="text-label-caps font-label-caps text-slate-400 dark:text-slate-500 mb-1">Packet Drop</div>
-                        <div className="font-data-mono text-[20px] font-bold text-teal-600">0.02%</div>
+                        <div className="font-data-mono text-[20px] font-bold text-teal-650">0.02%</div>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded border border-slate-200 dark:border-slate-850 col-span-2">
                         <div className="flex justify-between items-center mb-1">
@@ -1212,14 +1237,493 @@ export default function App() {
           )}
 
           {/* ============================================================================
-            2. PHYSICAL ASSETS CONFIG VIEW
+            1.1 CORPORATE FACILITY STAFF DASHBOARD
+          ============================================================================ */}
+          {currentView === "corporate" && (
+            <div className="space-y-6 text-left">
+              {/* Header Section */}
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Facility Overview</h2>
+                  <p className="text-body-md text-slate-500 dark:text-slate-400 mt-1">Real-time occupancy and environmental metrics for floor 4.</p>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1 font-bold"><span className="w-2 h-2 rounded-full bg-teal-500 block animate-pulse"></span> Live Feed Active</span>
+                  <span className="text-slate-300 dark:text-slate-700">|</span>
+                  <span>Last updated: Just now</span>
+                </div>
+              </div>
+
+              {/* Metrics Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-teal-55 transition-colors duration-300 shadow-xs">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <span className="material-symbols-outlined text-6xl text-slate-400">show_chart</span>
+                  </div>
+                  <h3 className="text-label-caps font-label-caps text-slate-400 dark:text-slate-550 uppercase mb-2">Peak Utilization</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">88%</span>
+                    <span className="text-body-md text-teal-600 font-semibold flex items-center">
+                      <span className="material-symbols-outlined text-[16px]">arrow_upward</span> 4%
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-450 mt-2">Between 10:00 AM - 2:00 PM</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-teal-55 transition-colors duration-300 shadow-xs">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <span className="material-symbols-outlined text-6xl text-slate-400">meeting_room</span>
+                  </div>
+                  <h3 className="text-label-caps font-label-caps text-slate-400 dark:text-slate-550 uppercase mb-2">Underutilized Rooms</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">
+                      {rooms.filter(r => residents.filter(res => res.room_id === r.id).length === 0).length || 4}
+                    </span>
+                    <span className="text-body-md text-slate-500 dark:text-slate-400">/ {rooms.length || 42} total</span>
+                  </div>
+                  <p className="text-xs text-slate-455 mt-2">Rooms &lt;10% usage this week</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-teal-55 transition-colors duration-300 shadow-xs">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <span className="material-symbols-outlined text-6xl text-slate-400">eco</span>
+                  </div>
+                  <h3 className="text-label-caps font-label-caps text-slate-400 dark:text-slate-550 uppercase mb-2">Energy Savings Est.</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-headline-lg font-headline-lg text-teal-650 dark:text-teal-400 font-bold">15%</span>
+                  </div>
+                  <p className="text-xs text-slate-455 mt-2">Potential savings via HVAC optimization</p>
+                </div>
+              </div>
+
+              {/* Complex Layout Grid */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                
+                {/* Real-time Meeting Room Status Table */}
+                <div className="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xs">
+                  <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Real-time Meeting Room Status</h3>
+                    <button 
+                      onClick={() => setCurrentView("assets")}
+                      className="text-teal-650 dark:text-teal-450 hover:text-teal-700 transition-colors text-xs font-bold uppercase flex items-center gap-1"
+                    >
+                      View All <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
+                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold">Room Name</th>
+                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold">Capacity</th>
+                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold">Status</th>
+                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold text-right">Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-body-md">
+                        {rooms.filter(r => r.name.includes("MCA") || r.name.includes("Staff") || r.name.includes("IoT") || r.name.includes("Boardroom")).map((rm, i) => {
+                          const isOccupied = i % 2 === 0;
+                          return (
+                            <tr key={rm.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="p-4 font-semibold text-slate-900 dark:text-white">{rm.name}</td>
+                              <td className="p-4 text-slate-500 dark:text-slate-400">{rm.capacity}</td>
+                              <td className="p-4">
+                                {isOccupied ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 text-xs font-semibold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Occupied
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-400 text-xs font-semibold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span> Vacant
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4 text-right font-data-mono text-data-mono text-slate-500 dark:text-slate-400">
+                                {isOccupied ? `${12 + i * 8}m 05s` : `${2 + i}h 15m`}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Side Underutilized Spaces Card */}
+                <div className="flex flex-col gap-6">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col h-full shadow-xs">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Underutilized Spaces</h3>
+                      <span className="material-symbols-outlined text-slate-400 cursor-pointer hover:text-slate-650 transition-colors">info</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">&lt;10% usage over the last 7 days.</p>
+                    <div className="space-y-3 flex-1">
+                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
+                        <div>
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">Training Room B</p>
+                          <p className="text-xs text-slate-450">Capacity: 20</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-red-500 font-bold text-sm">4%</p>
+                          <p className="text-[9px] text-slate-400 uppercase font-bold">Usage</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
+                        <div>
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">Huddle C</p>
+                          <p className="text-xs text-slate-450">Capacity: 3</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-red-500 font-bold text-sm">7%</p>
+                          <p className="text-[9px] text-slate-400 uppercase font-bold">Usage</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
+                        <div>
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">Exec Office 4A</p>
+                          <p className="text-xs text-slate-455">Capacity: 1</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-red-500 font-bold text-sm">9%</p>
+                          <p className="text-[9px] text-slate-400 uppercase font-bold">Usage</p>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setToastMessage({ type: "success", text: "Repurposing report compiled & downloaded." })}
+                      className="mt-4 w-full py-2 border border-teal-600 text-teal-600 rounded-lg text-xs font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs"
+                    >
+                      Generate Repurposing Report
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Utilization Analytics Bar Chart */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Utilization Analytics (24h)</h3>
+                  <div className="flex gap-2">
+                    <button className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-250 dark:border-slate-700 rounded text-xs font-semibold text-slate-850 dark:text-white">Today</button>
+                    <button className="px-3 py-1 border border-slate-200 dark:border-slate-850 rounded text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-colors">Week</button>
+                  </div>
+                </div>
+
+                <div className="w-full h-64 rounded-lg bg-slate-50 dark:bg-slate-950 flex items-end relative border-l border-b border-slate-200 dark:border-slate-800 px-2 pt-2">
+                  {/* Y Axis Labels */}
+                  <div className="absolute left-[-35px] top-0 bottom-0 flex flex-col justify-between text-[10px] py-2 font-data-mono text-slate-400">
+                    <span>100%</span>
+                    <span>75%</span>
+                    <span>50%</span>
+                    <span>25%</span>
+                    <span>0%</span>
+                  </div>
+
+                  {/* Chart Bars */}
+                  <div className="flex-1 flex items-end justify-between h-full px-4 gap-1 sm:gap-2">
+                    {[5, 15, 40, 75, 88, 85, 82, 60, 70, 45, 20, 10].map((h, i) => {
+                      const colorClass = h > 80 ? "bg-teal-700" : h > 40 ? "bg-teal-500" : "bg-teal-200 opacity-60";
+                      const timeLabel = ["6am", "7am", "8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm"][i];
+                      return (
+                        <div key={i} className={`w-full ${colorClass} rounded-t-xs relative group transition-all`} style={{ height: `${h}%` }}>
+                          <div className="hidden group-hover:block absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap z-10">
+                            {timeLabel}: {h}%
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* X Axis Labels */}
+                  <div className="absolute -bottom-6 left-0 right-0 flex justify-between px-6 text-[10px] font-data-mono text-slate-450">
+                    <span>6 AM</span>
+                    <span>9 AM</span>
+                    <span>12 PM</span>
+                    <span>3 PM</span>
+                    <span>6 PM</span>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center justify-center gap-6 mt-10 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-sm bg-teal-700"></span>
+                    <span className="text-slate-500 dark:text-slate-400">Peak (&gt;80%)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-sm bg-teal-500"></span>
+                    <span className="text-slate-500 dark:text-slate-400">Moderate (40-80%)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-sm bg-teal-200"></span>
+                    <span className="text-slate-500 dark:text-slate-400">Low (&lt;40%)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================================
+            1.2 FAMILY PORTAL / ACCESS CONTROL VIEW
+          ============================================================================ */}
+          {currentView === "family" && (
+            <div className="space-y-6 text-left">
+              {/* Page Header */}
+              <div className="mb-stack-lg flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                  <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white mb-1">Access Control &amp; Privacy</h1>
+                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400">Configure family member visibility and manage privacy settings for resident monitoring.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setToastMessage({ type: "success", text: "Privacy audit log exported." })}
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-white rounded-lg text-xs font-bold uppercase hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors shadow-2xs"
+                  >
+                    Export Logs
+                  </button>
+                  <button 
+                    onClick={() => setToastMessage({ type: "success", text: "Privacy configurations saved." })}
+                    className="px-4 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold uppercase hover:opacity-90 transition-opacity"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+
+              {/* Bento Grid Layout */}
+              <div className="grid grid-cols-12 gap-gutter">
+                
+                {/* Privacy Guarantee Hero Card (Span 8) */}
+                <div className="col-span-12 lg:col-span-8 bg-teal-50/40 dark:bg-teal-950/10 rounded-xl border border-slate-200 dark:border-slate-800 p-8 relative overflow-hidden flex flex-col justify-between shadow-xs">
+                  {/* Decorative Wi-Fi wave background element */}
+                  <div className="absolute -right-20 -top-20 w-64 h-64 border-[40px] border-teal-100 dark:border-teal-950/30 rounded-full opacity-40"></div>
+                  <div className="absolute -right-10 -top-10 w-48 h-48 border-[30px] border-teal-100 dark:border-teal-950/20 rounded-full opacity-30"></div>
+                  
+                  <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 mb-6 shadow-2xs">
+                      <span className="material-symbols-outlined text-[16px] text-teal-600 dark:text-teal-400">verified_user</span>
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Core Principle</span>
+                    </div>
+                    <h2 className="text-headline-md font-headline-md text-slate-950 dark:text-white mb-4 max-w-lg font-bold leading-snug">
+                      Invisible Security. Zero Cameras. Absolute Privacy.
+                    </h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-350 max-w-xl mb-6">
+                      Wi-Fi Sense relies entirely on Channel State Information (CSI) from ambient radio waves. 
+                      It detects movement, breathing patterns, and falls mathematically, without capturing any optical images or audio.
+                    </p>
+                  </div>
+
+                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200/50 dark:border-slate-800">
+                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 mb-2">videocam_off</span>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">No Cameras</div>
+                      <div className="text-xs text-slate-450 dark:text-slate-500 mt-1">100% optical privacy</div>
+                    </div>
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200/50 dark:border-slate-800">
+                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 mb-2">mic_off</span>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">No Microphones</div>
+                      <div className="text-xs text-slate-450 dark:text-slate-500 mt-1">No audio recorded</div>
+                    </div>
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200/50 dark:border-slate-800">
+                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 mb-2">lock</span>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">Encrypted CSI</div>
+                      <div className="text-xs text-slate-455 dark:text-slate-500 mt-1">Data mathematically hashed</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Global Alert Status (Span 4) */}
+                <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-xs">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Facility Status</h3>
+                    <span className="material-symbols-outlined text-slate-400">more_vert</span>
+                  </div>
+
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
+                    <div className="w-16 h-16 bg-teal-50 dark:bg-teal-950/20 rounded-full flex items-center justify-center mb-4 border border-teal-100 dark:border-teal-900">
+                      <span className="material-symbols-outlined text-[32px] text-teal-600 dark:text-teal-400 fill">health_and_safety</span>
+                    </div>
+                    <div className="text-headline-sm font-headline-sm text-slate-950 dark:text-white mb-2">All Clear</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {activeFallAlert ? "Active warning alert on elder sector. Responders active." : "No active environmental or health alerts detected across monitored zones."}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Last Scan:</span>
+                    <span className="text-data-mono font-data-mono text-teal-650 dark:text-teal-400 font-semibold">LIVE • 10ms latency</span>
+                  </div>
+                </div>
+
+                {/* Family Member Portal Preview (Span 6) */}
+                <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-xs">
+                  <div className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-slate-500">preview</span>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">Family Portal Preview</h3>
+                    </div>
+                    <span className="text-[10px] text-slate-400 bg-white dark:bg-slate-800 border dark:border-slate-700 px-2 py-0.5 rounded font-bold uppercase">Restricted View</span>
+                  </div>
+
+                  <div className="p-6 flex-1 bg-slate-50/50 dark:bg-slate-950/20 flex items-center justify-center">
+                    {/* Simulated Mobile Device View */}
+                    <div className="w-full max-w-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-xl overflow-hidden flex flex-col h-[340px]">
+                      <div className="h-10 bg-slate-50 dark:bg-slate-850 flex justify-center items-center border-b border-slate-200 dark:border-slate-800">
+                        <div className="w-16 h-1 bg-slate-350 dark:bg-slate-750 rounded-full"></div>
+                      </div>
+                      <div className="p-5 flex-1 overflow-y-auto text-left flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Resident Status</h4>
+                          
+                          {/* Resident Card */}
+                          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                                  {residents.length > 0 ? `${residents[0].first_name} ${residents[0].last_name}` : "Mary Smith"}
+                                </div>
+                                <div className="text-[10px] text-slate-500">
+                                  {rooms.find(rm => rm.id === residents[0]?.room_id)?.name || "Room 102"}
+                                </div>
+                              </div>
+                              <span className="bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400 px-2 py-0.5 rounded text-[10px] font-bold border border-teal-200/20 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">bed</span> Resting
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
+                              <div className="bg-teal-500 h-full w-3/4 rounded-full opacity-60"></div>
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-400">Respiration Normal • No erratic movement</div>
+                          </div>
+                        </div>
+
+                        {/* Simplified Alert */}
+                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                            <span className="material-symbols-outlined text-[16px] fill">check</span>
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-white">Safe Status</div>
+                            <div className="text-[10px] text-slate-450">No active warnings.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Access Control Settings (Span 6) */}
+                <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-xs">
+                  <div className="mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold mb-1">Visibility Settings</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Manage what external contacts can see via the portal.</p>
+                  </div>
+
+                  <div className="flex-1 space-y-4">
+                    {/* Setting 1 */}
+                    <div 
+                      onClick={() => {
+                        setStrictPrivacy(!strictPrivacy);
+                        setToastMessage({ type: "success", text: `Strict Privacy Mode ${!strictPrivacy ? "Enabled" : "Disabled"}` });
+                      }}
+                      className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer ${
+                        strictPrivacy ? "border-teal-600 bg-teal-50/10" : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
+                      }`}
+                    >
+                      <div className="flex gap-4">
+                        <span className="material-symbols-outlined text-slate-400 mt-1">visibility_off</span>
+                        <div>
+                          <div className="text-sm font-bold text-slate-950 dark:text-white">Strict Privacy Mode</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-450 mt-1 max-w-xs">
+                            Family sees only generic "Safe" / "Requires Attention" states. No location or activity details.
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors ${strictPrivacy ? "bg-teal-600" : "bg-slate-350"}`}>
+                        <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${strictPrivacy ? "translate-x-4" : "translate-x-0"}`}></div>
+                      </div>
+                    </div>
+
+                    {/* Setting 2 (Active) */}
+                    <div 
+                      onClick={() => {
+                        setContextualVisibility(!contextualVisibility);
+                        setToastMessage({ type: "success", text: `Contextual Visibility ${!contextualVisibility ? "Enabled" : "Disabled"}` });
+                      }}
+                      className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer ${
+                        contextualVisibility ? "border-teal-600 bg-teal-50/10" : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
+                      }`}
+                    >
+                      <div className="flex gap-4">
+                        <span className="material-symbols-outlined text-teal-650 dark:text-teal-400 mt-1">visibility</span>
+                        <div>
+                          <div className="text-sm font-bold text-slate-950 dark:text-white">Contextual Visibility</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-450 mt-1 max-w-xs">
+                            Family sees current room location and basic activity state (Resting, Active, Away).
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors ${contextualVisibility ? "bg-teal-600" : "bg-slate-350"}`}>
+                        <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${contextualVisibility ? "translate-x-4" : "translate-x-0"}`}></div>
+                      </div>
+                    </div>
+
+                    {/* Authorization List Table */}
+                    <div className="mt-8">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Authorized Contacts</h4>
+                      <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-850 text-[10px] text-slate-400 font-bold uppercase">
+                            <tr>
+                              <th className="py-2 px-4">Name</th>
+                              <th className="py-2 px-4">Relation</th>
+                              <th className="py-2 px-4">Access Level</th>
+                              <th className="py-2 px-4 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-xs text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3 px-4 font-semibold">John Smith</td>
+                              <td className="py-3 px-4 text-slate-500 dark:text-slate-400">Son</td>
+                              <td className="py-3 px-4">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-400 uppercase">Contextual</span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <button className="text-teal-600 dark:text-teal-400 hover:underline font-bold">Edit</button>
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3 px-4 font-semibold">Blesson Joseph Byju</td>
+                              <td className="py-3 px-4 text-slate-500 dark:text-slate-400">System Admin</td>
+                              <td className="py-3 px-4">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 uppercase">Full Access</span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <button className="text-teal-600 dark:text-teal-400 hover:underline font-bold">Edit</button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================================
+            2. PHYSICAL CONFIG VIEW
           ============================================================================ */}
           {currentView === "assets" && (
-            <div className="space-y-6">
+            <div className="space-y-6 text-left">
               <div className="flex justify-between items-center mb-4">
-                <div className="text-left">
-                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white mb-1">Physical Infrastructure Layout</h2>
-                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400">Collapsible configuration mappings of buildings, floors, and rooms.</p>
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white mb-1 font-bold">Physical Configuration</h2>
+                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400">Hierarchical database mappings of physical deployment structures.</p>
                 </div>
               </div>
 
@@ -1229,19 +1733,19 @@ export default function App() {
                 {/* Collapsible Facility Hierarchy accordion card */}
                 <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
                   <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center rounded-t-lg">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-slate-200 flex items-center gap-2 text-left">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white flex items-center gap-2 font-bold">
                       <span className="material-symbols-outlined text-slate-400">account_tree</span>
-                      Facility Hierarchy Configuration
+                      Facility Hierarchy
                     </h3>
                     <button
                       onClick={expandAllBuildings}
-                      className="text-teal-600 dark:text-teal-400 text-label-caps font-label-caps uppercase border border-teal-600 dark:border-teal-400 px-3 py-1 rounded hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors"
+                      className="text-teal-600 dark:text-teal-400 text-label-caps font-label-caps uppercase border border-teal-600 dark:border-teal-400 px-3 py-1 rounded hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors font-semibold"
                     >
                       Expand All
                     </button>
                   </div>
                   
-                  <div className="p-6 flex-1 text-left">
+                  <div className="p-6 flex-1">
                     <ul className="flex flex-col gap-4">
                       {buildings.map(b => (
                         <li key={b.id} className="border border-slate-200 dark:border-slate-800 rounded p-4 bg-slate-50 dark:bg-slate-950">
@@ -1251,7 +1755,7 @@ export default function App() {
                           >
                             <div className="flex items-center gap-2">
                               <span className="material-symbols-outlined text-slate-500 dark:text-slate-400">business</span>
-                              <span className="text-body-lg font-body-lg font-semibold text-slate-950 dark:text-slate-200">{b.name}</span>
+                              <span className="text-body-lg font-body-lg font-semibold text-slate-955 dark:text-slate-200">{b.name}</span>
                             </div>
                             <div className="flex items-center gap-4 text-body-md font-body-md text-slate-500 dark:text-slate-400">
                               <span>{rooms.filter(r => floors.find(f => f.id === r.floor_id)?.building_id === b.id).length} Rooms</span>
@@ -1271,7 +1775,7 @@ export default function App() {
                                   </div>
                                   <div className="flex flex-wrap gap-2 mt-1">
                                     {rooms.filter(r => r.floor_id === f.id).map(r => (
-                                      <span key={r.id} className="text-label-caps font-label-caps bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">
+                                      <span key={r.id} className="text-label-caps font-label-caps bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 px-2.5 py-0.5 rounded text-slate-700 dark:text-slate-300 font-semibold">
                                         {r.name}
                                       </span>
                                     ))}
@@ -1287,13 +1791,13 @@ export default function App() {
                 </div>
 
                 {/* Add Quick Asset Options */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6 text-left shadow-sm flex flex-col gap-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6 shadow-sm flex flex-col gap-4">
                   <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold border-b border-slate-100 dark:border-slate-800 pb-2">
-                    Infrastructure Actions
+                    Configuration Actions
                   </h3>
                   <button
                     onClick={() => setShowAddOrgModal(true)}
-                    className="w-full text-xs font-bold uppercase border border-slate-200 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
+                    className="w-full text-xs font-bold uppercase border border-slate-250 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
                   >
                     <span className="material-symbols-outlined text-sm">corporate_fare</span>
                     Add Organization
@@ -1305,7 +1809,7 @@ export default function App() {
                         setShowAddBuildingModal(true);
                       }
                     }}
-                    className="w-full text-xs font-bold uppercase border border-slate-200 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
+                    className="w-full text-xs font-bold uppercase border border-slate-250 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
                   >
                     <span className="material-symbols-outlined text-sm">business</span>
                     Add Building
@@ -1317,7 +1821,7 @@ export default function App() {
                         setShowAddFloorModal(true);
                       }
                     }}
-                    className="w-full text-xs font-bold uppercase border border-slate-200 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
+                    className="w-full text-xs font-bold uppercase border border-slate-255 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
                   >
                     <span className="material-symbols-outlined text-sm">layers</span>
                     Add Floor
@@ -1329,7 +1833,7 @@ export default function App() {
                         setShowAddRoomModal(true);
                       }
                     }}
-                    className="w-full text-xs font-bold uppercase border border-slate-200 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
+                    className="w-full text-xs font-bold uppercase border border-slate-255 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
                   >
                     <span className="material-symbols-outlined text-sm">meeting_room</span>
                     Add Room
@@ -1343,7 +1847,7 @@ export default function App() {
             3. DEVICE HEALTH VIEW
           ============================================================================ */}
           {currentView === "devices" && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm text-left">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">ESP32 Hardware Nodes</h3>
                 <button
@@ -1356,7 +1860,7 @@ export default function App() {
                   Register Device
                 </button>
               </div>
-              <div className="overflow-x-auto text-left">
+              <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
@@ -1375,7 +1879,7 @@ export default function App() {
                       if (orgScope === "lab") return !r.name.includes("MCA") && !r.name.includes("Staff") && !r.name.includes("IoT");
                       return true;
                     }).map(dev => (
-                      <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="p-3 font-semibold font-data-mono dark:text-white">{dev.mac_address}</td>
                         <td className="p-3 text-slate-700 dark:text-slate-350">{dev.firmware_version}</td>
                         <td className="p-3 font-semibold text-xs text-slate-650 dark:text-slate-400">
@@ -1409,7 +1913,7 @@ export default function App() {
             4. RESIDENTS / USER MANAGEMENT VIEW
           ============================================================================ */}
           {currentView === "residents" && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm text-left">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">User & Resident Profiles</h3>
                 <button
@@ -1421,12 +1925,12 @@ export default function App() {
                       setShowAddResidentModal(true);
                     }
                   }}
-                  className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase hover:bg-teal-700"
+                  className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase hover:bg-teal-700 font-semibold"
                 >
                   Add Record
                 </button>
               </div>
-              <div className="overflow-x-auto text-left">
+              <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
@@ -1443,7 +1947,7 @@ export default function App() {
                       if (orgScope === "lab") return !r.name.includes("MCA") && !r.name.includes("Staff") && !r.name.includes("IoT");
                       return true;
                     }).map(r => (
-                      <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="p-3 font-semibold dark:text-white">{r.first_name} {r.last_name}</td>
                         <td className="p-3 font-semibold text-slate-600 dark:text-slate-400">
                           {rooms.find(rm => rm.id === r.room_id)?.name || "Unassigned"}
@@ -1461,12 +1965,12 @@ export default function App() {
             5. ALERTS VIEW
           ============================================================================ */}
           {currentView === "alerts" && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm text-left">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">Fall Alerts Incident Center</h3>
                 <span className="text-[10px] text-slate-400 font-bold uppercase">Incident Status Log</span>
               </div>
-              <div className="overflow-x-auto text-left">
+              <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
@@ -1497,7 +2001,7 @@ export default function App() {
                               ? "bg-red-100 text-red-700 border border-red-200"
                               : a.status === "acknowledged"
                               ? "bg-teal-50 dark:bg-teal-950/20 text-teal-700 border border-teal-200"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-605"
                           }`}>
                             {a.status}
                           </span>
@@ -1608,7 +2112,7 @@ export default function App() {
 
               <form onSubmit={runSimulation} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Target Node (Device)</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Target Device Node</label>
                   <select
                     className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
                     value={simDeviceId}
@@ -1927,7 +2431,7 @@ export default function App() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 bg-teal-600 text-white rounded-full text-xs font-bold uppercase">
+                <button type="submit" className="px-4 py-2 bg-teal-600 text-white rounded-full text-xs font-bold uppercase font-semibold">
                   Register Node
                 </button>
               </div>
@@ -1959,7 +2463,7 @@ export default function App() {
                   <label className="block text-xs font-bold uppercase text-slate-400 mb-1">First Name</label>
                   <input
                     type="text"
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 dark:border-slate-805 rounded p-2 text-sm bg-slate-55 dark:bg-slate-800 dark:text-white"
                     value={newResFirst}
                     onChange={(e) => setNewResFirst(e.target.value)}
                     required
@@ -1969,7 +2473,7 @@ export default function App() {
                   <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Last Name</label>
                   <input
                     type="text"
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-850 dark:text-white"
+                    className="w-full border border-slate-200 dark:border-slate-805 rounded p-2 text-sm bg-slate-55 dark:bg-slate-800 dark:text-white"
                     value={newResLast}
                     onChange={(e) => setNewResLast(e.target.value)}
                     required
@@ -1997,15 +2501,15 @@ export default function App() {
       {showResolveModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-2 text-red-600">Resolve Incident Alert</h3>
-            <p className="text-xs text-slate-450 mb-4">
+            <h3 className="font-bold text-headline-sm mb-2 text-red-650 font-semibold">Resolve Incident Alert</h3>
+            <p className="text-xs text-slate-455 mb-4">
               Enter resolution notes to clear the warning banner.
             </p>
             <form onSubmit={handleResolve} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Resolution Actions / Notes</label>
                 <textarea
-                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-850 dark:text-white h-24"
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-55 dark:bg-slate-850 dark:text-white h-24"
                   placeholder="e.g. Caregiver dispatched. Resident verified safe."
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
@@ -2038,7 +2542,7 @@ export default function App() {
           <div className="bg-white dark:bg-slate-900 border-2 border-red-500 rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-2 bg-red-500 animate-pulse"></div>
             <span className="material-symbols-outlined text-red-500 text-6xl animate-bounce mb-4 block" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
-            <h3 className="font-bold text-2xl text-red-600 mb-2 uppercase tracking-wide">Emergency Protocol Activated</h3>
+            <h3 className="font-bold text-2xl text-red-650 mb-2 uppercase tracking-wide">Emergency Protocol Activated</h3>
             <p className="text-slate-600 dark:text-slate-350 text-sm mb-6 max-w-sm mx-auto">
               Warning vectors broadcasted to local auxiliary responders. Dispatching caregivers to monitored facilities.
             </p>
