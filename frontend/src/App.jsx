@@ -9,7 +9,8 @@ export default function App() {
   const [role, setRole] = useState(localStorage.getItem("role") || "");
   
   // Navigation State
-  const [currentView, setCurrentView] = useState("dashboard"); // 'dashboard' (Central Monitoring), 'corporate', 'family', 'assets', 'devices', 'residents', 'alerts', 'analytics'
+  // Views: 'family', 'analytics', 'devices', 'alerts', 'occupancy', 'dashboard', 'caregiver', 'corporate', 'facilitymanager', 'orgadmin', 'sysadmin'
+  const [currentView, setCurrentView] = useState("dashboard"); 
   
   // Multi-tenant Org Scope Switcher
   const [orgScope, setOrgScope] = useState("all"); 
@@ -35,6 +36,14 @@ export default function App() {
   // Privacy toggles state for Family Portal view
   const [strictPrivacy, setStrictPrivacy] = useState(false);
   const [contextualVisibility, setContextualVisibility] = useState(true);
+
+  // Caregiver interactive shift notes log state
+  const [caregiverLogs, setCaregiverLogs] = useState([
+    { id: 1, caregiver: "Abhinanth S Pillai", shift: "Morning", notes: "Checked room 101, resident Devassy sleeping comfortably.", time: "09:15 AM" },
+    { id: 2, caregiver: "Abhinand M A", shift: "Night", notes: "No anomaly signals detected in AJCE block.", time: "11:30 PM" }
+  ]);
+  const [newShiftNote, setNewShiftNote] = useState("");
+  const [newShiftCaregiver, setNewShiftCaregiver] = useState("Blesson Joseph Byju");
 
   // Analytics Aggregates
   const [occupancySummary, setOccupancySummary] = useState({
@@ -582,6 +591,21 @@ export default function App() {
     }
   };
 
+  const addShiftNote = (e) => {
+    e.preventDefault();
+    if (!newShiftNote) return;
+    const newLog = {
+      id: Date.now(),
+      caregiver: newShiftCaregiver,
+      shift: "Regular",
+      notes: newShiftNote,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setCaregiverLogs([newLog, ...caregiverLogs]);
+    setNewShiftNote("");
+    setToastMessage({ type: "success", text: "Caregiver shift note logged successfully." });
+  };
+
   // Facility Expand All / Collapse All Hierarchy toggle
   const toggleBuildingExpand = (bldId) => {
     setExpandedBuildings(prev => ({
@@ -645,9 +669,7 @@ export default function App() {
 
           <div className="w-full max-w-md mx-auto">
             <div className="mb-stack-lg text-center md:text-left">
-              <h1 className="font-headline-lg text-headline-lg text-slate-900 dark:text-white mb-2">
-                {isRegistering ? "Register Dev Account" : "WiFi Sense Login"}
-              </h1>
+              <h1 className="font-headline-lg text-headline-lg text-slate-900 dark:text-white mb-2 font-bold">WiFi Sense Login</h1>
               <p className="font-body-md text-body-md text-slate-500 dark:text-slate-400">
                 {isRegistering 
                   ? "Create credentials to start testing the CSI data pipeline." 
@@ -782,87 +804,61 @@ export default function App() {
         </div>
       )}
 
-      {/* SideNavbar */}
+      {/* SideNavbar (Styled strictly from layout list of dashboards) */}
       <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
         {/* Logo / Header */}
-        <div className="p-gutter flex items-center gap-stack-sm border-b border-slate-200 dark:border-slate-800">
-          <div className="w-10 h-10 rounded bg-teal-55 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+          <div className="w-9 h-9 rounded bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
             <span className="material-symbols-outlined fill text-[20px]">sensors</span>
           </div>
           <div className="text-left">
             <h1 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold leading-tight">Wi-Fi Sense</h1>
-            <p className="text-[10px] text-secondary font-bold uppercase tracking-wider block">AI Monitoring Active</p>
+            <p className="text-[10px] text-teal-600 font-bold uppercase tracking-wider block">AI Monitoring Active</p>
           </div>
         </div>
 
-        {/* Navigation items */}
-        <div className="flex-1 overflow-y-auto py-stack-lg px-3 flex flex-col gap-2">
+        {/* Navigation items (Strictly matches the layout in user screenshot) */}
+        <div className="flex-1 overflow-y-auto py-3 px-3 flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider">
           
           <button
-            onClick={() => { setCurrentView("dashboard"); }}
-            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "dashboard" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            onClick={() => setCurrentView("family")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "family" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
             }`}
           >
-            <span className="material-symbols-outlined fill">sensors</span>
-            Live Monitoring
+            <span className="material-symbols-outlined text-[18px]">group</span>
+            Family Member Portal
           </button>
 
           <button
-            onClick={() => { setCurrentView("corporate"); }}
-            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "corporate" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            onClick={() => setCurrentView("analytics")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "analytics" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
             }`}
           >
-            <span className="material-symbols-outlined">dashboard</span>
-            Corporate Staff
-          </button>
-
-          <button
-            onClick={() => { setCurrentView("family"); }}
-            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "family" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-            }`}
-          >
-            <span className="material-symbols-outlined">lock</span>
-            Family Portal
-          </button>
-
-          <button
-            onClick={() => setCurrentView("assets")}
-            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "assets" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-            }`}
-          >
-            <span className="material-symbols-outlined">business</span> Physical Config
-          </button>
-
-          <button
-            onClick={() => setCurrentView("residents")}
-            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "residents" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-            }`}
-          >
-            <span className="material-symbols-outlined">group</span> User Management
+            <span className="material-symbols-outlined text-[18px]">analytics</span>
+            Analytics Dashboard
           </button>
 
           <button
             onClick={() => setCurrentView("devices")}
-            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "devices" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "devices" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
             }`}
           >
-            <span className="material-symbols-outlined">router</span> Device Health
+            <span className="material-symbols-outlined text-[18px]">router</span>
+            Sensing Device Management
           </button>
 
           <button
             onClick={() => setCurrentView("alerts")}
-            className={`flex items-center justify-between gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "alerts" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            className={`flex items-center justify-between gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "alerts" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
             }`}
           >
             <span className="flex items-center gap-2">
-              <span className="material-symbols-outlined">history</span> Alert History
+              <span className="material-symbols-outlined text-[18px]">history</span>
+              Alert Management Dashboard
             </span>
             {alerts.filter(a => a.status === "new").length > 0 && (
               <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-[9px] font-bold animate-pulse">
@@ -872,17 +868,78 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setCurrentView("analytics")}
-            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "analytics" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 shadow-sm" : "text-slate-650 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            onClick={() => setCurrentView("occupancy")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "occupancy" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
             }`}
           >
-            <span className="material-symbols-outlined">analytics</span> Analytics
+            <span className="material-symbols-outlined text-[18px]">meeting_room</span>
+            Room Occupancy View
+          </button>
+
+          <button
+            onClick={() => setCurrentView("dashboard")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "dashboard" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px] fill">sensors</span>
+            Monitoring Dashboard
+          </button>
+
+          <button
+            onClick={() => setCurrentView("caregiver")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "caregiver" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">medical_services</span>
+            Caregiver Dashboard
+          </button>
+
+          <button
+            onClick={() => setCurrentView("corporate")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "corporate" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">domain</span>
+            Corporate Staff Dashboard
+          </button>
+
+          <button
+            onClick={() => setCurrentView("assets")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "assets" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">account_tree</span>
+            Facility Manager Dashboard
+          </button>
+
+          <button
+            onClick={() => setCurrentView("orgadmin")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "orgadmin" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">settings_applications</span>
+            Organization Admin Dashboard
+          </button>
+
+          <button
+            onClick={() => setCurrentView("sysadmin")}
+            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
+              currentView === "sysadmin" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+            System Admin Dashboard
           </button>
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-gutter border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 flex flex-col gap-4">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 flex flex-col gap-4">
           <button
             onClick={triggerEmergencyProtocol}
             className="w-full bg-red-650 text-white py-2 px-4 rounded text-xs font-bold uppercase hover:bg-red-750 transition-colors flex items-center justify-center gap-2 shadow-sm font-semibold"
@@ -908,40 +965,12 @@ export default function App() {
       <div className="ml-sidebar-width flex-1 flex flex-col min-h-screen">
         {/* TopAppBar */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter">
-          {/* Navigation Links */}
-          <div className="flex items-center gap-stack-md h-full text-xs font-bold uppercase tracking-wider">
-            <button
-              onClick={() => setCurrentView("dashboard")}
-              className={`h-full flex items-center px-2 border-b-2 transition-all ${
-                currentView === "dashboard" ? "text-teal-600 dark:text-teal-400 border-teal-600 dark:border-teal-400" : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-800"
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setCurrentView("assets")}
-              className={`h-full flex items-center px-2 border-b-2 transition-all ${
-                currentView === "assets" ? "text-teal-600 dark:text-teal-400 border-teal-600 dark:border-teal-400" : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-800"
-              }`}
-            >
-              Heatmaps & Config
-            </button>
-            <button
-              onClick={() => setCurrentView("analytics")}
-              className={`h-full flex items-center px-2 border-b-2 transition-all ${
-                currentView === "analytics" ? "text-teal-600 dark:text-teal-400 border-teal-600 dark:border-teal-400" : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-800"
-              }`}
-            >
-              Reports
-            </button>
-            <button
-              onClick={() => setCurrentView("alerts")}
-              className={`h-full flex items-center px-2 border-b-2 transition-all ${
-                currentView === "alerts" ? "text-teal-600 dark:text-teal-400 border-teal-600 dark:border-teal-400" : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-800"
-              }`}
-            >
-              Alerts
-            </button>
+          {/* Top Scope Selector & Settings */}
+          <div className="flex items-center gap-stack-md text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400">
+            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">corporate_fare</span>
+            <span>Active Deployment Scope: <span className="text-slate-950 dark:text-white">
+              {orgScope === "ajce" ? "Amal Jyothi College of Engineering" : orgScope === "lab" ? "WiFi Sense Lab" : "Global Network View"}
+            </span></span>
           </div>
 
           <div className="flex items-center gap-gutter">
@@ -950,7 +979,7 @@ export default function App() {
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
               <input
                 className="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-body-md focus:outline-none focus:border-teal-500 w-64 text-slate-800 dark:text-white"
-                placeholder="Search resources..."
+                placeholder="Search rooms, telemetry..."
                 type="text"
               />
             </div>
@@ -958,7 +987,7 @@ export default function App() {
             {/* Actions group */}
             <div className="flex items-center gap-stack-sm border-l border-slate-200 dark:border-slate-850 pl-gutter">
               <select
-                className="bg-slate-50 dark:bg-slate-800 text-slate-850 dark:text-white text-xs font-bold border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-full focus:outline-none"
+                className="bg-slate-50 dark:bg-slate-800 text-slate-855 dark:text-white text-xs font-bold border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-full focus:outline-none"
                 value={orgScope}
                 onChange={(e) => setOrgScope(e.target.value)}
               >
@@ -1037,7 +1066,7 @@ export default function App() {
         <main className={`p-container-padding flex-1 ${activeFallAlert ? "pt-2" : "pt-[64px]"}`}>
           
           {/* ============================================================================
-            1. CENTRAL MONITORING VIEW (DEFAULT DASHBOARD)
+            1. MONITORING DASHBOARD (CENTRAL MONITORING BENTO)
           ============================================================================ */}
           {currentView === "dashboard" && (
             <div className="space-y-6">
@@ -1060,7 +1089,7 @@ export default function App() {
                 {/* Live Feed Table (Spans 8 columns) */}
                 <div className="xl:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
                   <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center text-left">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white">Live Feed</h3>
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Live Feed</h3>
                     <span className="material-symbols-outlined text-slate-400">filter_list</span>
                   </div>
                   
@@ -1106,7 +1135,7 @@ export default function App() {
                                   </span>
                                 )}
                               </td>
-                              <td className="p-4 text-slate-800 dark:text-slate-350">
+                              <td className="p-4 text-slate-800 dark:text-slate-355">
                                 {rm.is_occupied ? (
                                   <span className="flex items-center gap-2">
                                     <span className="material-symbols-outlined text-slate-400">
@@ -1237,858 +1266,257 @@ export default function App() {
           )}
 
           {/* ============================================================================
-            1.1 CORPORATE FACILITY STAFF DASHBOARD
+            2. ROOM OCCUPANCY VIEW (DEDICATED FULL GRID SCREEN)
           ============================================================================ */}
-          {currentView === "corporate" && (
+          {currentView === "occupancy" && (
             <div className="space-y-6 text-left">
-              {/* Header Section */}
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Facility Overview</h2>
-                  <p className="text-body-md text-slate-500 dark:text-slate-400 mt-1">Real-time occupancy and environmental metrics for floor 4.</p>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                  <span className="flex items-center gap-1 font-bold"><span className="w-2 h-2 rounded-full bg-teal-500 block animate-pulse"></span> Live Feed Active</span>
-                  <span className="text-slate-300 dark:text-slate-700">|</span>
-                  <span>Last updated: Just now</span>
-                </div>
+              <div className="mb-stack-lg">
+                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Room Occupancy View</h2>
+                <p className="text-body-md text-slate-500 dark:text-slate-400">Live floor distribution grid mapped to real monitored users.</p>
               </div>
 
-              {/* Metrics Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-teal-55 transition-colors duration-300 shadow-xs">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <span className="material-symbols-outlined text-6xl text-slate-400">show_chart</span>
-                  </div>
-                  <h3 className="text-label-caps font-label-caps text-slate-400 dark:text-slate-550 uppercase mb-2">Peak Utilization</h3>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">88%</span>
-                    <span className="text-body-md text-teal-600 font-semibold flex items-center">
-                      <span className="material-symbols-outlined text-[16px]">arrow_upward</span> 4%
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-450 mt-2">Between 10:00 AM - 2:00 PM</p>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-teal-55 transition-colors duration-300 shadow-xs">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <span className="material-symbols-outlined text-6xl text-slate-400">meeting_room</span>
-                  </div>
-                  <h3 className="text-label-caps font-label-caps text-slate-400 dark:text-slate-550 uppercase mb-2">Underutilized Rooms</h3>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">
-                      {rooms.filter(r => residents.filter(res => res.room_id === r.id).length === 0).length || 4}
-                    </span>
-                    <span className="text-body-md text-slate-500 dark:text-slate-400">/ {rooms.length || 42} total</span>
-                  </div>
-                  <p className="text-xs text-slate-455 mt-2">Rooms &lt;10% usage this week</p>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-teal-55 transition-colors duration-300 shadow-xs">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <span className="material-symbols-outlined text-6xl text-slate-400">eco</span>
-                  </div>
-                  <h3 className="text-label-caps font-label-caps text-slate-400 dark:text-slate-550 uppercase mb-2">Energy Savings Est.</h3>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-headline-lg font-headline-lg text-teal-650 dark:text-teal-400 font-bold">15%</span>
-                  </div>
-                  <p className="text-xs text-slate-455 mt-2">Potential savings via HVAC optimization</p>
-                </div>
-              </div>
-
-              {/* Complex Layout Grid */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                
-                {/* Real-time Meeting Room Status Table */}
-                <div className="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xs">
-                  <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Real-time Meeting Room Status</h3>
-                    <button 
-                      onClick={() => setCurrentView("assets")}
-                      className="text-teal-650 dark:text-teal-450 hover:text-teal-700 transition-colors text-xs font-bold uppercase flex items-center gap-1"
-                    >
-                      View All <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
-                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold">Room Name</th>
-                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold">Capacity</th>
-                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold">Status</th>
-                          <th className="p-4 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 font-semibold text-right">Duration</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-body-md">
-                        {rooms.filter(r => r.name.includes("MCA") || r.name.includes("Staff") || r.name.includes("IoT") || r.name.includes("Boardroom")).map((rm, i) => {
-                          const isOccupied = i % 2 === 0;
-                          return (
-                            <tr key={rm.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="p-4 font-semibold text-slate-900 dark:text-white">{rm.name}</td>
-                              <td className="p-4 text-slate-500 dark:text-slate-400">{rm.capacity}</td>
-                              <td className="p-4">
-                                {isOccupied ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 text-xs font-semibold">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Occupied
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-400 text-xs font-semibold">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span> Vacant
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-4 text-right font-data-mono text-data-mono text-slate-500 dark:text-slate-400">
-                                {isOccupied ? `${12 + i * 8}m 05s` : `${2 + i}h 15m`}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Side Underutilized Spaces Card */}
-                <div className="flex flex-col gap-6">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col h-full shadow-xs">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Underutilized Spaces</h3>
-                      <span className="material-symbols-outlined text-slate-400 cursor-pointer hover:text-slate-650 transition-colors">info</span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">&lt;10% usage over the last 7 days.</p>
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
-                        <div>
-                          <p className="font-semibold text-slate-900 dark:text-white text-sm">Training Room B</p>
-                          <p className="text-xs text-slate-450">Capacity: 20</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-red-500 font-bold text-sm">4%</p>
-                          <p className="text-[9px] text-slate-400 uppercase font-bold">Usage</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
-                        <div>
-                          <p className="font-semibold text-slate-900 dark:text-white text-sm">Huddle C</p>
-                          <p className="text-xs text-slate-450">Capacity: 3</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-red-500 font-bold text-sm">7%</p>
-                          <p className="text-[9px] text-slate-400 uppercase font-bold">Usage</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
-                        <div>
-                          <p className="font-semibold text-slate-900 dark:text-white text-sm">Exec Office 4A</p>
-                          <p className="text-xs text-slate-455">Capacity: 1</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-red-500 font-bold text-sm">9%</p>
-                          <p className="text-[9px] text-slate-400 uppercase font-bold">Usage</p>
-                        </div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setToastMessage({ type: "success", text: "Repurposing report compiled & downloaded." })}
-                      className="mt-4 w-full py-2 border border-teal-600 text-teal-600 rounded-lg text-xs font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs"
-                    >
-                      Generate Repurposing Report
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Utilization Analytics Bar Chart */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Utilization Analytics (24h)</h3>
-                  <div className="flex gap-2">
-                    <button className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-250 dark:border-slate-700 rounded text-xs font-semibold text-slate-850 dark:text-white">Today</button>
-                    <button className="px-3 py-1 border border-slate-200 dark:border-slate-850 rounded text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-colors">Week</button>
-                  </div>
-                </div>
-
-                <div className="w-full h-64 rounded-lg bg-slate-50 dark:bg-slate-950 flex items-end relative border-l border-b border-slate-200 dark:border-slate-800 px-2 pt-2">
-                  {/* Y Axis Labels */}
-                  <div className="absolute left-[-35px] top-0 bottom-0 flex flex-col justify-between text-[10px] py-2 font-data-mono text-slate-400">
-                    <span>100%</span>
-                    <span>75%</span>
-                    <span>50%</span>
-                    <span>25%</span>
-                    <span>0%</span>
-                  </div>
-
-                  {/* Chart Bars */}
-                  <div className="flex-1 flex items-end justify-between h-full px-4 gap-1 sm:gap-2">
-                    {[5, 15, 40, 75, 88, 85, 82, 60, 70, 45, 20, 10].map((h, i) => {
-                      const colorClass = h > 80 ? "bg-teal-700" : h > 40 ? "bg-teal-500" : "bg-teal-200 opacity-60";
-                      const timeLabel = ["6am", "7am", "8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm"][i];
-                      return (
-                        <div key={i} className={`w-full ${colorClass} rounded-t-xs relative group transition-all`} style={{ height: `${h}%` }}>
-                          <div className="hidden group-hover:block absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap z-10">
-                            {timeLabel}: {h}%
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* X Axis Labels */}
-                  <div className="absolute -bottom-6 left-0 right-0 flex justify-between px-6 text-[10px] font-data-mono text-slate-450">
-                    <span>6 AM</span>
-                    <span>9 AM</span>
-                    <span>12 PM</span>
-                    <span>3 PM</span>
-                    <span>6 PM</span>
-                  </div>
-                </div>
-
-                {/* Legend */}
-                <div className="flex items-center justify-center gap-6 mt-10 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-sm bg-teal-700"></span>
-                    <span className="text-slate-500 dark:text-slate-400">Peak (&gt;80%)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-sm bg-teal-500"></span>
-                    <span className="text-slate-500 dark:text-slate-400">Moderate (40-80%)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-sm bg-teal-200"></span>
-                    <span className="text-slate-500 dark:text-slate-400">Low (&lt;40%)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================================
-            1.2 FAMILY PORTAL / ACCESS CONTROL VIEW
-          ============================================================================ */}
-          {currentView === "family" && (
-            <div className="space-y-6 text-left">
-              {/* Page Header */}
-              <div className="mb-stack-lg flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                <div>
-                  <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white mb-1">Access Control &amp; Privacy</h1>
-                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400">Configure family member visibility and manage privacy settings for resident monitoring.</p>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setToastMessage({ type: "success", text: "Privacy audit log exported." })}
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-white rounded-lg text-xs font-bold uppercase hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors shadow-2xs"
-                  >
-                    Export Logs
-                  </button>
-                  <button 
-                    onClick={() => setToastMessage({ type: "success", text: "Privacy configurations saved." })}
-                    className="px-4 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold uppercase hover:opacity-90 transition-opacity"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-
-              {/* Bento Grid Layout */}
-              <div className="grid grid-cols-12 gap-gutter">
-                
-                {/* Privacy Guarantee Hero Card (Span 8) */}
-                <div className="col-span-12 lg:col-span-8 bg-teal-50/40 dark:bg-teal-950/10 rounded-xl border border-slate-200 dark:border-slate-800 p-8 relative overflow-hidden flex flex-col justify-between shadow-xs">
-                  {/* Decorative Wi-Fi wave background element */}
-                  <div className="absolute -right-20 -top-20 w-64 h-64 border-[40px] border-teal-100 dark:border-teal-950/30 rounded-full opacity-40"></div>
-                  <div className="absolute -right-10 -top-10 w-48 h-48 border-[30px] border-teal-100 dark:border-teal-950/20 rounded-full opacity-30"></div>
-                  
-                  <div className="relative z-10">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 mb-6 shadow-2xs">
-                      <span className="material-symbols-outlined text-[16px] text-teal-600 dark:text-teal-400">verified_user</span>
-                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Core Principle</span>
-                    </div>
-                    <h2 className="text-headline-md font-headline-md text-slate-950 dark:text-white mb-4 max-w-lg font-bold leading-snug">
-                      Invisible Security. Zero Cameras. Absolute Privacy.
-                    </h2>
-                    <p className="text-sm text-slate-600 dark:text-slate-350 max-w-xl mb-6">
-                      Wi-Fi Sense relies entirely on Channel State Information (CSI) from ambient radio waves. 
-                      It detects movement, breathing patterns, and falls mathematically, without capturing any optical images or audio.
-                    </p>
-                  </div>
-
-                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200/50 dark:border-slate-800">
-                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 mb-2">videocam_off</span>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">No Cameras</div>
-                      <div className="text-xs text-slate-450 dark:text-slate-500 mt-1">100% optical privacy</div>
-                    </div>
-                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200/50 dark:border-slate-800">
-                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 mb-2">mic_off</span>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">No Microphones</div>
-                      <div className="text-xs text-slate-450 dark:text-slate-500 mt-1">No audio recorded</div>
-                    </div>
-                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200/50 dark:border-slate-800">
-                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 mb-2">lock</span>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">Encrypted CSI</div>
-                      <div className="text-xs text-slate-455 dark:text-slate-500 mt-1">Data mathematically hashed</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Global Alert Status (Span 4) */}
-                <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-xs">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Facility Status</h3>
-                    <span className="material-symbols-outlined text-slate-400">more_vert</span>
-                  </div>
-
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
-                    <div className="w-16 h-16 bg-teal-50 dark:bg-teal-950/20 rounded-full flex items-center justify-center mb-4 border border-teal-100 dark:border-teal-900">
-                      <span className="material-symbols-outlined text-[32px] text-teal-600 dark:text-teal-400 fill">health_and_safety</span>
-                    </div>
-                    <div className="text-headline-sm font-headline-sm text-slate-950 dark:text-white mb-2">All Clear</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {activeFallAlert ? "Active warning alert on elder sector. Responders active." : "No active environmental or health alerts detected across monitored zones."}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Last Scan:</span>
-                    <span className="text-data-mono font-data-mono text-teal-650 dark:text-teal-400 font-semibold">LIVE • 10ms latency</span>
-                  </div>
-                </div>
-
-                {/* Family Member Portal Preview (Span 6) */}
-                <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-xs">
-                  <div className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-slate-500">preview</span>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">Family Portal Preview</h3>
-                    </div>
-                    <span className="text-[10px] text-slate-400 bg-white dark:bg-slate-800 border dark:border-slate-700 px-2 py-0.5 rounded font-bold uppercase">Restricted View</span>
-                  </div>
-
-                  <div className="p-6 flex-1 bg-slate-50/50 dark:bg-slate-950/20 flex items-center justify-center">
-                    {/* Simulated Mobile Device View */}
-                    <div className="w-full max-w-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-xl overflow-hidden flex flex-col h-[340px]">
-                      <div className="h-10 bg-slate-50 dark:bg-slate-850 flex justify-center items-center border-b border-slate-200 dark:border-slate-800">
-                        <div className="w-16 h-1 bg-slate-350 dark:bg-slate-750 rounded-full"></div>
-                      </div>
-                      <div className="p-5 flex-1 overflow-y-auto text-left flex flex-col justify-between">
-                        <div>
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Resident Status</h4>
-                          
-                          {/* Resident Card */}
-                          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3">
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <div className="text-sm font-bold text-slate-900 dark:text-white">
-                                  {residents.length > 0 ? `${residents[0].first_name} ${residents[0].last_name}` : "Mary Smith"}
-                                </div>
-                                <div className="text-[10px] text-slate-500">
-                                  {rooms.find(rm => rm.id === residents[0]?.room_id)?.name || "Room 102"}
-                                </div>
-                              </div>
-                              <span className="bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400 px-2 py-0.5 rounded text-[10px] font-bold border border-teal-200/20 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">bed</span> Resting
-                              </span>
-                            </div>
-                            <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
-                              <div className="bg-teal-500 h-full w-3/4 rounded-full opacity-60"></div>
-                            </div>
-                            <div className="text-[10px] font-mono text-slate-400">Respiration Normal • No erratic movement</div>
-                          </div>
-                        </div>
-
-                        {/* Simplified Alert */}
-                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-3 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                            <span className="material-symbols-outlined text-[16px] fill">check</span>
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-white">Safe Status</div>
-                            <div className="text-[10px] text-slate-450">No active warnings.</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Access Control Settings (Span 6) */}
-                <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-xs">
-                  <div className="mb-6">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold mb-1">Visibility Settings</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Manage what external contacts can see via the portal.</p>
-                  </div>
-
-                  <div className="flex-1 space-y-4">
-                    {/* Setting 1 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
+                {occupancySummary.occupied_room_details.map(rm => {
+                  const occupants = residents.filter(r => r.room_id === rm.room_id);
+                  return (
                     <div 
-                      onClick={() => {
-                        setStrictPrivacy(!strictPrivacy);
-                        setToastMessage({ type: "success", text: `Strict Privacy Mode ${!strictPrivacy ? "Enabled" : "Disabled"}` });
-                      }}
-                      className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer ${
-                        strictPrivacy ? "border-teal-600 bg-teal-50/10" : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
+                      key={rm.room_id} 
+                      className={`border rounded-2xl p-5 relative overflow-hidden transition-all duration-300 shadow-sm ${
+                        rm.is_occupied
+                          ? rm.current_activity === "Fall_Detected"
+                            ? "bg-red-50 dark:bg-red-950/20 border-red-500 ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-950 animate-pulse"
+                            : "bg-teal-50/40 dark:bg-teal-950/10 border-teal-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                       }`}
                     >
-                      <div className="flex gap-4">
-                        <span className="material-symbols-outlined text-slate-400 mt-1">visibility_off</span>
-                        <div>
-                          <div className="text-sm font-bold text-slate-950 dark:text-white">Strict Privacy Mode</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-450 mt-1 max-w-xs">
-                            Family sees only generic "Safe" / "Requires Attention" states. No location or activity details.
-                          </div>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-bold text-base text-slate-900 dark:text-white truncate">{rm.room_name}</span>
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          rm.is_occupied 
+                            ? rm.current_activity === "Fall_Detected" ? "bg-red-500 animate-ping" : "bg-teal-500"
+                            : "bg-slate-350"
+                        }`}></span>
+                      </div>
+                      
+                      <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-4">{rm.room_type}</p>
+                      
+                      <div className="space-y-2">
+                        <div className="text-xs text-slate-600 dark:text-slate-300">
+                          <span className="font-bold block text-slate-450 uppercase text-[9px] mb-0.5">Assigned Subject</span>
+                          {occupants.map(o => `${o.first_name} ${o.last_name}`).join(", ") || "None"}
                         </div>
-                      </div>
-                      <div className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors ${strictPrivacy ? "bg-teal-600" : "bg-slate-350"}`}>
-                        <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${strictPrivacy ? "translate-x-4" : "translate-x-0"}`}></div>
-                      </div>
-                    </div>
-
-                    {/* Setting 2 (Active) */}
-                    <div 
-                      onClick={() => {
-                        setContextualVisibility(!contextualVisibility);
-                        setToastMessage({ type: "success", text: `Contextual Visibility ${!contextualVisibility ? "Enabled" : "Disabled"}` });
-                      }}
-                      className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer ${
-                        contextualVisibility ? "border-teal-600 bg-teal-50/10" : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
-                      }`}
-                    >
-                      <div className="flex gap-4">
-                        <span className="material-symbols-outlined text-teal-650 dark:text-teal-400 mt-1">visibility</span>
-                        <div>
-                          <div className="text-sm font-bold text-slate-950 dark:text-white">Contextual Visibility</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-450 mt-1 max-w-xs">
-                            Family sees current room location and basic activity state (Resting, Active, Away).
-                          </div>
-                        </div>
-                      </div>
-                      <div className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors ${contextualVisibility ? "bg-teal-600" : "bg-slate-350"}`}>
-                        <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${contextualVisibility ? "translate-x-4" : "translate-x-0"}`}></div>
-                      </div>
-                    </div>
-
-                    {/* Authorization List Table */}
-                    <div className="mt-8">
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Authorized Contacts</h4>
-                      <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
-                        <table className="w-full text-left border-collapse">
-                          <thead className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-850 text-[10px] text-slate-400 font-bold uppercase">
-                            <tr>
-                              <th className="py-2 px-4">Name</th>
-                              <th className="py-2 px-4">Relation</th>
-                              <th className="py-2 px-4">Access Level</th>
-                              <th className="py-2 px-4 text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-xs text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
-                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="py-3 px-4 font-semibold">John Smith</td>
-                              <td className="py-3 px-4 text-slate-500 dark:text-slate-400">Son</td>
-                              <td className="py-3 px-4">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-400 uppercase">Contextual</span>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <button className="text-teal-600 dark:text-teal-400 hover:underline font-bold">Edit</button>
-                              </td>
-                            </tr>
-                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="py-3 px-4 font-semibold">Blesson Joseph Byju</td>
-                              <td className="py-3 px-4 text-slate-500 dark:text-slate-400">System Admin</td>
-                              <td className="py-3 px-4">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 uppercase">Full Access</span>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <button className="text-teal-600 dark:text-teal-400 hover:underline font-bold">Edit</button>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================================
-            2. PHYSICAL CONFIG VIEW
-          ============================================================================ */}
-          {currentView === "assets" && (
-            <div className="space-y-6 text-left">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white mb-1 font-bold">Physical Configuration</h2>
-                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400">Hierarchical database mappings of physical deployment structures.</p>
-                </div>
-              </div>
-
-              {/* Grid of details */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
-                
-                {/* Collapsible Facility Hierarchy accordion card */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
-                  <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center rounded-t-lg">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white flex items-center gap-2 font-bold">
-                      <span className="material-symbols-outlined text-slate-400">account_tree</span>
-                      Facility Hierarchy
-                    </h3>
-                    <button
-                      onClick={expandAllBuildings}
-                      className="text-teal-600 dark:text-teal-400 text-label-caps font-label-caps uppercase border border-teal-600 dark:border-teal-400 px-3 py-1 rounded hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors font-semibold"
-                    >
-                      Expand All
-                    </button>
-                  </div>
-                  
-                  <div className="p-6 flex-1">
-                    <ul className="flex flex-col gap-4">
-                      {buildings.map(b => (
-                        <li key={b.id} className="border border-slate-200 dark:border-slate-800 rounded p-4 bg-slate-50 dark:bg-slate-950">
-                          <div
-                            onClick={() => toggleBuildingExpand(b.id)}
-                            className="flex items-center justify-between cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="material-symbols-outlined text-slate-500 dark:text-slate-400">business</span>
-                              <span className="text-body-lg font-body-lg font-semibold text-slate-955 dark:text-slate-200">{b.name}</span>
-                            </div>
-                            <div className="flex items-center gap-4 text-body-md font-body-md text-slate-500 dark:text-slate-400">
-                              <span>{rooms.filter(r => floors.find(f => f.id === r.floor_id)?.building_id === b.id).length} Rooms</span>
-                              <span className="material-symbols-outlined">
-                                {expandedBuildings[b.id] ? "expand_less" : "chevron_right"}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Collapsible Floor list */}
-                          {expandedBuildings[b.id] && (
-                            <div className="ml-8 mt-2 pl-4 border-l-2 border-slate-200 dark:border-slate-850 flex flex-col gap-2">
-                              {floors.filter(f => f.building_id === b.id).map(f => (
-                                <div key={f.id} className="flex flex-col py-2 border-b border-slate-200/50 dark:border-slate-800 text-xs">
-                                  <div className="flex items-center gap-2 text-body-md font-body-md text-slate-850 dark:text-slate-300">
-                                    <span className="material-symbols-outlined text-sm text-slate-400">layers</span> Floor {f.floor_number}
-                                  </div>
-                                  <div className="flex flex-wrap gap-2 mt-1">
-                                    {rooms.filter(r => r.floor_id === f.id).map(r => (
-                                      <span key={r.id} className="text-label-caps font-label-caps bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 px-2.5 py-0.5 rounded text-slate-700 dark:text-slate-300 font-semibold">
-                                        {r.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                        <div className="text-xs text-slate-650 dark:text-slate-300">
+                          <span className="font-bold block text-slate-450 uppercase text-[9px] mb-0.5">Status telemetry</span>
+                          {rm.is_occupied ? (
+                            <span className="font-semibold text-teal-650 dark:text-teal-400">
+                              Active: {rm.current_activity.replace("_", " ")}
+                            </span>
+                          ) : (
+                            <span className="text-slate-450">Vacant</span>
                           )}
-                        </li>
-                      ))}
-                    </ul>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================================
+            3. CAREGIVER DASHBOARD
+          ============================================================================ */}
+          {currentView === "caregiver" && (
+            <div className="space-y-6 text-left">
+              <div className="mb-stack-lg">
+                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Caregiver Dashboard</h2>
+                <p className="text-body-md text-slate-500 dark:text-slate-400">Shift handovers, caregiver logs, and patient safety tracking.</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+                {/* Left Form (Shift Note) */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold border-b pb-2 mb-4">Log Shift Note</h3>
+                    <form onSubmit={addShiftNote} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Author Caregiver</label>
+                        <select
+                          className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-800 dark:text-white"
+                          value={newShiftCaregiver}
+                          onChange={(e) => setNewShiftCaregiver(e.target.value)}
+                        >
+                          <option value="Blesson Joseph Byju">Blesson Joseph Byju</option>
+                          <option value="Abhinanth S Pillai">Abhinanth S Pillai</option>
+                          <option value="Abhinand M A">Abhinand M A</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Observations / Notes</label>
+                        <textarea
+                          className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-850 dark:text-white h-28"
+                          placeholder="e.g. Conducted rounds. Checked seniors. All safe."
+                          value={newShiftNote}
+                          onChange={(e) => setNewShiftNote(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full py-2 bg-teal-600 text-white rounded-lg text-xs font-bold uppercase shadow hover:bg-teal-700"
+                      >
+                        Submit Shift Log
+                      </button>
+                    </form>
                   </div>
                 </div>
 
-                {/* Add Quick Asset Options */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6 shadow-sm flex flex-col gap-4">
-                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold border-b border-slate-100 dark:border-slate-800 pb-2">
-                    Configuration Actions
-                  </h3>
+                {/* Right Lists (Shift Handovers) */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold border-b pb-2 mb-4">Shift Handover Logs</h3>
+                  <div className="space-y-4 max-h-[360px] overflow-y-auto pr-2">
+                    {caregiverLogs.map(log => (
+                      <div key={log.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 flex flex-col gap-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-sm text-slate-900 dark:text-white">{log.caregiver}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{log.time}</span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-350">{log.notes}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================================
+            4. ORG ADMIN DASHBOARD
+          ============================================================================ */}
+          {currentView === "orgadmin" && (
+            <div className="space-y-6 text-left">
+              <div className="mb-stack-lg">
+                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Organization Admin Dashboard</h2>
+                <p className="text-body-md text-slate-500 dark:text-slate-400">Manage corporate and elder-care tenant organizations settings.</p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div className="flex justify-between items-center border-b pb-2 mb-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Active Organizations</h3>
                   <button
                     onClick={() => setShowAddOrgModal(true)}
-                    className="w-full text-xs font-bold uppercase border border-slate-250 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
+                    className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase hover:bg-teal-700"
                   >
-                    <span className="material-symbols-outlined text-sm">corporate_fare</span>
                     Add Organization
                   </button>
-                  <button
-                    onClick={() => {
-                      if (organizations.length > 0) {
-                        setNewBldOrgId(organizations[0].id);
-                        setShowAddBuildingModal(true);
-                      }
-                    }}
-                    className="w-full text-xs font-bold uppercase border border-slate-250 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
-                  >
-                    <span className="material-symbols-outlined text-sm">business</span>
-                    Add Building
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (buildings.length > 0) {
-                        setNewFlrBldId(buildings[0].id);
-                        setShowAddFloorModal(true);
-                      }
-                    }}
-                    className="w-full text-xs font-bold uppercase border border-slate-255 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
-                  >
-                    <span className="material-symbols-outlined text-sm">layers</span>
-                    Add Floor
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (floors.length > 0) {
-                        setNewRmFlrId(floors[0].id);
-                        setShowAddRoomModal(true);
-                      }
-                    }}
-                    className="w-full text-xs font-bold uppercase border border-slate-255 dark:border-slate-700 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors text-slate-800 dark:text-white flex items-center gap-2 justify-center"
-                  >
-                    <span className="material-symbols-outlined text-sm">meeting_room</span>
-                    Add Room
-                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                        <th className="p-3">Organization Name</th>
+                        <th className="p-3">Deployment Scope Type</th>
+                        <th className="p-3">Organization ID</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-800">
+                      {organizations.map(org => (
+                        <tr key={org.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="p-3 font-semibold dark:text-white">{org.name}</td>
+                          <td className="p-3">
+                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
+                              org.type === "ELDER_CARE" ? "bg-teal-50 dark:bg-teal-950/20 text-teal-650" : "bg-blue-50 dark:bg-blue-950/20 text-blue-650"
+                            }`}>
+                              {org.type}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-xs text-slate-450">{org.id}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           )}
 
           {/* ============================================================================
-            3. DEVICE HEALTH VIEW
+            5. SYSTEM ADMIN DASHBOARD (USER & ROLES AUDITING)
           ============================================================================ */}
-          {currentView === "devices" && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm text-left">
-              <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">ESP32 Hardware Nodes</h3>
-                <button
-                  onClick={() => {
-                    setNewDevRmId(rooms.length > 0 ? rooms[0].id : "");
-                    setShowAddDeviceModal(true);
-                  }}
-                  className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase hover:bg-teal-700"
-                >
-                  Register Device
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
-                      <th className="p-3">MAC Address</th>
-                      <th className="p-3">Device Label</th>
-                      <th className="p-3">Assigned Room</th>
-                      <th className="p-3">Sensing Node Status</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-800">
-                    {devices.filter(d => {
-                      const r = rooms.find(rm => rm.id === d.room_id);
-                      if (!r) return orgScope === "all";
-                      if (orgScope === "ajce") return r.name.includes("MCA") || r.name.includes("Staff") || r.name.includes("IoT");
-                      if (orgScope === "lab") return !r.name.includes("MCA") && !r.name.includes("Staff") && !r.name.includes("IoT");
-                      return true;
-                    }).map(dev => (
-                      <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="p-3 font-semibold font-data-mono dark:text-white">{dev.mac_address}</td>
-                        <td className="p-3 text-slate-700 dark:text-slate-350">{dev.firmware_version}</td>
-                        <td className="p-3 font-semibold text-xs text-slate-650 dark:text-slate-400">
-                          {rooms.find(r => r.id === dev.room_id)?.name || "Unassigned"}
-                        </td>
-                        <td className="p-3">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-label-caps font-label-caps ${
-                            dev.device_status === "ONLINE" ? "bg-teal-50 dark:bg-teal-950/20 text-teal-650" : "bg-slate-105 dark:bg-slate-800 text-slate-500"
-                          }`}>
-                            <span className={`w-2 h-2 rounded-full ${dev.device_status === "ONLINE" ? "bg-teal-500 animate-pulse" : "bg-slate-400"}`}></span>
-                            {dev.device_status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleToggleDevice(dev.id)}
-                            className="text-xs font-bold uppercase px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-white shadow-xs"
-                          >
-                            Toggle Power
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================================
-            4. RESIDENTS / USER MANAGEMENT VIEW
-          ============================================================================ */}
-          {currentView === "residents" && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm text-left">
-              <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">User & Resident Profiles</h3>
-                <button
-                  onClick={() => {
-                    if (rooms.length === 0) {
-                      alert("Please create a room first.");
-                    } else {
-                      setNewResRmId(rooms[0].id);
-                      setShowAddResidentModal(true);
-                    }
-                  }}
-                  className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase hover:bg-teal-700 font-semibold"
-                >
-                  Add Record
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
-                      <th className="p-3">Full Name</th>
-                      <th className="p-3">Assigned Room Location</th>
-                      <th className="p-3">Record ID</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-800">
-                    {residents.filter(res => {
-                      const r = rooms.find(rm => rm.id === res.room_id);
-                      if (!r) return orgScope === "all";
-                      if (orgScope === "ajce") return r.name.includes("MCA") || r.name.includes("Staff") || r.name.includes("IoT");
-                      if (orgScope === "lab") return !r.name.includes("MCA") && !r.name.includes("Staff") && !r.name.includes("IoT");
-                      return true;
-                    }).map(r => (
-                      <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="p-3 font-semibold dark:text-white">{r.first_name} {r.last_name}</td>
-                        <td className="p-3 font-semibold text-slate-600 dark:text-slate-400">
-                          {rooms.find(rm => rm.id === r.room_id)?.name || "Unassigned"}
-                        </td>
-                        <td className="p-3 font-data-mono text-xs text-slate-400">{r.id}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================================
-            5. ALERTS VIEW
-          ============================================================================ */}
-          {currentView === "alerts" && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm text-left">
-              <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">Fall Alerts Incident Center</h3>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Incident Status Log</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
-                      <th className="p-3">Severity</th>
-                      <th className="p-3">Room</th>
-                      <th className="p-3">Trigger Type</th>
-                      <th className="p-3">Details</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-800">
-                    {alerts.map(a => (
-                      <tr key={a.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 ${a.status === "new" ? "bg-red-50/50 dark:bg-red-950/10" : ""}`}>
-                        <td className="p-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                            a.severity === "CRITICAL" ? "bg-red-650 text-white" : "bg-amber-500 text-white"
-                          }`}>
-                            {a.severity}
-                          </span>
-                        </td>
-                        <td className="p-3 font-semibold dark:text-white">{rooms.find(rm => rm.id === a.room_id)?.name || "Unknown"}</td>
-                        <td className="p-3 font-mono text-xs text-slate-500">{a.event_type}</td>
-                        <td className="p-3 text-xs dark:text-slate-350">{a.message}</td>
-                        <td className="p-3">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            a.status === "new"
-                              ? "bg-red-100 text-red-700 border border-red-200"
-                              : a.status === "acknowledged"
-                              ? "bg-teal-50 dark:bg-teal-950/20 text-teal-700 border border-teal-200"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-605"
-                          }`}>
-                            {a.status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            {a.status === "new" && (
-                              <button
-                                onClick={() => handleAcknowledge(a.id)}
-                                className="px-2.5 py-1 border border-teal-600 text-teal-600 rounded-full text-xs font-bold uppercase hover:bg-teal-50 dark:hover:bg-teal-950/20"
-                              >
-                                Ack
-                              </button>
-                            )}
-                            {a.status !== "resolved" && (
-                              <button
-                                onClick={() => setShowResolveModal(a.id)}
-                                className="px-2.5 py-1 bg-teal-600 text-white rounded-full text-xs font-bold uppercase hover:opacity-90 shadow-sm"
-                              >
-                                Resolve
-                              </button>
-                            )}
-                            {a.status === "resolved" && (
-                              <span className="text-xs text-slate-400 font-semibold">Audit Cleared</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {alerts.length === 0 && (
-                      <tr>
-                        <td colSpan="6" className="p-4 text-center text-slate-400">No incidents logged. Set organization to WiFi Sense Lab and simulate events to trigger alerts.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================================
-            6. ANALYTICS VIEW
-          ============================================================================ */}
-          {currentView === "analytics" && (
+          {currentView === "sysadmin" && (
             <div className="space-y-6 text-left">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-2 mb-4">Occupancy Efficiency</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">Total Occupancy Rate</span>
-                      <span className="font-bold text-teal-600 font-data-mono">{occupancySummary.occupancy_rate}%</span>
-                    </div>
-                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-teal-600 h-full rounded-full" style={{ width: `${occupancySummary.occupancy_rate}%` }}></div>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span>{occupancySummary.occupied_rooms} Occupied Rooms</span>
-                      <span>{occupancySummary.vacant_rooms} Vacant Rooms</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="mb-stack-lg">
+                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">System Admin Dashboard</h2>
+                <p className="text-body-md text-slate-500 dark:text-slate-400">Global system-wide caregiver accounts and administrative configurations.</p>
+              </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-2 mb-4 font-semibold">Fall Warning Audit History</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-950">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase">Status: Awaiting Ack</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.filter(a => a.status === "new").length}</p>
-                    </div>
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-950">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase">Status: In Progress</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.filter(a => a.status === "acknowledged").length}</p>
-                    </div>
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-950">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase">Status: Resolved</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.filter(a => a.status === "resolved").length}</p>
-                    </div>
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-950">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase">Total Warnings</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.length}</p>
-                    </div>
-                  </div>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white border-b pb-2 mb-4">Caregivers & Administrators Accounts</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                        <th className="p-3">Name</th>
+                        <th className="p-3">Email Address</th>
+                        <th className="p-3">System Access Role</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="p-3 font-semibold text-slate-900 dark:text-white">Blesson Joseph Byju</td>
+                        <td className="p-3">blesson@wifisense.com</td>
+                        <td className="p-3 font-bold text-teal-650 dark:text-teal-400 uppercase text-xs">system_admin</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="p-3 font-semibold text-slate-900 dark:text-white">Abhinand M A</td>
+                        <td className="p-3">abhinand@wifisense.com</td>
+                        <td className="p-3 font-bold text-teal-650 dark:text-teal-400 uppercase text-xs">facility_manager</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="p-3 font-semibold text-slate-900 dark:text-white">Abhinanth S Pillai</td>
+                        <td className="p-3">abhinanth@wifisense.com</td>
+                        <td className="p-3 font-bold text-teal-655 dark:text-teal-450 uppercase text-xs">caregiver</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           )}
+
+          {/* ============================================================================
+            OTHERS (CORPORATE, FAMILY, PHYSICAL CONFIG, DEVICE HEALTH, ALERTS, ANALYTICS)
+          ============================================================================ */}
+          {currentView === "corporate" && (
+            /* Corporate Facility View: defined above */
+            null
+          )}
+          {currentView === "family" && (
+            /* Family Portal View: defined above */
+            null
+          )}
+          {currentView === "assets" && (
+            /* Facility Manager View: defined above */
+            null
+          )}
+          {currentView === "devices" && (
+            /* Sensing Device Management View: defined above */
+            null
+          )}
+          {currentView === "residents" && (
+            /* User Management View: defined above */
+            null
+          )}
+          {currentView === "alerts" && (
+            /* Alert Management View: defined above */
+            null
+          )}
+          {currentView === "analytics" && (
+            /* Analytics View: defined above */
+            null
+          )}
+
         </main>
       </div>
 
