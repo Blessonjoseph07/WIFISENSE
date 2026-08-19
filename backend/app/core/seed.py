@@ -40,33 +40,7 @@ def seed_database(session: Session):
             session.add(new_act)
     session.commit()
 
-    # 3. Seed Primary User (Blesson Joseph Byju)
-    admin_email = "blesson@wifisense.com"
-    statement = select(User).where(User.email == admin_email)
-    admin_user = session.exec(statement).first()
-    
-    if not admin_user:
-        hashed_pwd = hash_password("blessonpassword")
-        admin_user = User(
-            email=admin_email,
-            password_hash=hashed_pwd,
-            first_name="Blesson",
-            last_name="Joseph Byju",
-            is_active=True
-        )
-        session.add(admin_user)
-        session.commit()
-        session.refresh(admin_user)
-
-        # Mapped to system_admin role
-        admin_role_map = UserRole(
-            user_id=admin_user.id,
-            role_id=ROLE_MAPPING["system_admin"]
-        )
-        session.add(admin_role_map)
-        session.commit()
-
-    # 4. Seed Organizations
+    # 3. Seed Organizations
     org_ajce = session.exec(select(Organization).where(Organization.name == "Amal Jyothi College of Engineering")).first()
     if not org_ajce:
         org_ajce = Organization(name="Amal Jyothi College of Engineering", type="CORPORATE")
@@ -81,7 +55,7 @@ def seed_database(session: Session):
         session.commit()
         session.refresh(org_lab)
 
-    # 5. Seed Buildings
+    # 4. Seed Buildings
     bld_mca = session.exec(select(Building).where(Building.name == "MCA Block")).first()
     if not bld_mca:
         bld_mca = Building(organization_id=org_ajce.id, name="MCA Block", address="Kanjirappally, Kerala, India")
@@ -96,7 +70,7 @@ def seed_database(session: Session):
         session.commit()
         session.refresh(bld_res)
 
-    # 6. Seed Floors
+    # 5. Seed Floors
     flr_1 = session.exec(select(Floor).where(Floor.building_id == bld_mca.id).where(Floor.floor_number == 1)).first()
     if not flr_1:
         flr_1 = Floor(building_id=bld_mca.id, floor_number=1)
@@ -111,7 +85,7 @@ def seed_database(session: Session):
         session.commit()
         session.refresh(flr_2)
 
-    # 7. Seed Rooms
+    # 6. Seed Rooms
     rm_mca_lab = session.exec(select(Room).where(Room.name == "MCA Lab")).first()
     if not rm_mca_lab:
         rm_mca_lab = Room(floor_id=flr_1.id, name="MCA Lab", room_type="Conference Room", capacity=30)
@@ -132,6 +106,71 @@ def seed_database(session: Session):
         session.add(rm_project_room)
         session.commit()
         session.refresh(rm_project_room)
+
+    # 7. Seed System Users (Devs and Caregivers)
+    # A. Blesson Joseph Byju (system_admin)
+    admin_email = "blesson@wifisense.com"
+    blesson_user = session.exec(select(User).where(User.email == admin_email)).first()
+    if not blesson_user:
+        blesson_user = User(
+            email=admin_email,
+            password_hash=hash_password("blessonpassword"),
+            first_name="Blesson",
+            last_name="Joseph Byju",
+            is_active=True
+        )
+        session.add(blesson_user)
+        session.commit()
+        session.refresh(blesson_user)
+
+        session.add(UserRole(user_id=blesson_user.id, role_id=ROLE_MAPPING["system_admin"]))
+        session.commit()
+
+    # B. Abhinand M A (facility_manager)
+    manager_email = "abhinand@wifisense.com"
+    abhinand_user = session.exec(select(User).where(User.email == manager_email)).first()
+    if not abhinand_user:
+        abhinand_user = User(
+            email=manager_email,
+            password_hash=hash_password("abhinandpassword"),
+            first_name="Abhinand",
+            last_name="M A",
+            is_active=True
+        )
+        session.add(abhinand_user)
+        session.commit()
+        session.refresh(abhinand_user)
+
+        session.add(UserRole(
+            user_id=abhinand_user.id,
+            role_id=ROLE_MAPPING["facility_manager"],
+            organization_id=org_ajce.id,
+            building_id=bld_mca.id
+        ))
+        session.commit()
+
+    # C. Abhinanth S Pillai (caregiver)
+    caregiver_email = "abhinanth@wifisense.com"
+    abhinanth_user = session.exec(select(User).where(User.email == caregiver_email)).first()
+    if not abhinanth_user:
+        abhinanth_user = User(
+            email=caregiver_email,
+            password_hash=hash_password("abhinanthpassword"),
+            first_name="Abhinanth",
+            last_name="S Pillai",
+            is_active=True
+        )
+        session.add(abhinanth_user)
+        session.commit()
+        session.refresh(abhinanth_user)
+
+        session.add(UserRole(
+            user_id=abhinanth_user.id,
+            role_id=ROLE_MAPPING["caregiver"],
+            organization_id=org_lab.id,
+            building_id=bld_res.id
+        ))
+        session.commit()
 
     # 8. Seed Residents
     res_blesson = session.exec(select(Resident).where(Resident.first_name == "Blesson")).first()
@@ -186,13 +225,12 @@ def seed_database(session: Session):
     session.commit()
 
     # 10. Seed Sensing Events
-    # Ensure there are recent events so dashboard renders realistically
     event_1 = session.exec(select(SensingEvent).where(SensingEvent.device_id == dev_1.id)).first()
     if not event_1:
         event_1 = SensingEvent(
             device_id=dev_1.id,
             room_id=rm_mca_lab.id,
-            timestamp=datetime.utcnow() - timedelta(minutes=5),
+            timestamp=datetime.utcnow() - timedelta(minutes=15),
             rssi=-42,
             subcarrier_count=64,
             extracted_features={"variance_amplitude": 0.352, "entropy_phase": 0.221},
@@ -206,7 +244,7 @@ def seed_database(session: Session):
         event_2 = SensingEvent(
             device_id=dev_2.id,
             room_id=rm_res_lab.id,
-            timestamp=datetime.utcnow() - timedelta(minutes=10),
+            timestamp=datetime.utcnow() - timedelta(minutes=45),
             rssi=-48,
             subcarrier_count=64,
             extracted_features={"variance_amplitude": 0.125, "entropy_phase": 0.118},
@@ -216,27 +254,27 @@ def seed_database(session: Session):
         session.add(event_2)
     session.commit()
 
-    # 11. Seed Alerts (Handful of alerts with different statuses)
+    # 11. Seed Alerts & Audit trail (resolutions/acknowledgements)
     alert_1 = session.exec(select(Alert).where(Alert.room_id == rm_mca_lab.id)).first()
     if not alert_1:
         alert_1 = Alert(
             room_id=rm_mca_lab.id,
             event_type="Fall_Detected",
             severity="CRITICAL",
-            message="Critical Fall Detected in Room MCA Lab!",
+            message="Potential Fall Detected in Room MCA Lab!",
             status="resolved",
-            created_at=datetime.utcnow() - timedelta(hours=2),
-            updated_at=datetime.utcnow() - timedelta(hours=1, minutes=45)
+            created_at=datetime.utcnow() - timedelta(hours=3),
+            updated_at=datetime.utcnow() - timedelta(hours=2, minutes=45)
         )
         session.add(alert_1)
         session.commit()
 
         ack_1 = AlertAcknowledgement(
             alert_id=alert_1.id,
-            user_id=admin_user.id,
-            acknowledged_at=datetime.utcnow() - timedelta(hours=1, minutes=58),
-            resolved_at=datetime.utcnow() - timedelta(hours=1, minutes=45),
-            resolution_notes="Dispatched first aid. Blesson Joseph Byju assisted the resident, verified it was a simulated test, and cleared the room."
+            user_id=blesson_user.id,
+            acknowledged_at=datetime.utcnow() - timedelta(hours=2, minutes=58),
+            resolved_at=datetime.utcnow() - timedelta(hours=2, minutes=45),
+            resolution_notes="Dispatched MCA block caregivers. Resident Abhinand M A found safe and guided back to testing desk. Blesson Joseph Byju verified the ESP32-CSI-01 node status as ONLINE."
         )
         session.add(ack_1)
 
@@ -246,18 +284,18 @@ def seed_database(session: Session):
             room_id=rm_res_lab.id,
             event_type="Fall_Detected",
             severity="CRITICAL",
-            message="Critical Fall Detected in Room Research Lab!",
+            message="Potential Fall Detected in Room Research Lab!",
             status="acknowledged",
-            created_at=datetime.utcnow() - timedelta(minutes=30),
-            updated_at=datetime.utcnow() - timedelta(minutes=25)
+            created_at=datetime.utcnow() - timedelta(minutes=50),
+            updated_at=datetime.utcnow() - timedelta(minutes=40)
         )
         session.add(alert_2)
         session.commit()
 
         ack_2 = AlertAcknowledgement(
             alert_id=alert_2.id,
-            user_id=admin_user.id,
-            acknowledged_at=datetime.utcnow() - timedelta(minutes=25)
+            user_id=abhinand_user.id,
+            acknowledged_at=datetime.utcnow() - timedelta(minutes=40)
         )
         session.add(ack_2)
 
@@ -267,9 +305,9 @@ def seed_database(session: Session):
             room_id=rm_project_room.id,
             event_type="Fall_Detected",
             severity="CRITICAL",
-            message="Critical Fall Detected in Room Project Room!",
+            message="Potential Fall Detected in Room Project Room!",
             status="new",
-            created_at=datetime.utcnow() - timedelta(minutes=2)
+            created_at=datetime.utcnow() - timedelta(minutes=8)
         )
         session.add(alert_3)
 
