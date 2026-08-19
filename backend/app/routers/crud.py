@@ -226,3 +226,21 @@ def list_residents(
     current_user = Depends(get_current_user)
 ):
     return session.exec(select(Resident)).all()
+
+@router.patch("/devices/{device_id}/toggle", response_model=SensingDeviceOut)
+def toggle_device_status(
+    device_id: str,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    db_dev = session.get(SensingDevice, device_id)
+    if not db_dev:
+        raise HTTPException(
+            status_code=404,
+            detail="Device not found."
+        )
+    db_dev.device_status = "OFFLINE" if db_dev.device_status == "ONLINE" else "ONLINE"
+    session.add(db_dev)
+    session.commit()
+    session.refresh(db_dev)
+    return db_dev

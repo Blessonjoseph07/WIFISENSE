@@ -1,4 +1,4 @@
-from sqlmodel import Session, select
+from sqlmodel import Session, select, text
 from datetime import datetime, timedelta
 from app.models.entities import (
     Role, User, UserRole, Organization, Building, Floor, Room, 
@@ -24,384 +24,432 @@ ACTIVITY_MAPPING = {
 }
 
 def seed_database(session: Session):
-    # 1. Seed Roles
+    # 1. Clear existing database contents
+    session.execute(text("DELETE FROM alert_acknowledgements"))
+    session.execute(text("DELETE FROM alerts"))
+    session.execute(text("DELETE FROM sensing_events"))
+    session.execute(text("DELETE FROM residents"))
+    session.execute(text("DELETE FROM devices"))
+    session.execute(text("DELETE FROM rooms"))
+    session.execute(text("DELETE FROM floors"))
+    session.execute(text("DELETE FROM buildings"))
+    session.execute(text("DELETE FROM user_roles"))
+    session.execute(text("DELETE FROM users"))
+    session.execute(text("DELETE FROM organizations"))
+    session.execute(text("DELETE FROM roles"))
+    session.execute(text("DELETE FROM activity_types"))
+    session.commit()
+
+    # 2. Seed Roles
     for name, role_id in ROLE_MAPPING.items():
-        existing = session.get(Role, role_id)
-        if not existing:
-            new_role = Role(id=role_id, name=name)
-            session.add(new_role)
+        new_role = Role(id=role_id, name=name)
+        session.add(new_role)
     session.commit()
 
-    # 2. Seed Activity Types
+    # 3. Seed Activity Types
     for name, (act_id, category) in ACTIVITY_MAPPING.items():
-        existing = session.get(ActivityType, act_id)
-        if not existing:
-            new_act = ActivityType(id=act_id, name=name, category=category)
-            session.add(new_act)
+        new_act = ActivityType(id=act_id, name=name, category=category)
+        session.add(new_act)
     session.commit()
 
-    # 3. Seed Organizations
-    # Amal Jyothi College of Engineering (Corporate)
-    org_ajce = session.exec(select(Organization).where(Organization.name == "Amal Jyothi College of Engineering")).first()
-    if not org_ajce:
-        org_ajce = Organization(name="Amal Jyothi College of Engineering", type="CORPORATE")
-        session.add(org_ajce)
-        session.commit()
-        session.refresh(org_ajce)
+    # 4. Seed Organizations
+    org_ajce = Organization(name="Amal Jyothi College of Engineering", type="CORPORATE")
+    session.add(org_ajce)
+    
+    org_lab = Organization(name="WiFi Sense Research Lab", type="ELDER_CARE")
+    session.add(org_lab)
+    session.commit()
+    session.refresh(org_ajce)
+    session.refresh(org_lab)
 
-    # WiFi Sense Research Lab (Elder Care)
-    org_lab = session.exec(select(Organization).where(Organization.name == "WiFi Sense Research Lab")).first()
-    if not org_lab:
-        org_lab = Organization(name="WiFi Sense Research Lab", type="ELDER_CARE")
-        session.add(org_lab)
-        session.commit()
-        session.refresh(org_lab)
+    # 5. Seed Buildings
+    bld_mca = Building(organization_id=org_ajce.id, name="Department of Computer Applications (MCA Block)", address="Amal Jyothi College of Engineering Campus, Kanjirappally, Kerala, India")
+    session.add(bld_mca)
+    
+    bld_rd = Building(organization_id=org_ajce.id, name="R&D Central Annex", address="Main Campus Block C")
+    session.add(bld_rd)
 
-    # 4. Seed Buildings
-    bld_mca = session.exec(select(Building).where(Building.name == "MCA Block")).first()
-    if not bld_mca:
-        bld_mca = Building(organization_id=org_ajce.id, name="MCA Block", address="Kanjirappally, Kerala, India")
-        session.add(bld_mca)
-        session.commit()
-        session.refresh(bld_mca)
+    bld_wing_a = Building(organization_id=org_lab.id, name="Care Wing Alpha (North Sector)", address="Research Lab Assisted Living Facility, Ward 1")
+    session.add(bld_wing_a)
+    
+    bld_wing_b = Building(organization_id=org_lab.id, name="Care Wing Beta (South Sector)", address="Research Lab Assisted Living Facility, Ward 2")
+    session.add(bld_wing_b)
+    
+    session.commit()
+    session.refresh(bld_mca)
+    session.refresh(bld_rd)
+    session.refresh(bld_wing_a)
+    session.refresh(bld_wing_b)
 
-    bld_res = session.exec(select(Building).where(Building.name == "Research Lab Block")).first()
-    if not bld_res:
-        bld_res = Building(organization_id=org_lab.id, name="Research Lab Block", address="Main Campus Block C")
-        session.add(bld_res)
-        session.commit()
-        session.refresh(bld_res)
+    # 6. Seed Floors
+    flr_mca_1 = Floor(building_id=bld_mca.id, floor_number=1)
+    session.add(flr_mca_1)
+    flr_mca_2 = Floor(building_id=bld_mca.id, floor_number=2)
+    session.add(flr_mca_2)
+    
+    flr_rd_1 = Floor(building_id=bld_rd.id, floor_number=1)
+    session.add(flr_rd_1)
 
-    # 5. Seed Floors
-    flr_1 = session.exec(select(Floor).where(Floor.building_id == bld_mca.id).where(Floor.floor_number == 1)).first()
-    if not flr_1:
-        flr_1 = Floor(building_id=bld_mca.id, floor_number=1)
-        session.add(flr_1)
-
-    flr_2 = session.exec(select(Floor).where(Floor.building_id == bld_mca.id).where(Floor.floor_number == 2)).first()
-    if not flr_2:
-        flr_2 = Floor(building_id=bld_mca.id, floor_number=2)
-        session.add(flr_2)
-
-    flr_elder_1 = session.exec(select(Floor).where(Floor.building_id == bld_res.id).where(Floor.floor_number == 1)).first()
-    if not flr_elder_1:
-        flr_elder_1 = Floor(building_id=bld_res.id, floor_number=1)
-        session.add(flr_elder_1)
+    flr_wing_a_1 = Floor(building_id=bld_wing_a.id, floor_number=1)
+    session.add(flr_wing_a_1)
+    flr_wing_b_1 = Floor(building_id=bld_wing_b.id, floor_number=1)
+    session.add(flr_wing_b_1)
 
     session.commit()
-    session.refresh(flr_1)
-    session.refresh(flr_2)
-    session.refresh(flr_elder_1)
+    session.refresh(flr_mca_1)
+    session.refresh(flr_mca_2)
+    session.refresh(flr_rd_1)
+    session.refresh(flr_wing_a_1)
+    session.refresh(flr_wing_b_1)
 
-    # 6. Seed Rooms
+    # 7. Seed Rooms
     # Corporate rooms (AJCE)
-    rm_mca_lab = session.exec(select(Room).where(Room.name == "MCA Lab")).first()
-    if not rm_mca_lab:
-        rm_mca_lab = Room(floor_id=flr_1.id, name="MCA Lab", room_type="Conference Room", capacity=30)
-        session.add(rm_mca_lab)
+    rm_mca_lab = Room(floor_id=flr_mca_1.id, name="MCA Lab 1", room_type="Conference Room", capacity=30)
+    session.add(rm_mca_lab)
+    rm_seminar_hall = Room(floor_id=flr_mca_2.id, name="MCA Seminar Hall", room_type="Conference Room", capacity=150)
+    session.add(rm_seminar_hall)
+    rm_staff_room = Room(floor_id=flr_mca_1.id, name="Staff Room A", room_type="Conference Room", capacity=15)
+    session.add(rm_staff_room)
+    rm_iot_lab = Room(floor_id=flr_rd_1.id, name="Internet IoT Lab", room_type="Conference Room", capacity=25)
+    session.add(rm_iot_lab)
 
-    rm_seminar_hall = session.exec(select(Room).where(Room.name == "Seminar Hall")).first()
-    if not rm_seminar_hall:
-        rm_seminar_hall = Room(floor_id=flr_2.id, name="Seminar Hall", room_type="Conference Room", capacity=150)
-        session.add(rm_seminar_hall)
-
-    # Elder care rooms (Research Lab Block)
-    rm_res_lab = session.exec(select(Room).where(Room.name == "Research Lab")).first()
-    if not rm_res_lab:
-        rm_res_lab = Room(floor_id=flr_elder_1.id, name="Research Lab", room_type="Resident Bedroom", capacity=10)
-        session.add(rm_res_lab)
-
-    rm_project_room = session.exec(select(Room).where(Room.name == "Project Room")).first()
-    if not rm_project_room:
-        rm_project_room = Room(floor_id=flr_elder_1.id, name="Project Room", room_type="Resident Bedroom", capacity=6)
-        session.add(rm_project_room)
-
-    rm_bed_1 = session.exec(select(Room).where(Room.name == "Resident Bedroom 1")).first()
-    if not rm_bed_1:
-        rm_bed_1 = Room(floor_id=flr_elder_1.id, name="Resident Bedroom 1", room_type="Resident Bedroom", capacity=2)
-        session.add(rm_bed_1)
+    # Elder Care rooms (WiFi Sense Research Lab)
+    rm_room_101 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 101", room_type="Resident Bedroom", capacity=2)
+    session.add(rm_room_101)
+    rm_room_102 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 102", room_type="Resident Bedroom", capacity=2)
+    session.add(rm_room_102)
+    rm_recreation = Room(floor_id=flr_wing_b_1.id, name="Recreation Center", room_type="Resident Bedroom", capacity=15)
+    session.add(rm_recreation)
+    rm_ward_1 = Room(floor_id=flr_wing_b_1.id, name="Common Area Ward 1", room_type="Resident Bedroom", capacity=10)
+    session.add(rm_ward_1)
 
     session.commit()
     session.refresh(rm_mca_lab)
     session.refresh(rm_seminar_hall)
-    session.refresh(rm_res_lab)
-    session.refresh(rm_project_room)
-    session.refresh(rm_bed_1)
+    session.refresh(rm_staff_room)
+    session.refresh(rm_iot_lab)
+    session.refresh(rm_room_101)
+    session.refresh(rm_room_102)
+    session.refresh(rm_recreation)
+    session.refresh(rm_ward_1)
 
-    # 7. Seed System Users (Devs and Caregivers)
-    admin_email = "blesson@wifisense.com"
-    blesson_user = session.exec(select(User).where(User.email == admin_email)).first()
-    if not blesson_user:
-        blesson_user = User(
-            email=admin_email,
-            password_hash=hash_password("blessonpassword"),
-            first_name="Blesson",
-            last_name="Joseph Byju",
-            is_active=True
-        )
-        session.add(blesson_user)
-        session.commit()
-        session.refresh(blesson_user)
-        session.add(UserRole(user_id=blesson_user.id, role_id=ROLE_MAPPING["system_admin"]))
-        session.commit()
-
-    manager_email = "abhinand@wifisense.com"
-    abhinand_user = session.exec(select(User).where(User.email == manager_email)).first()
-    if not abhinand_user:
-        abhinand_user = User(
-            email=manager_email,
-            password_hash=hash_password("abhinandpassword"),
-            first_name="Abhinand",
-            last_name="M A",
-            is_active=True
-        )
-        session.add(abhinand_user)
-        session.commit()
-        session.refresh(abhinand_user)
-        session.add(UserRole(
-            user_id=abhinand_user.id,
-            role_id=ROLE_MAPPING["facility_manager"],
-            organization_id=org_ajce.id,
-            building_id=bld_mca.id
-        ))
-        session.commit()
-
-    caregiver_email = "abhinanth@wifisense.com"
-    abhinanth_user = session.exec(select(User).where(User.email == caregiver_email)).first()
-    if not abhinanth_user:
-        abhinanth_user = User(
-            email=caregiver_email,
-            password_hash=hash_password("abhinanthpassword"),
-            first_name="Abhinanth",
-            last_name="S Pillai",
-            is_active=True
-        )
-        session.add(abhinanth_user)
-        session.commit()
-        session.refresh(abhinanth_user)
-        session.add(UserRole(
-            user_id=abhinanth_user.id,
-            role_id=ROLE_MAPPING["caregiver"],
-            organization_id=org_lab.id,
-            building_id=bld_res.id
-        ))
-        session.commit()
-
-    # 8. Seed Residents
-    res_blesson = session.exec(select(Resident).where(Resident.first_name == "Blesson")).first()
-    if not res_blesson:
-        res_blesson = Resident(room_id=rm_res_lab.id, first_name="Blesson", last_name="Joseph Byju")
-        session.add(res_blesson)
-
-    res_abhinand = session.exec(select(Resident).where(Resident.first_name == "Abhinand")).first()
-    if not res_abhinand:
-        res_abhinand = Resident(room_id=rm_mca_lab.id, first_name="Abhinand", last_name="M A")
-        session.add(res_abhinand)
-
-    res_abhinanth = session.exec(select(Resident).where(Resident.first_name == "Abhinanth")).first()
-    if not res_abhinanth:
-        res_abhinanth = Resident(room_id=rm_project_room.id, first_name="Abhinanth", last_name="S Pillai")
-        session.add(res_abhinanth)
+    # 8. Seed System Users (Staff / Faculty / Caregivers)
+    blesson_user = User(
+        email="blesson@wifisense.com",
+        password_hash=hash_password("blessonpassword"),
+        first_name="Blesson",
+        last_name="Joseph Byju",
+        is_active=True
+    )
+    session.add(blesson_user)
+    session.commit()
+    session.refresh(blesson_user)
+    session.add(UserRole(user_id=blesson_user.id, role_id=ROLE_MAPPING["system_admin"]))
     session.commit()
 
-    # 9. Seed Devices
-    # Corporate devices (presence tracking)
-    dev_1 = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "4C:75:25:AA:BB:CC")).first()
-    if not dev_1:
-        dev_1 = SensingDevice(
-            mac_address="4C:75:25:AA:BB:CC",
-            room_id=rm_mca_lab.id,
-            device_status="ONLINE",
-            firmware_version="ESP32-CSI-01",
-            last_seen_at=datetime.utcnow()
-        )
-        session.add(dev_1)
-
-    dev_3 = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "4C:75:25:11:22:33")).first()
-    if not dev_3:
-        dev_3 = SensingDevice(
-            mac_address="4C:75:25:11:22:33",
-            room_id=rm_seminar_hall.id,
-            device_status="ONLINE",
-            firmware_version="WiFiSense-Node-01",
-            last_seen_at=datetime.utcnow()
-        )
-        session.add(dev_3)
-
-    # Elder-care devices (fall detection alerts)
-    dev_2 = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "4C:75:25:DD:EE:FF")).first()
-    if not dev_2:
-        dev_2 = SensingDevice(
-            mac_address="4C:75:25:DD:EE:FF",
-            room_id=rm_res_lab.id,
-            device_status="ONLINE",
-            firmware_version="ESP32-CSI-02",
-            last_seen_at=datetime.utcnow()
-        )
-        session.add(dev_2)
-
-    dev_4 = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "4C:75:25:55:66:77")).first()
-    if not dev_4:
-        dev_4 = SensingDevice(
-            mac_address="4C:75:25:55:66:77",
-            room_id=rm_project_room.id,
-            device_status="ONLINE",
-            firmware_version="ESP32-CSI-03",
-            last_seen_at=datetime.utcnow()
-        )
-        session.add(dev_4)
-
-    dev_5 = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "4C:75:25:88:99:00")).first()
-    if not dev_5:
-        dev_5 = SensingDevice(
-            mac_address="4C:75:25:88:99:00",
-            room_id=rm_bed_1.id,
-            device_status="ONLINE",
-            firmware_version="ESP32-CSI-04",
-            last_seen_at=datetime.utcnow()
-        )
-        session.add(dev_5)
-
+    # AJCE Facility Manager
+    abhinand_user = User(
+        email="abhinand@wifisense.com",
+        password_hash=hash_password("abhinandpassword"),
+        first_name="Abhinand",
+        last_name="M A",
+        is_active=True
+    )
+    session.add(abhinand_user)
     session.commit()
-    session.refresh(dev_1)
-    session.refresh(dev_2)
-    session.refresh(dev_3)
-    session.refresh(dev_4)
-    session.refresh(dev_5)
-
-    # 10. Seed Sensing Events
-    # A. Corporate Events (Strictly presence detection only - no falls)
-    event_1 = session.exec(select(SensingEvent).where(SensingEvent.device_id == dev_1.id)).first()
-    if not event_1:
-        event_1 = SensingEvent(
-            device_id=dev_1.id,
-            room_id=rm_mca_lab.id,
-            timestamp=datetime.utcnow() - timedelta(minutes=5),
-            rssi=-42,
-            subcarrier_count=64,
-            extracted_features={"variance_amplitude": 0.352, "entropy_phase": 0.221},
-            inferred_activity_id=ACTIVITY_MAPPING["Walking"][0],
-            model_confidence=0.962
-        )
-        session.add(event_1)
-
-    event_3 = session.exec(select(SensingEvent).where(SensingEvent.device_id == dev_3.id)).first()
-    if not event_3:
-        event_3 = SensingEvent(
-            device_id=dev_3.id,
-            room_id=rm_seminar_hall.id,
-            timestamp=datetime.utcnow() - timedelta(minutes=12),
-            rssi=-45,
-            subcarrier_count=64,
-            extracted_features={"variance_amplitude": 0.28, "entropy_phase": 0.19},
-            inferred_activity_id=ACTIVITY_MAPPING["Sitting"][0],
-            model_confidence=0.932
-        )
-        session.add(event_3)
-
-    # B. Elder-care Events (Fall events)
-    event_2 = session.exec(select(SensingEvent).where(SensingEvent.device_id == dev_2.id)).first()
-    if not event_2:
-        event_2 = SensingEvent(
-            device_id=dev_2.id,
-            room_id=rm_res_lab.id,
-            timestamp=datetime.utcnow() - timedelta(minutes=30),
-            rssi=-48,
-            subcarrier_count=64,
-            extracted_features={"variance_amplitude": 1.45, "entropy_phase": 0.65},
-            inferred_activity_id=ACTIVITY_MAPPING["Fall_Detected"][0],
-            model_confidence=0.985
-        )
-        session.add(event_2)
-
-    event_4 = session.exec(select(SensingEvent).where(SensingEvent.device_id == dev_4.id)).first()
-    if not event_4:
-        event_4 = SensingEvent(
-            device_id=dev_4.id,
-            room_id=rm_project_room.id,
-            timestamp=datetime.utcnow() - timedelta(minutes=2),
-            rssi=-50,
-            subcarrier_count=64,
-            extracted_features={"variance_amplitude": 1.62, "entropy_phase": 0.72},
-            inferred_activity_id=ACTIVITY_MAPPING["Fall_Detected"][0],
-            model_confidence=0.991
-        )
-        session.add(event_4)
-
-    event_5 = session.exec(select(SensingEvent).where(SensingEvent.device_id == dev_5.id)).first()
-    if not event_5:
-        event_5 = SensingEvent(
-            device_id=dev_5.id,
-            room_id=rm_bed_1.id,
-            timestamp=datetime.utcnow() - timedelta(hours=2),
-            rssi=-47,
-            subcarrier_count=64,
-            extracted_features={"variance_amplitude": 1.55, "entropy_phase": 0.68},
-            inferred_activity_id=ACTIVITY_MAPPING["Fall_Detected"][0],
-            model_confidence=0.978
-        )
-        session.add(event_5)
-
+    session.refresh(abhinand_user)
+    session.add(UserRole(
+        user_id=abhinand_user.id,
+        role_id=ROLE_MAPPING["facility_manager"],
+        organization_id=org_ajce.id,
+        building_id=bld_mca.id
+    ))
     session.commit()
 
-    # 11. Seed Alerts (Elder-Care Only)
-    # A. Resolved Fall Alert (Bedroom 1)
-    alert_resolved = session.exec(select(Alert).where(Alert.room_id == rm_bed_1.id)).first()
-    if not alert_resolved:
-        alert_resolved = Alert(
-            room_id=rm_bed_1.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            message="Critical Fall Detected in Room Resident Bedroom 1!",
-            status="resolved",
-            created_at=datetime.utcnow() - timedelta(hours=2),
-            updated_at=datetime.utcnow() - timedelta(hours=1, minutes=45)
-        )
-        session.add(alert_resolved)
-        session.commit()
+    # AJCE Faculty / Staff
+    tomy_user = User(
+        email="tomy@wifisense.com",
+        password_hash=hash_password("tomypassword"),
+        first_name="Prof. Tomy",
+        last_name="Joseph",
+        is_active=True
+    )
+    session.add(tomy_user)
+    session.commit()
+    session.refresh(tomy_user)
+    session.add(UserRole(
+        user_id=tomy_user.id,
+        role_id=ROLE_MAPPING["corporate_staff"],
+        organization_id=org_ajce.id,
+        building_id=bld_mca.id
+    ))
+    session.commit()
 
-        ack_1 = AlertAcknowledgement(
-            alert_id=alert_resolved.id,
-            user_id=blesson_user.id,
-            acknowledged_at=datetime.utcnow() - timedelta(hours=1, minutes=58),
-            resolved_at=datetime.utcnow() - timedelta(hours=1, minutes=45),
-            resolution_notes="Dispatched Research Lab block caregivers. Blesson Joseph Byju assisted the resident, verified it was a simulated test, and cleared the room."
-        )
-        session.add(ack_1)
+    # Caregivers for WiFi Sense Lab
+    abhinanth_user = User(
+        email="abhinanth@wifisense.com",
+        password_hash=hash_password("abhinanthpassword"),
+        first_name="Abhinanth",
+        last_name="S Pillai",
+        is_active=True
+    )
+    session.add(abhinanth_user)
+    session.commit()
+    session.refresh(abhinanth_user)
+    session.add(UserRole(
+        user_id=abhinanth_user.id,
+        role_id=ROLE_MAPPING["caregiver"],
+        organization_id=org_lab.id,
+        building_id=bld_wing_a.id
+    ))
+    session.commit()
 
-    # B. Acknowledged Fall Alert (Research Lab)
-    alert_ack = session.exec(select(Alert).where(Alert.room_id == rm_res_lab.id)).first()
-    if not alert_ack:
-        alert_ack = Alert(
-            room_id=rm_res_lab.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            message="Critical Fall Detected in Room Research Lab!",
-            status="acknowledged",
-            created_at=datetime.utcnow() - timedelta(minutes=30),
-            updated_at=datetime.utcnow() - timedelta(minutes=25)
-        )
-        session.add(alert_ack)
-        session.commit()
+    mary_user = User(
+        email="mary@wifisense.com",
+        password_hash=hash_password("marypassword"),
+        first_name="Sr. Mary",
+        last_name="Sebastian",
+        is_active=True
+    )
+    session.add(mary_user)
+    session.commit()
+    session.refresh(mary_user)
+    session.add(UserRole(
+        user_id=mary_user.id,
+        role_id=ROLE_MAPPING["caregiver"],
+        organization_id=org_lab.id,
+        building_id=bld_wing_b.id
+    ))
+    session.commit()
 
-        ack_2 = AlertAcknowledgement(
-            alert_id=alert_ack.id,
-            user_id=abhinand_user.id,
-            acknowledged_at=datetime.utcnow() - timedelta(minutes=25)
-        )
-        session.add(ack_2)
+    elizabeth_user = User(
+        email="elizabeth@wifisense.com",
+        password_hash=hash_password("elizabethpassword"),
+        first_name="Dr. Elizabeth",
+        last_name="Kurian",
+        is_active=True
+    )
+    session.add(elizabeth_user)
+    session.commit()
+    session.refresh(elizabeth_user)
+    session.add(UserRole(
+        user_id=elizabeth_user.id,
+        role_id=ROLE_MAPPING["facility_manager"],
+        organization_id=org_lab.id,
+        building_id=bld_wing_a.id
+    ))
+    session.commit()
 
-    # C. New Fall Alert (Project Room)
-    alert_new = session.exec(select(Alert).where(Alert.room_id == rm_project_room.id)).first()
-    if not alert_new:
-        alert_new = Alert(
-            room_id=rm_project_room.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            message="Critical Fall Detected in Room Project Room!",
-            status="new",
-            created_at=datetime.utcnow() - timedelta(minutes=2)
-        )
-        session.add(alert_new)
+    # 9. Seed Residents (Monitored Persons)
+    # Corporate block monitored users
+    res_abhinand = Resident(room_id=rm_mca_lab.id, first_name="Abhinand", last_name="M A")
+    session.add(res_abhinand)
+    res_tomy = Resident(room_id=rm_staff_room.id, first_name="Prof. Tomy", last_name="Joseph")
+    session.add(res_tomy)
+    res_anandhu = Resident(room_id=rm_iot_lab.id, first_name="Anandhu", last_name="K S")
+    session.add(res_anandhu)
+    res_jerin = Resident(room_id=rm_mca_lab.id, first_name="Jerin", last_name="Sebastian")
+    session.add(res_jerin)
 
+    # Elder Care monitored residents
+    res_devassy = Resident(room_id=rm_room_101.id, first_name="Devassy", last_name="Varghese")
+    session.add(res_devassy)
+    res_annamma = Resident(room_id=rm_room_102.id, first_name="Annamma", last_name="Joseph")
+    session.add(res_annamma)
+    res_mathew = Resident(room_id=rm_recreation.id, first_name="K. C.", last_name="Mathew")
+    session.add(res_mathew)
+    res_rosamma = Resident(room_id=rm_ward_1.id, first_name="Rosamma", last_name="Thomas")
+    session.add(res_rosamma)
+    session.commit()
+    session.refresh(res_devassy)
+    session.refresh(res_annamma)
+    session.refresh(res_mathew)
+    session.refresh(res_rosamma)
+
+    # 10. Seed Devices
+    # Corporate device nodes
+    dev_c1 = SensingDevice(
+        mac_address="4C:75:25:AA:BB:CC",
+        room_id=rm_mca_lab.id,
+        device_status="ONLINE",
+        firmware_version="ESP32-CSI Node 101",
+        last_seen_at=datetime.utcnow()
+    )
+    session.add(dev_c1)
+    
+    dev_c2 = SensingDevice(
+        mac_address="4C:75:25:11:22:33",
+        room_id=rm_staff_room.id,
+        device_status="ONLINE",
+        firmware_version="ESP32-CSI Node 102",
+        last_seen_at=datetime.utcnow()
+    )
+    session.add(dev_c2)
+
+    dev_c3 = SensingDevice(
+        mac_address="4C:75:25:99:88:77",
+        room_id=rm_iot_lab.id,
+        device_status="ONLINE",
+        firmware_version="ESP32-CSI Node 103",
+        last_seen_at=datetime.utcnow()
+    )
+    session.add(dev_c3)
+
+    # Elder Care device nodes
+    dev_ec1 = SensingDevice(
+        mac_address="24:0A:C4:00:11:22",
+        room_id=rm_room_101.id,
+        device_status="ONLINE",
+        firmware_version="ESP32-CSI Node EC1",
+        last_seen_at=datetime.utcnow()
+    )
+    session.add(dev_ec1)
+
+    dev_ec2 = SensingDevice(
+        mac_address="24:0A:C4:33:44:55",
+        room_id=rm_room_102.id,
+        device_status="ONLINE",
+        firmware_version="ESP32-CSI Node EC2",
+        last_seen_at=datetime.utcnow()
+    )
+    session.add(dev_ec2)
+
+    dev_ec3 = SensingDevice(
+        mac_address="24:0A:C4:66:77:88",
+        room_id=rm_recreation.id,
+        device_status="ONLINE",
+        firmware_version="ESP32-CSI Node EC3",
+        last_seen_at=datetime.utcnow()
+    )
+    session.add(dev_ec3)
+    
+    session.commit()
+    session.refresh(dev_c1)
+    session.refresh(dev_c2)
+    session.refresh(dev_c3)
+    session.refresh(dev_ec1)
+    session.refresh(dev_ec2)
+    session.refresh(dev_ec3)
+
+    # 11. Seed Sensing Events
+    now = datetime.utcnow()
+    # Seed walking event in MCA Lab
+    session.add(SensingEvent(
+        device_id=dev_c1.id,
+        room_id=rm_mca_lab.id,
+        timestamp=now - timedelta(minutes=5),
+        rssi=-55,
+        subcarrier_count=64,
+        extracted_features={
+            "amplitude_variance": 12.45,
+            "phase_variance": 1.89,
+            "presence_detected": True
+        },
+        inferred_activity_id=3,  # Walking
+        model_confidence=0.92
+    ))
+    # Seed sitting event in Staff Room
+    session.add(SensingEvent(
+        device_id=dev_c2.id,
+        room_id=rm_staff_room.id,
+        timestamp=now - timedelta(minutes=12),
+        rssi=-62,
+        subcarrier_count=64,
+        extracted_features={
+            "amplitude_variance": 1.12,
+            "phase_variance": 0.23,
+            "presence_detected": True
+        },
+        inferred_activity_id=4,  # Sitting
+        model_confidence=0.88
+    ))
+    # Seed walking event in Room 101
+    session.add(SensingEvent(
+        device_id=dev_ec1.id,
+        room_id=rm_room_101.id,
+        timestamp=now - timedelta(minutes=2),
+        rssi=-50,
+        subcarrier_count=64,
+        extracted_features={
+            "amplitude_variance": 8.95,
+            "phase_variance": 1.34,
+            "presence_detected": True
+        },
+        inferred_activity_id=3,  # Walking
+        model_confidence=0.95
+    ))
+    # Seed fall warning event in Recreation Room
+    session.add(SensingEvent(
+        device_id=dev_ec3.id,
+        room_id=rm_recreation.id,
+        timestamp=now - timedelta(minutes=1),
+        rssi=-48,
+        subcarrier_count=64,
+        extracted_features={
+            "amplitude_variance": 89.45,
+            "phase_variance": 14.89,
+            "presence_detected": True
+        },
+        inferred_activity_id=5,  # Fall_Detected
+        model_confidence=0.99
+    ))
+    session.commit()
+
+    # 12. Seed Alerts (Historical Audit Trails)
+    # Incident 1: Devassy Varghese (Resolved)
+    alert_1 = Alert(
+        room_id=rm_room_101.id,
+        event_type="Fall_Detected",
+        severity="CRITICAL",
+        status="resolved",
+        message="Critical Fall Warning: Devassy Varghese detected horizontal fall stance in Resident Room 101",
+        created_at=now - timedelta(hours=3),
+        resolved_at=now - timedelta(hours=2, minutes=45)
+    )
+    session.add(alert_1)
+    session.commit()
+    session.refresh(alert_1)
+
+    resolve_1 = AlertAcknowledgement(
+        alert_id=alert_1.id,
+        user_id=abhinanth_user.id,
+        acknowledged_at=now - timedelta(hours=2, minutes=58),
+        resolved_at=now - timedelta(hours=2, minutes=45),
+        resolution_notes="Resident assisted. Devassy Varghese was sitting on the floor but unhurt. Safely helped back to armchair."
+    )
+    session.add(resolve_1)
+
+    # Incident 2: Annamma Joseph (Resolved)
+    alert_2 = Alert(
+        room_id=rm_room_102.id,
+        event_type="Fall_Detected",
+        severity="CRITICAL",
+        status="resolved",
+        message="Fall Stance Detected: Annamma Joseph in Resident Room 102",
+        created_at=now - timedelta(hours=1),
+        resolved_at=now - timedelta(minutes=45)
+    )
+    session.add(alert_2)
+    session.commit()
+    session.refresh(alert_2)
+
+    resolve_2 = AlertAcknowledgement(
+        alert_id=alert_2.id,
+        user_id=mary_user.id,
+        acknowledged_at=now - timedelta(minutes=45),
+        resolved_at=now - timedelta(minutes=45),
+        resolution_notes="Checked Resident Room 102. Resident was picking up a fallen book. False alarm resolved safely."
+    )
+    session.add(resolve_2)
+
+    # Incident 3: K. C. Mathew (New Alert currently warning in header!)
+    alert_3 = Alert(
+        room_id=rm_recreation.id,
+        event_type="Fall_Detected",
+        severity="CRITICAL",
+        status="new",
+        message="Emergency Fall Event: K. C. Mathew in Recreation Center",
+        created_at=now - timedelta(minutes=1)
+    )
+    session.add(alert_3)
     session.commit()
