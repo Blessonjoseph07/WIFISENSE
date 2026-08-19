@@ -13,32 +13,31 @@ function CSIWaveform({ activity }) {
     let animationId;
     let offset = 0;
 
-    // Adjust speed/amplitude based on CSI activity
     let speed = 0.05;
     let amplitude = 20;
     let noiseLevel = 3;
-    let color = "#86f2e4"; // secondary default
+    let color = "#86f2e4"; 
 
     if (activity === "Walking") {
       speed = 0.18;
       amplitude = 35;
       noiseLevel = 8;
-      color = "#3B82F6"; // blue
+      color = "#3B82F6"; 
     } else if (activity === "Sitting") {
       speed = 0.03;
       amplitude = 12;
       noiseLevel = 1.5;
-      color = "#10B981"; // green
+      color = "#10B981"; 
     } else if (activity === "Fall_Detected") {
       speed = 0.25;
       amplitude = 65;
       noiseLevel = 12;
-      color = "#ba1a1a"; // red
+      color = "#ba1a1a"; 
     } else if (activity === "Empty") {
       speed = 0.01;
       amplitude = 4;
       noiseLevel = 0.5;
-      color = "#9CA3AF"; // grey
+      color = "#9CA3AF"; 
     }
 
     const draw = () => {
@@ -62,7 +61,6 @@ function CSIWaveform({ activity }) {
         ctx.stroke();
       }
 
-      // Draw Waveform representing CSI Amplitude
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -71,20 +69,14 @@ function CSIWaveform({ activity }) {
       ctx.moveTo(0, midY);
 
       for (let x = 0; x < canvas.width; x++) {
-        // Base sine wave representing carrier frequency
         const sinVal = Math.sin(x * 0.04 + offset);
-        // Secondary harmonic modulation
         const cosVal = Math.cos(x * 0.015 - offset * 0.5);
-        // Random noise mimicking signal multipath fading
         const noise = (Math.random() - 0.5) * noiseLevel;
-        
         let y = midY + sinVal * cosVal * amplitude + noise;
         
-        // If fall detected, simulate a massive spike followed by attenuation
         if (activity === "Fall_Detected" && x > canvas.width * 0.6) {
           y = midY + (Math.sin(x * 0.1) * 8) + (Math.random() - 0.5) * 2;
         }
-
         ctx.lineTo(x, y);
       }
       ctx.stroke();
@@ -98,15 +90,15 @@ function CSIWaveform({ activity }) {
   }, [activity]);
 
   return (
-    <div className="relative w-full bg-surface-container dark:bg-slate-900 border rounded-xl p-4 overflow-hidden shadow-inner">
+    <div className="relative w-full bg-surface-container dark:bg-slate-900 border dark:border-slate-800 rounded-xl p-4 overflow-hidden shadow-inner">
       <div className="flex justify-between items-center mb-2 z-10 relative">
         <span className="text-[10px] text-outline font-bold uppercase tracking-wider">CSI Amplitude Matrix Subcarriers</span>
-        <span className="flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded bg-surface-bright dark:bg-slate-800 border">
+        <span className="flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded bg-surface-bright dark:bg-slate-800 border dark:border-slate-700">
           <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
           Live Feed: {activity}
         </span>
       </div>
-      <canvas ref={canvasRef} className="w-full h-32" width={500} height={128} />
+      <canvas ref={canvasRef} className="w-full h-28" width={500} height={112} />
     </div>
   );
 }
@@ -119,9 +111,10 @@ export default function App() {
   
   // Navigation State
   const [currentView, setCurrentView] = useState("dashboard");
+  const [dashboardTab, setDashboardTab] = useState("assets"); // 'assets', 'telemetry'
   
   // Multi-tenant Org Scope Switcher
-  const [orgScope, setOrgScope] = useState("all"); // 'all', 'ajce' (AJCE), 'lab' (WiFi Sense Lab)
+  const [orgScope, setOrgScope] = useState("all"); 
 
   // System Dark/Light Mode state
   const [darkMode, setDarkMode] = useState(localStorage.getItem("darkMode") === "true");
@@ -134,8 +127,10 @@ export default function App() {
   const [devices, setDevices] = useState([]);
   const [residents, setResidents] = useState([]);
   const [alerts, setAlerts] = useState([]);
-  const [recentEvents, setRecentEvents] = useState([]);
   
+  // Collapsible Buildings state inside Facility Hierarchy widget
+  const [expandedBuildings, setExpandedBuildings] = useState({});
+
   // Selected visual active telemetry activity
   const [activeTelemetryActivity, setActiveTelemetryActivity] = useState("Empty");
 
@@ -161,7 +156,7 @@ export default function App() {
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [showAddDeviceModal, setShowAddDeviceModal] = useState(false);
   const [showAddResidentModal, setShowAddResidentModal] = useState(false);
-  const [showResolveModal, setShowResolveModal] = useState(null); // stores alert ID
+  const [showResolveModal, setShowResolveModal] = useState(null); 
 
   // Form Input States
   const [loginEmail, setLoginEmail] = useState("");
@@ -206,13 +201,12 @@ export default function App() {
   // Alert Resolution Inputs
   const [resolutionNotes, setResolutionNotes] = useState("");
 
-  // Global Notification Banner (For real-time visual alerts like Falls)
+  // Global Notification Banner
   const [activeFallAlert, setActiveFallAlert] = useState(null);
 
   // Toast Notification Message
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Setup HTML dark class list
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -222,7 +216,6 @@ export default function App() {
     localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
 
-  // Toast timer auto-close
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => setToastMessage(null), 5000);
@@ -238,7 +231,7 @@ export default function App() {
   };
 
   // ============================================================================
-  // LOAD DATA & AUTO FILTERING BASED ON ORG SCOPE
+  // LOAD DATA & AUTO FILTERING
   // ============================================================================
   const fetchAllData = async () => {
     if (!token) return;
@@ -250,13 +243,10 @@ export default function App() {
       if (occRes.ok) {
         const data = await occRes.json();
         
-        // Filter occupancy view based on org scope
         let filteredDetails = data.occupied_room_details;
         if (orgScope === "ajce") {
-          // AJCE rooms are MCA Lab and Seminar Hall
           filteredDetails = filteredDetails.filter(rm => rm.room_name === "MCA Lab" || rm.room_name === "Seminar Hall");
         } else if (orgScope === "lab") {
-          // WiFi Sense Lab rooms are Research Lab, Bedroom 1, Project Room
           filteredDetails = filteredDetails.filter(rm => rm.room_name !== "MCA Lab" && rm.room_name !== "Seminar Hall");
         }
 
@@ -273,7 +263,6 @@ export default function App() {
           occupied_room_details: filteredDetails
         });
 
-        // Sync live canvas waveform with the most active/critical room status in the filtered scope
         const criticalRoom = filteredDetails.find(rm => rm.current_activity === "Fall_Detected");
         const activeRoom = filteredDetails.find(rm => rm.is_occupied && rm.current_activity !== "Empty");
         
@@ -290,22 +279,15 @@ export default function App() {
       const alertRes = await fetch(`${API_BASE}/alerts`, { headers });
       if (alertRes.ok) {
         let alertData = await alertRes.json();
-        
-        // Filter alerts by org scope
-        // AJCE has no alerts (presence tracking only)
         if (orgScope === "ajce") {
           alertData = [];
         } else if (orgScope === "lab") {
-          // Filter to only include WiFi Sense Lab rooms
           alertData = alertData.filter(a => {
             const rm = rooms.find(r => r.id === a.room_id);
             return rm && rm.name !== "MCA Lab" && rm.name !== "Seminar Hall";
           });
         }
-        
         setAlerts(alertData);
-        
-        // Extract active fall alert banner
         const activeFall = alertData.find(a => a.event_type === "Fall_Detected" && a.status !== "resolved");
         setActiveFallAlert(activeFall || null);
       }
@@ -331,10 +313,7 @@ export default function App() {
       if (flrRes.ok) setFloors(await flrRes.json());
 
       const rmRes = await fetch(`${API_BASE}/rooms`, { headers });
-      if (rmRes.ok) {
-        const rmData = await rmRes.json();
-        setRooms(rmData);
-      }
+      if (rmRes.ok) setRooms(await rmRes.json());
 
       const devRes = await fetch(`${API_BASE}/devices`, { headers });
       if (devRes.ok) setDevices(await devRes.json());
@@ -347,7 +326,6 @@ export default function App() {
     }
   };
 
-  // Sync polling
   useEffect(() => {
     if (token) {
       fetchAllData();
@@ -356,7 +334,6 @@ export default function App() {
     }
   }, [token, orgScope]);
 
-  // Adjust credentials autofill based on custom user scope switcher
   useEffect(() => {
     if (orgScope === "ajce") {
       setLoginEmail("abhinand@wifisense.com");
@@ -464,7 +441,6 @@ export default function App() {
       setShowSimulateDrawer(false);
       fetchAllData();
       
-      // Push live update details
       setToastMessage({
         type: data.alert_triggered ? "error" : "success",
         text: `Simulation success! Status: ${data.activity_classified} (${data.presence_detected ? "Occupied" : "Empty"})`
@@ -666,8 +642,31 @@ export default function App() {
     }
   };
 
+  // Facility Expand All / Collapse All Hierarchy toggle
+  const toggleBuildingExpand = (bldId) => {
+    setExpandedBuildings(prev => ({
+      ...prev,
+      [bldId]: !prev[bldId]
+    }));
+  };
+
+  const expandAllBuildings = () => {
+    const nextState = {};
+    buildings.forEach(b => {
+      nextState[b.id] = true;
+    });
+    setExpandedBuildings(nextState);
+  };
+
+  const triggerEmergencyProtocol = () => {
+    setToastMessage({
+      type: "error",
+      text: "EMERGENCY PROTOCOL ACTIVATED: Dispatched local responders to research wings."
+    });
+  };
+
   // ============================================================================
-  // LOGIN / OUT OF BOX VIEW
+  // OUT OF BOX VIEW (LOGIN)
   // ============================================================================
   if (!token) {
     return (
@@ -847,44 +846,39 @@ export default function App() {
       )}
 
       {/* SideNavbar */}
-      <nav className="hidden md:flex bg-surface-container-lowest dark:bg-slate-900 border-r border-outline-variant dark:border-slate-800 fixed left-0 top-0 bottom-0 w-sidebar-width flex-col z-45">
-        <div className="p-gutter border-b border-outline-variant dark:border-slate-800">
-          <div className="flex items-center gap-stack-sm mb-4">
+      <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-surface-container-lowest dark:bg-slate-900 border-r border-outline-variant dark:border-slate-800">
+        <div className="p-gutter flex flex-col gap-stack-sm border-b border-outline-variant dark:border-slate-800">
+          <div className="flex items-center gap-stack-sm">
             <span className="material-symbols-outlined text-secondary" style={{ fontSize: "32px" }}>sensors</span>
             <div>
-              <h1 className="text-sm font-bold tracking-tight text-primary dark:text-slate-100">Wi-Fi Sense Focus</h1>
-              <p className="text-[9px] uppercase tracking-wider text-outline font-bold">CSI Sensing Node</p>
+              <h1 className="text-headline-sm font-headline-sm text-primary dark:text-white">Wi-Fi Sense</h1>
+              <p className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400">AI Monitoring Active</p>
             </div>
           </div>
+          <button
+            onClick={triggerEmergencyProtocol}
+            className="w-full mt-4 bg-error-container text-on-error-container py-2 rounded-DEFAULT text-body-md font-body-md font-semibold flex justify-center items-center gap-2 hover:bg-error hover:text-on-error transition-all"
+          >
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+            Emergency Protocol
+          </button>
         </div>
 
         {/* Navigation items */}
-        <div className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
           <button
-            onClick={() => setCurrentView("dashboard")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+            onClick={() => { setCurrentView("dashboard"); }}
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
               currentView === "dashboard" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
             }`}
           >
-            <span className="material-symbols-outlined">dashboard</span> Dashboard
-          </button>
-
-          <div className="mt-4 mb-2 px-3 text-left">
-            <p className="text-[10px] text-outline font-bold uppercase tracking-wider">Infrastructure</p>
-          </div>
-
-          <button
-            onClick={() => setCurrentView("organizations")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "organizations" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
-            }`}
-          >
-            <span className="material-symbols-outlined">domain</span> Organizations
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: currentView === "dashboard" ? "'FILL' 1" : "'FILL' 0" }}>dashboard</span>
+            Dashboard
           </button>
 
           <button
             onClick={() => setCurrentView("buildings")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
               currentView === "buildings" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
             }`}
           >
@@ -893,7 +887,7 @@ export default function App() {
 
           <button
             onClick={() => setCurrentView("floors")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
               currentView === "floors" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
             }`}
           >
@@ -902,7 +896,7 @@ export default function App() {
 
           <button
             onClick={() => setCurrentView("rooms")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
               currentView === "rooms" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
             }`}
           >
@@ -911,7 +905,7 @@ export default function App() {
 
           <button
             onClick={() => setCurrentView("devices")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
               currentView === "devices" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
             }`}
           >
@@ -920,41 +914,39 @@ export default function App() {
 
           <button
             onClick={() => setCurrentView("residents")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+            className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
               currentView === "residents" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
             }`}
           >
-            <span className="material-symbols-outlined">badge</span> Residents
+            <span className="material-symbols-outlined">group</span> Users & Access
           </button>
 
-          <div className="mt-4 mb-2 px-3 text-left">
-            <p className="text-[10px] text-outline font-bold uppercase tracking-wider">Alerts & Analytics</p>
-          </div>
-
-          <button
-            onClick={() => setCurrentView("alerts")}
-            className={`flex items-center justify-between gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "alerts" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined">warning</span> Alert Center
-            </div>
-            {alerts.filter(a => a.status === "new").length > 0 && (
-              <span className="bg-error text-on-error rounded-full px-2 py-0.5 text-[9px] font-bold">
-                {alerts.filter(a => a.status === "new").length}
+          <div className="mt-auto border-t border-outline-variant dark:border-slate-800 pt-4 flex flex-col gap-2">
+            <button
+              onClick={() => setCurrentView("alerts")}
+              className={`flex items-center justify-between gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+                currentView === "alerts" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined">warning</span> Alert Incident
               </span>
-            )}
-          </button>
+              {alerts.filter(a => a.status === "new").length > 0 && (
+                <span className="bg-error text-on-error rounded-full px-2 py-0.5 text-[9px] font-bold">
+                  {alerts.filter(a => a.status === "new").length}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setCurrentView("analytics")}
-            className={`flex items-center gap-3 rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "analytics" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
-            }`}
-          >
-            <span className="material-symbols-outlined">analytics</span> Analytics
-          </button>
+            <button
+              onClick={() => setCurrentView("analytics")}
+              className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
+                currentView === "analytics" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              }`}
+            >
+              <span className="material-symbols-outlined">analytics</span> Analytics
+            </button>
+          </div>
         </div>
 
         {/* Sidebar Footer */}
@@ -972,57 +964,51 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Main Container */}
-      <main className="flex-1 md:ml-[260px] flex flex-col min-h-screen pb-12">
-        {/* Top Header */}
-        <header className="h-header-height bg-surface-container-lowest dark:bg-slate-900 border-b border-outline-variant dark:border-slate-800 flex items-center justify-between px-gutter sticky top-0 z-30 transition-all">
+      {/* Main Content Wrapper */}
+      <div className="ml-sidebar-width flex-1 flex flex-col min-h-screen">
+        {/* TopAppBar */}
+        <header className="fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter bg-surface dark:bg-slate-900 border-b border-outline-variant dark:border-slate-800 transition-colors">
+          <div className="flex items-center gap-2 text-on-surface-variant dark:text-slate-300 text-body-md font-body-md">
+            <span className="material-symbols-outlined">corporate_fare</span>
+            <span>Organization: <span className="font-semibold text-primary dark:text-white">
+              {orgScope === "ajce" 
+                ? "Amal Jyothi College of Engineering" 
+                : orgScope === "lab"
+                ? "WiFi Sense Research Lab" 
+                : "St. Jude Retirement Home (Mock)"}
+            </span></span>
+          </div>
+
           <div className="flex items-center gap-4">
             <select
-              className="bg-transparent text-xs font-bold border border-outline-variant dark:border-slate-800 px-3 py-1.5 rounded-full dark:text-white"
+              className="bg-transparent text-xs font-bold border border-outline-variant dark:border-slate-800 px-3 py-1.5 rounded-full dark:text-white focus:outline-none"
               value={orgScope}
               onChange={(e) => setOrgScope(e.target.value)}
             >
               <option value="all">Global view (All Orgs)</option>
-              <option value="ajce">AJCE (Corporate View)</option>
+              <option value="ajce">AJCE (Corporate)</option>
               <option value="lab">WiFi Sense Lab (Elder-Care)</option>
             </select>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {/* Dark Mode Switcher */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 border rounded-full hover:bg-surface-container dark:hover:bg-slate-800 dark:border-slate-800 transition-all flex items-center"
-            >
-              <span className="material-symbols-outlined dark:text-white" style={{ fontSize: "20px" }}>
-                {darkMode ? "light_mode" : "dark_mode"}
-              </span>
-            </button>
 
             <button
-              onClick={() => {
-                if (devices.length === 0) {
-                  alert("Please register a Device Node first.");
-                } else {
-                  setSimDeviceId(devices[0].id);
-                  setShowSimulateDrawer(true);
-                }
-              }}
-              className="bg-secondary text-on-secondary px-4 py-1.5 rounded-full text-xs font-bold uppercase hover:opacity-90 shadow-md transition-all flex items-center gap-1"
+              onClick={() => setDarkMode(!darkMode)}
+              className="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors opacity-80 hover:opacity-100"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>bolt</span> Ingest Telemetry
+              <span className="material-symbols-outlined">{darkMode ? "light_mode" : "dark_mode"}</span>
             </button>
+            
+            <img alt="User avatar" className="w-8 h-8 rounded-full border border-outline-variant dark:border-slate-800" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu1RCn5_eg7EySwCBpXG2E5joCiEZy4lvWvSaDVhBHzvt0rhEMs_hZC9HeTPGvt-oJnrDUGlBL2Tb4tYqjlWOP_S4fxlpydOmtf5Y6hG1U2WQnQH1Nx13BotmVTUcmv7sOZtIjEegIXE6g4RZQ-r1PtXh6OM0WxPjorUBfwJig7xcbtg_lExE_t6bnvZfqHinuVSz8lXFPGqEOp_M4YwzZ5a-VISCIKS2DaDPlJ4rqTWUQEtcD5eAXMg"/>
           </div>
         </header>
 
-        {/* Global Fall Incident Notification */}
+        {/* Global Fall Alert Banner */}
         {activeFallAlert && (
-          <div className="bg-error-container border-b border-error text-on-error-container p-4 flex items-center justify-between pulse-animation relative z-20">
+          <div className="mt-header-height bg-error-container border-b border-error text-on-error-container p-4 flex items-center justify-between pulse-animation relative z-20">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-error text-2xl fill animate-bounce">warning</span>
+              <span className="material-symbols-outlined text-error text-2xl fill">warning</span>
               <div className="text-left font-sans">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-error">CRITICAL FALL DETECTED (ELDER-CARE BLOCK)</h3>
-                <p className="text-sm font-bold">{activeFallAlert.message}</p>
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-error">POTENTIAL FALL ALERT</h3>
+                <p className="text-sm font-semibold">{activeFallAlert.message}</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -1042,136 +1028,287 @@ export default function App() {
           </div>
         )}
 
-        {/* Main Panel grid */}
-        <div className="p-gutter max-w-[1200px] mx-auto w-full">
+        {/* Main Canvas */}
+        <main className={`p-container-padding flex-1 ${activeFallAlert ? "pt-2" : "pt-header-height"}`}>
           {currentView === "dashboard" && (
             <div className="space-y-6">
               
-              {/* Scope specific info tag */}
-              <div className="flex justify-between items-center bg-secondary-container/20 dark:bg-slate-900 border dark:border-slate-800 p-4 rounded-xl">
-                <div className="text-left font-sans">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">Organization Context</h4>
-                  <p className="text-sm font-semibold dark:text-slate-200 mt-1">
-                    {orgScope === "ajce" 
-                      ? "Amal Jyothi College of Engineering — Focus: Presence & Workspace Occupancy Optimization."
-                      : orgScope === "lab"
-                      ? "WiFi Sense Research Lab — Focus: Resident Fall Detection & Assisted Care Warning Signals."
-                      : "Global Admin Dashboard — Multi-Tenant deployment tracking both AJCE Lab and Care Research wings."}
-                  </p>
+              {/* Tab Selector for Dashboards */}
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-left">
+                  <h2 className="text-headline-lg font-headline-lg text-primary dark:text-white mb-1">Asset Management Dashboard</h2>
+                  <p className="text-body-lg font-body-lg text-on-surface-variant dark:text-slate-400">Overview of physical infrastructure and monitoring devices.</p>
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-secondary-container text-on-secondary-container uppercase">
-                  {orgScope === "all" ? "All Orgs" : orgScope}
-                </span>
-              </div>
-
-              {/* Stats matrix */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between h-24 shadow-sm">
-                  <span className="text-[10px] text-outline font-bold uppercase text-left">Active Rooms</span>
-                  <p className="text-2xl font-bold font-data-mono text-left dark:text-white">{occupancySummary.total_rooms}</p>
-                </div>
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border border-l-4 border-l-secondary dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between h-24 shadow-sm">
-                  <span className="text-[10px] text-outline font-bold uppercase text-left">Vacant Status</span>
-                  <p className="text-2xl font-bold font-data-mono text-secondary text-left">{occupancySummary.vacant_rooms}</p>
-                </div>
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border border-l-4 border-l-blue-500 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between h-24 shadow-sm">
-                  <span className="text-[10px] text-outline font-bold uppercase text-left">Occupied Status</span>
-                  <p className="text-2xl font-bold font-data-mono text-blue-500 text-left">{occupancySummary.occupied_rooms}</p>
-                </div>
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between h-24 shadow-sm">
-                  <span className="text-[10px] text-outline font-bold uppercase text-left">Active Incidents</span>
-                  <p className={`text-2xl font-bold font-data-mono text-left ${alerts.filter(a => a.status !== "resolved").length > 0 ? "text-error" : "dark:text-slate-400"}`}>
-                    {alerts.filter(a => a.status !== "resolved").length}
-                  </p>
+                <div className="flex bg-surface-container dark:bg-slate-900 border dark:border-slate-800 rounded-full p-1">
+                  <button
+                    onClick={() => setDashboardTab("assets")}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${
+                      dashboardTab === "assets" ? "bg-secondary text-on-secondary shadow" : "text-outline hover:text-on-surface"
+                    }`}
+                  >
+                    Asset View
+                  </button>
+                  <button
+                    onClick={() => setDashboardTab("telemetry")}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${
+                      dashboardTab === "telemetry" ? "bg-secondary text-on-secondary shadow" : "text-outline hover:text-on-surface"
+                    }`}
+                  >
+                    Telemetry Feed
+                  </button>
                 </div>
               </div>
 
-              {/* CSI Waveform Visualization Bento section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <div className="lg:col-span-2 space-y-6">
-                  {/* CSI visual feed */}
-                  <CSIWaveform activity={activeTelemetryActivity} />
-
-                  {/* Room occupancies */}
-                  <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                    <h3 className="text-xs font-bold uppercase tracking-wider border-b dark:border-slate-800 pb-2 mb-4 text-left dark:text-white">
-                      Live Room Matrix
-                    </h3>
-                    {occupancySummary.occupied_room_details.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-outline border border-dashed rounded dark:border-slate-800">
-                        No rooms in the current scope.
+              {dashboardTab === "assets" ? (
+                <div className="space-y-8">
+                  {/* Metrics Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Buildings</span>
+                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                        <span className="text-headline-lg font-headline-lg font-data-mono">{buildings.length}</span>
+                        <span className="material-symbols-outlined text-outline">domain</span>
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {occupancySummary.occupied_room_details.map(rm => (
-                          <div
-                            key={rm.room_id}
-                            className={`border dark:border-slate-800 rounded-xl p-3 text-left transition-all ${
-                              rm.is_occupied
-                                ? rm.current_activity === "Fall_Detected"
-                                  ? "border-error bg-error-container/10 dark:bg-error/5"
-                                  : "border-blue-500 bg-blue-50/50 dark:bg-slate-950"
-                                : "border-outline-variant bg-[#f1faf9] dark:bg-slate-900/30"
-                            }`}
-                          >
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="font-bold text-sm truncate dark:text-white">{rm.room_name}</span>
-                              <span className={`w-2 h-2 rounded-full ${
-                                rm.is_occupied 
-                                  ? rm.current_activity === "Fall_Detected"
-                                    ? "bg-error animate-pulse"
-                                    : "bg-blue-500" 
-                                  : "bg-secondary"
-                              }`}></span>
+                    </div>
+                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Total Rooms</span>
+                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                        <span className="text-headline-lg font-headline-lg font-data-mono">{rooms.length}</span>
+                        <span className="material-symbols-outlined text-outline">door_front</span>
+                      </div>
+                    </div>
+                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Registered Devices</span>
+                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                        <span className="text-headline-lg font-headline-lg font-data-mono">{devices.length}</span>
+                        <span className="material-symbols-outlined text-secondary">sensors</span>
+                      </div>
+                    </div>
+                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Staff / Residents</span>
+                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                        <span className="text-headline-lg font-headline-lg font-data-mono">{residents.length}</span>
+                        <span className="material-symbols-outlined text-outline">badge</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Facility Hierarchy & Device Health Bento card */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+                    
+                    {/* Collapsible Facility Hierarchy */}
+                    <div className="lg:col-span-2 bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
+                      <div className="p-6 border-b border-outline-variant dark:border-slate-800 bg-surface-bright dark:bg-slate-900 flex justify-between items-center rounded-t-lg">
+                        <h3 className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline">account_tree</span>
+                          Facility Hierarchy
+                        </h3>
+                        <button
+                          onClick={expandAllBuildings}
+                          className="text-secondary text-label-caps font-label-caps uppercase border border-secondary px-3 py-1 rounded hover:bg-surface-container-low transition-colors"
+                        >
+                          Expand All
+                        </button>
+                      </div>
+                      
+                      <div className="p-6 flex-1 text-left">
+                        <ul className="flex flex-col gap-4">
+                          {buildings.map(b => (
+                            <li key={b.id} className="border border-outline-variant dark:border-slate-800 rounded p-4 bg-surface dark:bg-slate-950">
+                              <div
+                                onClick={() => toggleBuildingExpand(b.id)}
+                                className="flex items-center justify-between cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="material-symbols-outlined text-on-surface-variant dark:text-slate-400">business</span>
+                                  <span className="text-body-lg font-body-lg font-semibold text-primary dark:text-slate-200">{b.name}</span>
+                                </div>
+                                <div className="flex items-center gap-4 text-body-md font-body-md text-on-surface-variant dark:text-slate-400">
+                                  <span>{rooms.filter(r => floors.find(f => f.id === r.floor_id)?.building_id === b.id).length} Rooms</span>
+                                  <span className="material-symbols-outlined">
+                                    {expandedBuildings[b.id] ? "expand_less" : "chevron_right"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Collapsible Floor list */}
+                              {expandedBuildings[b.id] && (
+                                <div className="ml-8 mt-2 pl-4 border-l-2 border-outline-variant dark:border-slate-800 flex flex-col gap-2">
+                                  {floors.filter(f => f.building_id === b.id).map(f => (
+                                    <div key={f.id} className="flex items-center justify-between py-1 border-b dark:border-slate-800 text-xs">
+                                      <div className="flex items-center gap-2 text-body-md font-body-md text-on-surface dark:text-slate-300">
+                                        <span className="material-symbols-outlined text-sm text-outline">layers</span> Floor {f.floor_number}
+                                      </div>
+                                      <span className="text-label-caps font-label-caps bg-surface-container dark:bg-slate-800 px-2 py-1 rounded text-on-surface-variant dark:text-slate-400">
+                                        {rooms.filter(r => r.floor_id === f.id).map(r => r.name).join(", ") || "No rooms"}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                          {buildings.length === 0 && (
+                            <div className="py-6 text-center text-xs text-outline border border-dashed rounded">
+                              No buildings registered in the active organization.
                             </div>
-                            <p className="text-[9px] text-outline font-bold uppercase">{rm.room_type}</p>
-                            <p className="text-xs font-bold mt-2 text-on-surface dark:text-slate-300">
-                              {rm.is_occupied ? `Activity: ${rm.current_activity}` : "Vacant"}
-                            </p>
-                          </div>
-                        ))}
+                          )}
+                        </ul>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Device Health Status card */}
+                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
+                      <div className="p-6 border-b border-outline-variant dark:border-slate-800 bg-surface-bright dark:bg-slate-900 rounded-t-lg text-left">
+                        <h3 className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-secondary">memory</span>
+                          Device Health
+                        </h3>
+                      </div>
+                      
+                      <div className="p-0 overflow-x-auto flex-1 text-left">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-surface-container-low dark:bg-slate-800 border-b border-outline-variant dark:border-slate-800">
+                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 uppercase">Device / MAC</th>
+                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 uppercase">Location</th>
+                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 uppercase">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {devices.filter(d => {
+                              const r = rooms.find(rm => rm.id === d.room_id);
+                              if (!r) return orgScope === "all";
+                              if (orgScope === "ajce") return r.name === "MCA Lab" || r.name === "Seminar Hall";
+                              if (orgScope === "lab") return r.name !== "MCA Lab" && r.name !== "Seminar Hall";
+                              return true;
+                            }).map(dev => (
+                              <tr key={dev.id} className="border-b border-outline-variant dark:border-slate-800 hover:bg-surface-bright dark:hover:bg-slate-800/40 transition-colors">
+                                <td className="p-4">
+                                  <div className="flex flex-col">
+                                    <span className="text-body-md font-body-md font-semibold text-primary dark:text-slate-200">{dev.firmware_version}</span>
+                                    <span className="text-data-mono font-data-mono text-outline">{dev.mac_address}</span>
+                                  </div>
+                                </td>
+                                <td className="p-4 text-body-md font-body-md text-on-surface dark:text-slate-300">
+                                  {rooms.find(r => r.id === dev.room_id)?.name || "Unassigned"}
+                                </td>
+                                <td className="p-4">
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-label-caps font-label-caps ${
+                                    dev.device_status === "ONLINE" ? "bg-secondary-container/20 text-on-secondary-container" : "bg-outline-variant/30 text-on-surface-variant"
+                                  }`}>
+                                    <span className={`w-2 h-2 rounded-full ${dev.device_status === "ONLINE" ? "bg-secondary animate-pulse" : "bg-outline"}`}></span>
+                                    {dev.device_status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="p-4 bg-surface dark:bg-slate-900 border-t border-outline-variant dark:border-slate-800 rounded-b-lg flex justify-between items-center text-xs">
+                        <span className="text-outline">Live hardware nodes refresh active</span>
+                        <button
+                          onClick={() => {
+                            if (devices.length > 0) {
+                              setSimDeviceId(devices[0].id);
+                              setShowSimulateDrawer(true);
+                            }
+                          }}
+                          className="text-secondary font-semibold hover:underline"
+                        >
+                          Trigger Simulation
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Access Summary: Staff Distribution */}
+                  <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
+                    <div className="p-6 border-b border-outline-variant dark:border-slate-800 bg-surface-bright dark:bg-slate-900 text-left">
+                      <h3 className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-outline">admin_panel_settings</span>
+                        Access Summary: Inhabitant Distribution
+                      </h3>
+                    </div>
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                      <div className="flex items-center gap-4 p-4 rounded border border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-950">
+                        <div className="w-12 h-12 rounded-full bg-surface-container-high dark:bg-slate-800 flex items-center justify-center text-primary dark:text-white">
+                          <span className="material-symbols-outlined">layers</span>
+                        </div>
+                        <div>
+                          <div className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Amal Jyothi - MCA Lab</div>
+                          <div className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 font-data-mono">
+                            {residents.filter(r => rooms.find(rm => rm.id === r.room_id)?.name === "MCA Lab").length} Active Users
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 p-4 rounded border border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-950">
+                        <div className="w-12 h-12 rounded-full bg-surface-container-high dark:bg-slate-800 flex items-center justify-center text-primary dark:text-white">
+                          <span className="material-symbols-outlined">layers</span>
+                        </div>
+                        <div>
+                          <div className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Research Lab Block</div>
+                          <div className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 font-data-mono">
+                            {residents.filter(r => rooms.find(rm => rm.id === r.room_id)?.name === "Research Lab").length} Active Residents
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 p-4 rounded border border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-950">
+                        <div className="w-12 h-12 rounded-full bg-surface-container-high dark:bg-slate-800 flex items-center justify-center text-primary dark:text-white">
+                          <span className="material-symbols-outlined">layers</span>
+                        </div>
+                        <div>
+                          <div className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Research Lab - Project Room</div>
+                          <div className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 font-data-mono">
+                            {residents.filter(r => rooms.find(rm => rm.id === r.room_id)?.name === "Project Room").length} Active Residents
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                {/* Scope specific resident tracking */}
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-                  <div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Live Telemetry View */}
+                  <CSIWaveform activity={activeTelemetryActivity} />
+                  
+                  <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                     <h3 className="text-xs font-bold uppercase tracking-wider border-b dark:border-slate-800 pb-2 mb-4 text-left dark:text-white">
-                      Tracked Inhabitants
+                      Live Room Occupancy Grid
                     </h3>
-                    <div className="space-y-3">
-                      {residents.filter(r => {
-                        const rm = rooms.find(room => room.id === r.room_id);
-                        if (!rm) return false;
-                        if (orgScope === "ajce") return rm.name === "MCA Lab";
-                        if (orgScope === "lab") return rm.name !== "MCA Lab";
-                        return true;
-                      }).map(r => (
-                        <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-surface dark:bg-slate-800/40 border dark:border-slate-800 text-left">
-                          <span className="material-symbols-outlined text-outline">account_circle</span>
-                          <div>
-                            <p className="text-xs font-bold dark:text-white">{r.first_name} {r.last_name}</p>
-                            <p className="text-[10px] text-outline font-mono mt-0.5">
-                              Room: {rooms.find(rm => rm.id === r.room_id)?.name || "Unassigned"}
-                            </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {occupancySummary.occupied_room_details.map(rm => (
+                        <div
+                          key={rm.room_id}
+                          className={`border dark:border-slate-800 rounded-xl p-3 text-left transition-all ${
+                            rm.is_occupied
+                              ? rm.current_activity === "Fall_Detected"
+                                ? "border-error bg-error-container/10 dark:bg-error/5 animate-pulse"
+                                : "border-blue-500 bg-blue-50/50 dark:bg-slate-950"
+                              : "border-outline-variant bg-[#f1faf9] dark:bg-slate-900/30"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-bold text-sm truncate dark:text-white">{rm.room_name}</span>
+                            <span className={`w-2 h-2 rounded-full ${
+                              rm.is_occupied 
+                                ? rm.current_activity === "Fall_Detected"
+                                  ? "bg-error animate-ping"
+                                  : "bg-blue-500" 
+                                : "bg-secondary"
+                            }`}></span>
                           </div>
+                          <p className="text-[9px] text-outline font-bold uppercase">{rm.room_type}</p>
+                          <p className="text-xs font-bold mt-2 text-on-surface dark:text-slate-300 font-sans">
+                            {rm.is_occupied ? `Activity Classified: ${rm.current_activity}` : "Vacant"}
+                          </p>
                         </div>
                       ))}
                     </div>
                   </div>
-
-                  <div className="mt-8 border-t dark:border-slate-800 pt-4 text-left">
-                    <p className="text-[10px] text-outline font-bold uppercase mb-2">Hardware Connection</p>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-on-surface-variant dark:text-slate-400">Node telemetry link</span>
-                      <span className="font-bold text-secondary font-mono">NOMINAL</span>
-                    </div>
-                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1548,8 +1685,6 @@ export default function App() {
           {currentView === "analytics" && (
             <div className="space-y-6 text-left">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Occupancy aggregates */}
                 <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary border-b dark:border-slate-800 pb-2 mb-4 dark:text-slate-100">Occupancy Efficiency</h3>
                   <div className="space-y-4">
@@ -1567,7 +1702,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Alert summary metrics */}
                 <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary border-b dark:border-slate-800 pb-2 mb-4 dark:text-slate-100">Fall Warnings Audit Trails</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -1592,18 +1726,16 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* ============================================================================
         SLIDE OVER DRAWER FOR SIMULATION
       ============================================================================ */}
       {showSimulateDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Overlay background */}
           <div onClick={() => setShowSimulateDrawer(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"></div>
           
-          {/* Drawer content */}
           <div className="relative w-sidebar-width max-w-full h-full bg-surface-container-lowest dark:bg-slate-900 border-l dark:border-slate-800 p-6 flex flex-col justify-between shadow-2xl z-10 transition-all">
             <div className="text-left font-sans">
               <div className="flex justify-between items-center mb-6">
