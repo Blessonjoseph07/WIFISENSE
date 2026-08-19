@@ -90,10 +90,10 @@ function CSIWaveform({ activity }) {
   }, [activity]);
 
   return (
-    <div className="relative w-full bg-surface-container dark:bg-slate-900 border dark:border-slate-800 rounded-xl p-4 overflow-hidden shadow-inner">
+    <div className="relative w-full bg-surface-container bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-hidden shadow-inner">
       <div className="flex justify-between items-center mb-2 z-10 relative">
         <span className="text-[10px] text-outline font-bold uppercase tracking-wider">CSI Amplitude Matrix Subcarriers</span>
-        <span className="flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded bg-surface-bright dark:bg-slate-800 border dark:border-slate-700">
+        <span className="flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded bg-surface-bright bg-slate-100 border border-slate-200">
           <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
           Live Feed: {activity}
         </span>
@@ -670,48 +670,48 @@ export default function App() {
   // ============================================================================
   if (!token) {
     return (
-      <div className="bg-surface dark:bg-slate-950 text-on-surface font-body-md antialiased min-h-screen flex flex-col md:flex-row transition-all duration-300">
+      <div className="bg-surface bg-slate-50 text-on-surface font-body-md antialiased min-h-screen flex flex-col md:flex-row transition-all duration-300">
         {/* Banner Panel */}
-        <div className="hidden md:flex flex-col w-[45%] bg-slate-100 dark:bg-slate-900 relative overflow-hidden p-container-padding justify-between border-r border-outline-variant dark:border-slate-800">
+        <div className="hidden md:flex flex-col w-[45%] bg-slate-100 bg-slate-50 relative overflow-hidden p-container-padding justify-between border-r border-slate-200 border-slate-200">
           <div className="absolute inset-0 bg-wave-pattern opacity-60 dark:opacity-40 z-0"></div>
           <div className="z-10 mt-8 ml-8">
             <div className="flex items-center gap-stack-sm mb-4">
               <span className="material-symbols-outlined text-secondary" style={{ fontSize: "36px" }}>sensors</span>
-              <span className="font-headline-md text-headline-md text-primary dark:text-slate-100">Wi-Fi Sense</span>
+              <span className="font-headline-md text-headline-md text-primary text-slate-800">Wi-Fi Sense</span>
             </div>
-            <p className="font-headline-sm text-headline-sm text-on-surface-variant dark:text-slate-300 max-w-sm mt-4">
+            <p className="font-headline-sm text-headline-sm text-on-surface-variant text-slate-600 max-w-sm mt-4">
               AI-Powered Indoor Human Sensing and Fall Tracking via Wi-Fi CSI.
             </p>
           </div>
           <div className="z-10 mb-8 ml-8">
-            <div className="inline-flex items-center gap-2 bg-surface-container-highest dark:bg-slate-800 px-4 py-2 rounded-full border border-outline-variant dark:border-slate-700">
+            <div className="inline-flex items-center gap-2 bg-surface-container-highest bg-slate-100 px-4 py-2 rounded-full border border-slate-200 border-slate-200">
               <span className="material-symbols-outlined text-secondary" style={{ fontSize: "16px" }}>check_circle</span>
-              <span className="font-label-caps text-label-caps text-on-surface dark:text-slate-200">System: Seed Data Ready</span>
+              <span className="font-label-caps text-label-caps text-on-surface text-slate-700">System: Seed Data Ready</span>
             </div>
           </div>
         </div>
 
         {/* Login Panel */}
-        <div className="flex-1 flex flex-col justify-center p-gutter relative bg-surface-container-lowest dark:bg-slate-950">
-          <div className="absolute top-4 right-4 flex items-center gap-2 bg-surface-container dark:bg-slate-900 px-3 py-1.5 rounded-full border dark:border-slate-800">
+        <div className="flex-1 flex flex-col justify-center p-gutter relative bg-white bg-slate-50">
+          <div className="absolute top-4 right-4 flex items-center gap-2 bg-surface-container bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
             <span className="text-xs font-semibold text-outline">Org Scope:</span>
             <select
-              className="bg-surface-container dark:bg-slate-800 text-on-surface dark:text-white text-xs font-bold focus:outline-none"
+              className="bg-surface-container bg-slate-100 text-on-surface text-slate-900 text-xs font-bold focus:outline-none"
               value={orgScope}
               onChange={(e) => setOrgScope(e.target.value)}
             >
-              <option value="all" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Blesson Byju (All)</option>
-              <option value="ajce" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Abhinand M A (AJCE Corporate)</option>
-              <option value="lab" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Abhinanth Pillai (Elder Care)</option>
+              <option value="all" className="bg-surface-bright bg-slate-100 text-on-surface text-slate-900">Blesson Byju (All)</option>
+              <option value="ajce" className="bg-surface-bright bg-slate-100 text-on-surface text-slate-900">Abhinand M A (AJCE Corporate)</option>
+              <option value="lab" className="bg-surface-bright bg-slate-100 text-on-surface text-slate-900">Abhinanth Pillai (Elder Care)</option>
             </select>
           </div>
 
           <div className="w-full max-w-md mx-auto">
             <div className="mb-stack-lg text-center md:text-left">
-              <h1 className="font-headline-lg text-headline-lg text-on-background dark:text-white mb-2">
+              <h1 className="font-headline-lg text-headline-lg text-on-background text-slate-900 mb-2">
                 {isRegistering ? "Register Dev Account" : "WiFi Sense Login"}
               </h1>
-              <p className="font-body-md text-body-md text-on-surface-variant dark:text-slate-400">
+              <p className="font-body-md text-body-md text-on-surface-variant text-slate-500">
                 {isRegistering 
                   ? "Create credentials to start testing the CSI data pipeline." 
                   : "Scope credentials automatically prefill based on the top-right Org Scope selector."}
@@ -727,10 +727,10 @@ export default function App() {
             {!isRegistering ? (
               <form onSubmit={handleLogin} className="space-y-stack-md">
                 <div>
-                  <label className="block font-label-caps text-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Email Address</label>
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant text-slate-500 mb-1">Email Address</label>
                   <input
                     type="email"
-                    className="block w-full px-3 py-2 border border-outline-variant dark:border-slate-800 rounded bg-surface dark:bg-slate-900 dark:text-white focus:outline-none font-body-md"
+                    className="block w-full px-3 py-2 border border-slate-200 border-slate-200 rounded bg-surface bg-slate-50 text-slate-900 focus:outline-none font-body-md"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
@@ -738,10 +738,10 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block font-label-caps text-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Password</label>
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant text-slate-500 mb-1">Password</label>
                   <input
                     type="password"
-                    className="block w-full px-3 py-2 border border-outline-variant dark:border-slate-800 rounded bg-surface dark:bg-slate-900 dark:text-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-slate-200 border-slate-200 rounded bg-surface bg-slate-50 text-slate-900 focus:outline-none"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
@@ -760,10 +760,10 @@ export default function App() {
             ) : (
               <form onSubmit={handleRegister} className="space-y-stack-md">
                 <div>
-                  <label className="block font-label-caps text-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Email Address</label>
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant text-slate-500 mb-1">Email Address</label>
                   <input
                     type="email"
-                    className="block w-full px-3 py-2 border border-outline-variant dark:border-slate-800 rounded bg-surface dark:bg-slate-900 dark:text-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-slate-200 border-slate-200 rounded bg-surface bg-slate-50 text-slate-900 focus:outline-none"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     required
@@ -771,20 +771,20 @@ export default function App() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-label-caps text-label-caps text-on-surface-variant dark:text-slate-400 mb-1">First Name</label>
+                    <label className="block font-label-caps text-label-caps text-on-surface-variant text-slate-500 mb-1">First Name</label>
                     <input
                       type="text"
-                      className="block w-full px-3 py-2 border border-outline-variant dark:border-slate-800 rounded bg-surface dark:bg-slate-900 dark:text-white focus:outline-none"
+                      className="block w-full px-3 py-2 border border-slate-200 border-slate-200 rounded bg-surface bg-slate-50 text-slate-900 focus:outline-none"
                       value={regFirst}
                       onChange={(e) => setRegFirst(e.target.value)}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block font-label-caps text-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Last Name</label>
+                    <label className="block font-label-caps text-label-caps text-on-surface-variant text-slate-500 mb-1">Last Name</label>
                     <input
                       type="text"
-                      className="block w-full px-3 py-2 border border-outline-variant dark:border-slate-800 rounded bg-surface dark:bg-slate-900 dark:text-white focus:outline-none"
+                      className="block w-full px-3 py-2 border border-slate-200 border-slate-200 rounded bg-surface bg-slate-50 text-slate-900 focus:outline-none"
                       value={regLast}
                       onChange={(e) => setRegLast(e.target.value)}
                       required
@@ -792,9 +792,9 @@ export default function App() {
                   </div>
                 </div>
                 <div>
-                  <label className="block font-label-caps text-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Role Type</label>
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant text-slate-500 mb-1">Role Type</label>
                   <select
-                    className="block w-full px-3 py-2 border border-outline-variant dark:border-slate-800 rounded bg-surface dark:bg-slate-900 dark:text-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-slate-200 border-slate-200 rounded bg-surface bg-slate-50 text-slate-900 focus:outline-none"
                     value={regRole}
                     onChange={(e) => setRegRole(e.target.value)}
                   >
@@ -804,17 +804,17 @@ export default function App() {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-label-caps text-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Password</label>
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant text-slate-500 mb-1">Password</label>
                   <input
                     type="password"
-                    className="block w-full px-3 py-2 border border-outline-variant dark:border-slate-800 rounded bg-surface dark:bg-slate-900 dark:text-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-slate-200 border-slate-200 rounded bg-surface bg-slate-50 text-slate-900 focus:outline-none"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     required
                   />
                 </div>
                 <div className="flex items-center justify-between pt-4">
-                  <button type="button" onClick={() => setIsRegistering(false)} className="text-on-surface-variant dark:text-slate-400 font-medium text-xs hover:underline">
+                  <button type="button" onClick={() => setIsRegistering(false)} className="text-on-surface-variant text-slate-500 font-medium text-xs hover:underline">
                     Back to Sign In
                   </button>
                   <button type="submit" className="flex items-center gap-2 justify-center py-2 px-6 border border-transparent rounded font-label-caps text-label-caps text-on-secondary bg-secondary hover:opacity-90">
@@ -833,7 +833,7 @@ export default function App() {
   // WORKSPACE VIEW (AUTHENTICATED)
   // ============================================================================
   return (
-    <div className="bg-background dark:bg-slate-950 text-on-background dark:text-slate-100 min-h-screen flex transition-all duration-300">
+    <div className="bg-[#f8f9ff] text-slate-800 min-h-screen flex transition-all duration-300">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -846,13 +846,13 @@ export default function App() {
       )}
 
       {/* SideNavbar */}
-      <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-surface-container-lowest dark:bg-slate-900 border-r border-outline-variant dark:border-slate-800">
-        <div className="p-gutter flex flex-col gap-stack-sm border-b border-outline-variant dark:border-slate-800">
+      <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white border-r border-slate-200">
+        <div className="p-gutter flex flex-col gap-stack-sm border-b border-slate-200 border-slate-200">
           <div className="flex items-center gap-stack-sm">
             <span className="material-symbols-outlined text-secondary" style={{ fontSize: "32px" }}>sensors</span>
             <div>
-              <h1 className="text-headline-sm font-headline-sm text-primary dark:text-white">Wi-Fi Sense</h1>
-              <p className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400">AI Monitoring Active</p>
+              <h1 className="text-headline-sm font-headline-sm text-primary">Wi-Fi Sense</h1>
+              <p className="text-label-caps font-label-caps text-slate-500">AI Monitoring Active</p>
             </div>
           </div>
           <button
@@ -869,7 +869,7 @@ export default function App() {
           <button
             onClick={() => { setCurrentView("dashboard"); }}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "dashboard" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              currentView === "dashboard" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
             }`}
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: currentView === "dashboard" ? "'FILL' 1" : "'FILL' 0" }}>dashboard</span>
@@ -879,7 +879,7 @@ export default function App() {
           <button
             onClick={() => setCurrentView("buildings")}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "buildings" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              currentView === "buildings" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
             }`}
           >
             <span className="material-symbols-outlined">business</span> Buildings
@@ -888,7 +888,7 @@ export default function App() {
           <button
             onClick={() => setCurrentView("floors")}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "floors" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              currentView === "floors" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
             }`}
           >
             <span className="material-symbols-outlined">layers</span> Floors
@@ -897,7 +897,7 @@ export default function App() {
           <button
             onClick={() => setCurrentView("rooms")}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "rooms" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              currentView === "rooms" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
             }`}
           >
             <span className="material-symbols-outlined">meeting_room</span> Rooms
@@ -906,7 +906,7 @@ export default function App() {
           <button
             onClick={() => setCurrentView("devices")}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "devices" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              currentView === "devices" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
             }`}
           >
             <span className="material-symbols-outlined">router</span> Devices
@@ -915,17 +915,17 @@ export default function App() {
           <button
             onClick={() => setCurrentView("residents")}
             className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-              currentView === "residents" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+              currentView === "residents" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
             }`}
           >
             <span className="material-symbols-outlined">group</span> Users & Access
           </button>
 
-          <div className="mt-auto border-t border-outline-variant dark:border-slate-800 pt-4 flex flex-col gap-2">
+          <div className="mt-auto border-t border-slate-200 border-slate-200 pt-4 flex flex-col gap-2">
             <button
               onClick={() => setCurrentView("alerts")}
               className={`flex items-center justify-between gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-                currentView === "alerts" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+                currentView === "alerts" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -941,7 +941,7 @@ export default function App() {
             <button
               onClick={() => setCurrentView("analytics")}
               className={`flex items-center gap-stack-sm rounded-lg p-3 text-left w-full transition-all text-xs font-bold uppercase tracking-wider ${
-                currentView === "analytics" ? "bg-secondary-container text-on-secondary-container dark:bg-slate-800 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800"
+                currentView === "analytics" ? "bg-secondary-container text-on-secondary-container bg-slate-100 dark:text-secondary" : "text-on-surface-variant hover:bg-surface-container hover:bg-slate-100"
               }`}
             >
               <span className="material-symbols-outlined">analytics</span> Analytics
@@ -950,10 +950,10 @@ export default function App() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-gutter border-t border-outline-variant dark:border-slate-800 bg-surface-container-low dark:bg-slate-900/50">
+        <div className="p-gutter border-t border-slate-200 bg-slate-50">
           <div className="text-left text-xs mb-3">
-            <div className="font-bold text-on-background dark:text-white truncate">{user?.first_name} {user?.last_name}</div>
-            <div className="text-[10px] text-on-surface-variant dark:text-slate-400 uppercase font-mono tracking-wider mt-0.5">{role}</div>
+            <div className="font-bold text-on-background text-slate-900 truncate">{user?.first_name} {user?.last_name}</div>
+            <div className="text-[10px] text-on-surface-variant text-slate-500 uppercase font-mono tracking-wider mt-0.5">{role}</div>
           </div>
           <button
             onClick={handleLogout}
@@ -967,10 +967,10 @@ export default function App() {
       {/* Main Content Wrapper */}
       <div className="ml-sidebar-width flex-1 flex flex-col min-h-screen">
         {/* TopAppBar */}
-        <header className="fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter bg-surface dark:bg-slate-900 border-b border-outline-variant dark:border-slate-800 transition-colors">
-          <div className="flex items-center gap-2 text-on-surface-variant dark:text-slate-300 text-body-md font-body-md">
+        <header className="fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter bg-white border-b border-slate-200 transition-colors">
+          <div className="flex items-center gap-2 text-slate-600 text-body-md font-body-md">
             <span className="material-symbols-outlined">corporate_fare</span>
-            <span>Organization: <span className="font-semibold text-primary dark:text-white">
+            <span>Organization: <span className="font-semibold text-primary">
               {orgScope === "ajce" 
                 ? "Amal Jyothi College of Engineering" 
                 : orgScope === "lab"
@@ -981,13 +981,13 @@ export default function App() {
 
           <div className="flex items-center gap-4">
             <select
-              className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white text-xs font-bold border border-outline-variant dark:border-slate-700 px-3 py-1.5 rounded-full focus:outline-none"
+              className="bg-surface-bright bg-slate-100 text-on-surface text-slate-900 text-xs font-bold border border-slate-200 border-slate-200 px-3 py-1.5 rounded-full focus:outline-none"
               value={orgScope}
               onChange={(e) => setOrgScope(e.target.value)}
             >
-              <option value="all" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">Global view (All Orgs)</option>
-              <option value="ajce" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">AJCE (Corporate)</option>
-              <option value="lab" className="bg-surface-bright dark:bg-slate-800 text-on-surface dark:text-white">WiFi Sense Lab (Elder-Care)</option>
+              <option value="all" className="bg-surface-bright bg-slate-100 text-on-surface text-slate-900">Global view (All Orgs)</option>
+              <option value="ajce" className="bg-surface-bright bg-slate-100 text-on-surface text-slate-900">AJCE (Corporate)</option>
+              <option value="lab" className="bg-surface-bright bg-slate-100 text-on-surface text-slate-900">WiFi Sense Lab (Elder-Care)</option>
             </select>
 
             <button
@@ -997,7 +997,7 @@ export default function App() {
               <span className="material-symbols-outlined">{darkMode ? "light_mode" : "dark_mode"}</span>
             </button>
             
-            <img alt="User avatar" className="w-8 h-8 rounded-full border border-outline-variant dark:border-slate-800" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu1RCn5_eg7EySwCBpXG2E5joCiEZy4lvWvSaDVhBHzvt0rhEMs_hZC9HeTPGvt-oJnrDUGlBL2Tb4tYqjlWOP_S4fxlpydOmtf5Y6hG1U2WQnQH1Nx13BotmVTUcmv7sOZtIjEegIXE6g4RZQ-r1PtXh6OM0WxPjorUBfwJig7xcbtg_lExE_t6bnvZfqHinuVSz8lXFPGqEOp_M4YwzZ5a-VISCIKS2DaDPlJ4rqTWUQEtcD5eAXMg"/>
+            <img alt="User avatar" className="w-8 h-8 rounded-full border border-slate-200 border-slate-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu1RCn5_eg7EySwCBpXG2E5joCiEZy4lvWvSaDVhBHzvt0rhEMs_hZC9HeTPGvt-oJnrDUGlBL2Tb4tYqjlWOP_S4fxlpydOmtf5Y6hG1U2WQnQH1Nx13BotmVTUcmv7sOZtIjEegIXE6g4RZQ-r1PtXh6OM0WxPjorUBfwJig7xcbtg_lExE_t6bnvZfqHinuVSz8lXFPGqEOp_M4YwzZ5a-VISCIKS2DaDPlJ4rqTWUQEtcD5eAXMg"/>
           </div>
         </header>
 
@@ -1036,10 +1036,10 @@ export default function App() {
               {/* Tab Selector for Dashboards */}
               <div className="flex justify-between items-center mb-4">
                 <div className="text-left">
-                  <h2 className="text-headline-lg font-headline-lg text-primary dark:text-white mb-1">Asset Management Dashboard</h2>
-                  <p className="text-body-lg font-body-lg text-on-surface-variant dark:text-slate-400">Overview of physical infrastructure and monitoring devices.</p>
+                  <h2 className="text-headline-lg font-headline-lg text-primary text-slate-900 mb-1">Asset Management Dashboard</h2>
+                  <p className="text-body-lg font-body-lg text-on-surface-variant text-slate-500">Overview of physical infrastructure and monitoring devices.</p>
                 </div>
-                <div className="flex bg-surface-container dark:bg-slate-900 border dark:border-slate-800 rounded-full p-1">
+                <div className="flex bg-surface-container bg-slate-50 border border-slate-200 rounded-full p-1">
                   <button
                     onClick={() => setDashboardTab("assets")}
                     className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase transition-all ${
@@ -1063,30 +1063,30 @@ export default function App() {
                 <div className="space-y-8">
                   {/* Metrics Row */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter">
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
-                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Buildings</span>
-                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                    <div className="bg-white border border-slate-200 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant text-slate-500 mb-2 uppercase">Buildings</span>
+                      <div className="flex items-end justify-between text-primary text-slate-800">
                         <span className="text-headline-lg font-headline-lg font-data-mono">{buildings.length}</span>
                         <span className="material-symbols-outlined text-outline">domain</span>
                       </div>
                     </div>
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
-                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Total Rooms</span>
-                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                    <div className="bg-white border border-slate-200 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant text-slate-500 mb-2 uppercase">Total Rooms</span>
+                      <div className="flex items-end justify-between text-primary text-slate-800">
                         <span className="text-headline-lg font-headline-lg font-data-mono">{rooms.length}</span>
                         <span className="material-symbols-outlined text-outline">door_front</span>
                       </div>
                     </div>
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
-                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Registered Devices</span>
-                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                    <div className="bg-white border border-slate-200 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant text-slate-500 mb-2 uppercase">Registered Devices</span>
+                      <div className="flex items-end justify-between text-primary text-slate-800">
                         <span className="text-headline-lg font-headline-lg font-data-mono">{devices.length}</span>
                         <span className="material-symbols-outlined text-secondary">sensors</span>
                       </div>
                     </div>
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
-                      <span className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-2 uppercase">Staff / Residents</span>
-                      <div className="flex items-end justify-between text-primary dark:text-slate-100">
+                    <div className="bg-white border border-slate-200 rounded-lg p-6 flex flex-col hover:border-secondary transition-colors text-left shadow-sm">
+                      <span className="text-label-caps font-label-caps text-on-surface-variant text-slate-500 mb-2 uppercase">Staff / Residents</span>
+                      <div className="flex items-end justify-between text-primary text-slate-800">
                         <span className="text-headline-lg font-headline-lg font-data-mono">{residents.length}</span>
                         <span className="material-symbols-outlined text-outline">badge</span>
                       </div>
@@ -1097,9 +1097,9 @@ export default function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
                     
                     {/* Collapsible Facility Hierarchy */}
-                    <div className="lg:col-span-2 bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
-                      <div className="p-6 border-b border-outline-variant dark:border-slate-800 bg-surface-bright dark:bg-slate-900 flex justify-between items-center rounded-t-lg">
-                        <h3 className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 flex items-center gap-2">
+                    <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg flex flex-col shadow-sm">
+                      <div className="p-6 border-b border-slate-200 border-slate-200 bg-surface-bright bg-slate-50 flex justify-between items-center rounded-t-lg">
+                        <h3 className="text-headline-sm font-headline-sm text-primary text-slate-700 flex items-center gap-2">
                           <span className="material-symbols-outlined text-outline">account_tree</span>
                           Facility Hierarchy
                         </h3>
@@ -1114,16 +1114,16 @@ export default function App() {
                       <div className="p-6 flex-1 text-left">
                         <ul className="flex flex-col gap-4">
                           {buildings.map(b => (
-                            <li key={b.id} className="border border-outline-variant dark:border-slate-800 rounded p-4 bg-surface dark:bg-slate-950">
+                            <li key={b.id} className="border border-slate-200 border-slate-200 rounded p-4 bg-surface bg-slate-50">
                               <div
                                 onClick={() => toggleBuildingExpand(b.id)}
                                 className="flex items-center justify-between cursor-pointer"
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="material-symbols-outlined text-on-surface-variant dark:text-slate-400">business</span>
-                                  <span className="text-body-lg font-body-lg font-semibold text-primary dark:text-slate-200">{b.name}</span>
+                                  <span className="material-symbols-outlined text-on-surface-variant text-slate-500">business</span>
+                                  <span className="text-body-lg font-body-lg font-semibold text-primary text-slate-700">{b.name}</span>
                                 </div>
-                                <div className="flex items-center gap-4 text-body-md font-body-md text-on-surface-variant dark:text-slate-400">
+                                <div className="flex items-center gap-4 text-body-md font-body-md text-on-surface-variant text-slate-500">
                                   <span>{rooms.filter(r => floors.find(f => f.id === r.floor_id)?.building_id === b.id).length} Rooms</span>
                                   <span className="material-symbols-outlined">
                                     {expandedBuildings[b.id] ? "expand_less" : "chevron_right"}
@@ -1133,13 +1133,13 @@ export default function App() {
 
                               {/* Collapsible Floor list */}
                               {expandedBuildings[b.id] && (
-                                <div className="ml-8 mt-2 pl-4 border-l-2 border-outline-variant dark:border-slate-800 flex flex-col gap-2">
+                                <div className="ml-8 mt-2 pl-4 border-l-2 border-slate-200 border-slate-200 flex flex-col gap-2">
                                   {floors.filter(f => f.building_id === b.id).map(f => (
-                                    <div key={f.id} className="flex items-center justify-between py-1 border-b dark:border-slate-800 text-xs">
-                                      <div className="flex items-center gap-2 text-body-md font-body-md text-on-surface dark:text-slate-300">
+                                    <div key={f.id} className="flex items-center justify-between py-1 border-b border-slate-200 text-xs">
+                                      <div className="flex items-center gap-2 text-body-md font-body-md text-on-surface text-slate-600">
                                         <span className="material-symbols-outlined text-sm text-outline">layers</span> Floor {f.floor_number}
                                       </div>
-                                      <span className="text-label-caps font-label-caps bg-surface-container dark:bg-slate-800 px-2 py-1 rounded text-on-surface-variant dark:text-slate-400">
+                                      <span className="text-label-caps font-label-caps bg-surface-container bg-slate-100 px-2 py-1 rounded text-on-surface-variant text-slate-500">
                                         {rooms.filter(r => r.floor_id === f.id).map(r => r.name).join(", ") || "No rooms"}
                                       </span>
                                     </div>
@@ -1158,9 +1158,9 @@ export default function App() {
                     </div>
 
                     {/* Device Health Status card */}
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
-                      <div className="p-6 border-b border-outline-variant dark:border-slate-800 bg-surface-bright dark:bg-slate-900 rounded-t-lg text-left">
-                        <h3 className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 flex items-center gap-2">
+                    <div className="bg-white border border-slate-200 rounded-lg flex flex-col shadow-sm">
+                      <div className="p-6 border-b border-slate-200 border-slate-200 bg-surface-bright bg-slate-50 rounded-t-lg text-left">
+                        <h3 className="text-headline-sm font-headline-sm text-primary text-slate-700 flex items-center gap-2">
                           <span className="material-symbols-outlined text-secondary">memory</span>
                           Device Health
                         </h3>
@@ -1169,10 +1169,10 @@ export default function App() {
                       <div className="p-0 overflow-x-auto flex-1 text-left">
                         <table className="w-full text-left border-collapse">
                           <thead>
-                            <tr className="bg-surface-container-low dark:bg-slate-800 border-b border-outline-variant dark:border-slate-800">
-                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 uppercase">Device / MAC</th>
-                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 uppercase">Location</th>
-                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 uppercase">Status</th>
+                            <tr className="bg-surface-container-low bg-slate-100 border-b border-slate-200 border-slate-200">
+                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant text-slate-500 uppercase">Device / MAC</th>
+                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant text-slate-500 uppercase">Location</th>
+                              <th className="p-4 text-label-caps font-label-caps text-on-surface-variant text-slate-500 uppercase">Status</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1183,14 +1183,14 @@ export default function App() {
                               if (orgScope === "lab") return r.name !== "MCA Lab" && r.name !== "Seminar Hall";
                               return true;
                             }).map(dev => (
-                              <tr key={dev.id} className="border-b border-outline-variant dark:border-slate-800 hover:bg-surface-bright dark:hover:bg-slate-800/40 transition-colors">
+                              <tr key={dev.id} className="border-b border-slate-200 border-slate-200 hover:bg-surface-bright hover:bg-slate-50 transition-colors">
                                 <td className="p-4">
                                   <div className="flex flex-col">
-                                    <span className="text-body-md font-body-md font-semibold text-primary dark:text-slate-200">{dev.firmware_version}</span>
+                                    <span className="text-body-md font-body-md font-semibold text-primary text-slate-700">{dev.firmware_version}</span>
                                     <span className="text-data-mono font-data-mono text-outline">{dev.mac_address}</span>
                                   </div>
                                 </td>
-                                <td className="p-4 text-body-md font-body-md text-on-surface dark:text-slate-300">
+                                <td className="p-4 text-body-md font-body-md text-on-surface text-slate-600">
                                   {rooms.find(r => r.id === dev.room_id)?.name || "Unassigned"}
                                 </td>
                                 <td className="p-4">
@@ -1206,7 +1206,7 @@ export default function App() {
                           </tbody>
                         </table>
                       </div>
-                      <div className="p-4 bg-surface dark:bg-slate-900 border-t border-outline-variant dark:border-slate-800 rounded-b-lg flex justify-between items-center text-xs">
+                      <div className="p-4 bg-surface bg-slate-50 border-t border-slate-200 border-slate-200 rounded-b-lg flex justify-between items-center text-xs">
                         <span className="text-outline">Live hardware nodes refresh active</span>
                         <button
                           onClick={() => {
@@ -1224,43 +1224,43 @@ export default function App() {
                   </div>
 
                   {/* Access Summary: Staff Distribution */}
-                  <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-lg flex flex-col shadow-sm">
-                    <div className="p-6 border-b border-outline-variant dark:border-slate-800 bg-surface-bright dark:bg-slate-900 text-left">
-                      <h3 className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 flex items-center gap-2">
+                  <div className="bg-white border border-slate-200 rounded-lg flex flex-col shadow-sm">
+                    <div className="p-6 border-b border-slate-200 border-slate-200 bg-surface-bright bg-slate-50 text-left">
+                      <h3 className="text-headline-sm font-headline-sm text-primary text-slate-700 flex items-center gap-2">
                         <span className="material-symbols-outlined text-outline">admin_panel_settings</span>
                         Access Summary: Inhabitant Distribution
                       </h3>
                     </div>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                      <div className="flex items-center gap-4 p-4 rounded border border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-950">
-                        <div className="w-12 h-12 rounded-full bg-surface-container-high dark:bg-slate-800 flex items-center justify-center text-primary dark:text-white">
+                      <div className="flex items-center gap-4 p-4 rounded border border-slate-200 border-slate-200 bg-surface bg-slate-50">
+                        <div className="w-12 h-12 rounded-full bg-surface-container-high bg-slate-100 flex items-center justify-center text-primary text-slate-900">
                           <span className="material-symbols-outlined">layers</span>
                         </div>
                         <div>
-                          <div className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Amal Jyothi - MCA Lab</div>
-                          <div className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 font-data-mono">
+                          <div className="text-label-caps font-label-caps text-on-surface-variant text-slate-500 mb-1">Amal Jyothi - MCA Lab</div>
+                          <div className="text-headline-sm font-headline-sm text-primary text-slate-700 font-data-mono">
                             {residents.filter(r => rooms.find(rm => rm.id === r.room_id)?.name === "MCA Lab").length} Active Users
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 p-4 rounded border border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-950">
-                        <div className="w-12 h-12 rounded-full bg-surface-container-high dark:bg-slate-800 flex items-center justify-center text-primary dark:text-white">
+                      <div className="flex items-center gap-4 p-4 rounded border border-slate-200 border-slate-200 bg-surface bg-slate-50">
+                        <div className="w-12 h-12 rounded-full bg-surface-container-high bg-slate-100 flex items-center justify-center text-primary text-slate-900">
                           <span className="material-symbols-outlined">layers</span>
                         </div>
                         <div>
-                          <div className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Research Lab Block</div>
-                          <div className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 font-data-mono">
+                          <div className="text-label-caps font-label-caps text-on-surface-variant text-slate-500 mb-1">Research Lab Block</div>
+                          <div className="text-headline-sm font-headline-sm text-primary text-slate-700 font-data-mono">
                             {residents.filter(r => rooms.find(rm => rm.id === r.room_id)?.name === "Research Lab").length} Active Residents
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 p-4 rounded border border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-950">
-                        <div className="w-12 h-12 rounded-full bg-surface-container-high dark:bg-slate-800 flex items-center justify-center text-primary dark:text-white">
+                      <div className="flex items-center gap-4 p-4 rounded border border-slate-200 border-slate-200 bg-surface bg-slate-50">
+                        <div className="w-12 h-12 rounded-full bg-surface-container-high bg-slate-100 flex items-center justify-center text-primary text-slate-900">
                           <span className="material-symbols-outlined">layers</span>
                         </div>
                         <div>
-                          <div className="text-label-caps font-label-caps text-on-surface-variant dark:text-slate-400 mb-1">Research Lab - Project Room</div>
-                          <div className="text-headline-sm font-headline-sm text-primary dark:text-slate-200 font-data-mono">
+                          <div className="text-label-caps font-label-caps text-on-surface-variant text-slate-500 mb-1">Research Lab - Project Room</div>
+                          <div className="text-headline-sm font-headline-sm text-primary text-slate-700 font-data-mono">
                             {residents.filter(r => rooms.find(rm => rm.id === r.room_id)?.name === "Project Room").length} Active Residents
                           </div>
                         </div>
@@ -1273,24 +1273,24 @@ export default function App() {
                   {/* Live Telemetry View */}
                   <CSIWaveform activity={activeTelemetryActivity} />
                   
-                  <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                    <h3 className="text-xs font-bold uppercase tracking-wider border-b dark:border-slate-800 pb-2 mb-4 text-left dark:text-white">
+                  <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <h3 className="text-xs font-bold uppercase tracking-wider border-b border-slate-200 pb-2 mb-4 text-left text-slate-900">
                       Live Room Occupancy Grid
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {occupancySummary.occupied_room_details.map(rm => (
                         <div
                           key={rm.room_id}
-                          className={`border dark:border-slate-800 rounded-xl p-3 text-left transition-all ${
+                          className={`border border-slate-200 rounded-xl p-3 text-left transition-all ${
                             rm.is_occupied
                               ? rm.current_activity === "Fall_Detected"
                                 ? "border-error bg-error-container/10 dark:bg-error/5 animate-pulse"
-                                : "border-blue-500 bg-blue-50/50 dark:bg-slate-950"
-                              : "border-outline-variant bg-[#f1faf9] dark:bg-slate-900/30"
+                                : "border-blue-500 bg-blue-50/50 bg-slate-50"
+                              : "border-slate-200 bg-[#f1faf9] bg-slate-50/30"
                           }`}
                         >
                           <div className="flex justify-between items-center mb-1">
-                            <span className="font-bold text-sm truncate dark:text-white">{rm.room_name}</span>
+                            <span className="font-bold text-sm truncate text-slate-900">{rm.room_name}</span>
                             <span className={`w-2 h-2 rounded-full ${
                               rm.is_occupied 
                                 ? rm.current_activity === "Fall_Detected"
@@ -1300,7 +1300,7 @@ export default function App() {
                             }`}></span>
                           </div>
                           <p className="text-[9px] text-outline font-bold uppercase">{rm.room_type}</p>
-                          <p className="text-xs font-bold mt-2 text-on-surface dark:text-slate-300 font-sans">
+                          <p className="text-xs font-bold mt-2 text-on-surface text-slate-600 font-sans">
                             {rm.is_occupied ? `Activity Classified: ${rm.current_activity}` : "Vacant"}
                           </p>
                         </div>
@@ -1316,9 +1316,9 @@ export default function App() {
             ORGANIZATIONS VIEW
           ============================================================================ */}
           {currentView === "organizations" && (
-            <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex justify-between items-center border-b dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary dark:text-slate-100">Registered Organizations</h3>
+            <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary text-slate-800">Registered Organizations</h3>
                 <button
                   onClick={() => setShowAddOrgModal(true)}
                   className="bg-secondary text-on-secondary px-3 py-1 rounded-full text-xs font-bold uppercase hover:opacity-90"
@@ -1329,7 +1329,7 @@ export default function App() {
               <div className="overflow-x-auto text-left">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-low dark:bg-slate-800 text-[10px] text-outline font-bold uppercase border-b dark:border-slate-800">
+                    <tr className="bg-surface-container-low bg-slate-100 text-[10px] text-outline font-bold uppercase border-b border-slate-200">
                       <th className="p-3">Org ID</th>
                       <th className="p-3">Name</th>
                       <th className="p-3">Deployment Type</th>
@@ -1337,11 +1337,11 @@ export default function App() {
                   </thead>
                   <tbody className="text-sm divide-y dark:divide-slate-800">
                     {organizations.map(org => (
-                      <tr key={org.id} className="hover:bg-surface-bright dark:hover:bg-slate-800/40">
+                      <tr key={org.id} className="hover:bg-surface-bright hover:bg-slate-50">
                         <td className="p-3 font-data-mono text-xs">{org.id}</td>
-                        <td className="p-3 font-semibold dark:text-white">{org.name}</td>
+                        <td className="p-3 font-semibold text-slate-900">{org.name}</td>
                         <td className="p-3">
-                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-surface-container dark:bg-slate-800 text-on-surface">
+                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-surface-container bg-slate-100 text-on-surface">
                             {org.type}
                           </span>
                         </td>
@@ -1357,9 +1357,9 @@ export default function App() {
             BUILDINGS VIEW
           ============================================================================ */}
           {currentView === "buildings" && (
-            <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex justify-between items-center border-b dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary dark:text-slate-100">Buildings Matrix</h3>
+            <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary text-slate-800">Buildings Matrix</h3>
                 <button
                   onClick={() => {
                     if (organizations.length === 0) {
@@ -1377,7 +1377,7 @@ export default function App() {
               <div className="overflow-x-auto text-left">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-low dark:bg-slate-800 text-[10px] text-outline font-bold uppercase border-b dark:border-slate-800">
+                    <tr className="bg-surface-container-low bg-slate-100 text-[10px] text-outline font-bold uppercase border-b border-slate-200">
                       <th className="p-3">Building ID</th>
                       <th className="p-3">Name</th>
                       <th className="p-3">Address</th>
@@ -1385,9 +1385,9 @@ export default function App() {
                   </thead>
                   <tbody className="text-sm divide-y dark:divide-slate-800">
                     {buildings.map(bld => (
-                      <tr key={bld.id} className="hover:bg-surface-bright dark:hover:bg-slate-800/40">
+                      <tr key={bld.id} className="hover:bg-surface-bright hover:bg-slate-50">
                         <td className="p-3 font-data-mono text-xs">{bld.id}</td>
-                        <td className="p-3 font-semibold dark:text-white">{bld.name}</td>
+                        <td className="p-3 font-semibold text-slate-900">{bld.name}</td>
                         <td className="p-3">{bld.address || "N/A"}</td>
                       </tr>
                     ))}
@@ -1401,9 +1401,9 @@ export default function App() {
             FLOORS VIEW
           ============================================================================ */}
           {currentView === "floors" && (
-            <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex justify-between items-center border-b dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary dark:text-slate-100">Floor Layouts</h3>
+            <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary text-slate-800">Floor Layouts</h3>
                 <button
                   onClick={() => {
                     if (buildings.length === 0) {
@@ -1421,7 +1421,7 @@ export default function App() {
               <div className="overflow-x-auto text-left">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-low dark:bg-slate-800 text-[10px] text-outline font-bold uppercase border-b dark:border-slate-800">
+                    <tr className="bg-surface-container-low bg-slate-100 text-[10px] text-outline font-bold uppercase border-b border-slate-200">
                       <th className="p-3">Floor ID</th>
                       <th className="p-3">Building Name</th>
                       <th className="p-3">Floor Number</th>
@@ -1432,9 +1432,9 @@ export default function App() {
                       const b = buildings.find(bld => bld.id === f.building_id);
                       return !!b;
                     }).map(flr => (
-                      <tr key={flr.id} className="hover:bg-surface-bright dark:hover:bg-slate-800/40">
+                      <tr key={flr.id} className="hover:bg-surface-bright hover:bg-slate-50">
                         <td className="p-3 font-data-mono text-xs">{flr.id}</td>
-                        <td className="p-3 font-semibold dark:text-white">{buildings.find(b => b.id === flr.building_id)?.name}</td>
+                        <td className="p-3 font-semibold text-slate-900">{buildings.find(b => b.id === flr.building_id)?.name}</td>
                         <td className="p-3">Floor {flr.floor_number}</td>
                       </tr>
                     ))}
@@ -1448,9 +1448,9 @@ export default function App() {
             ROOMS VIEW
           ============================================================================ */}
           {currentView === "rooms" && (
-            <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex justify-between items-center border-b dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary dark:text-slate-100">Rooms Configuration</h3>
+            <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary text-slate-800">Rooms Configuration</h3>
                 <button
                   onClick={() => {
                     if (floors.length === 0) {
@@ -1468,7 +1468,7 @@ export default function App() {
               <div className="overflow-x-auto text-left">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-low dark:bg-slate-800 text-[10px] text-outline font-bold uppercase border-b dark:border-slate-800">
+                    <tr className="bg-surface-container-low bg-slate-100 text-[10px] text-outline font-bold uppercase border-b border-slate-200">
                       <th className="p-3">Room ID</th>
                       <th className="p-3">Name</th>
                       <th className="p-3">Type</th>
@@ -1481,9 +1481,9 @@ export default function App() {
                       if (orgScope === "lab") return r.name !== "MCA Lab" && r.name !== "Seminar Hall";
                       return true;
                     }).map(rm => (
-                      <tr key={rm.id} className="hover:bg-surface-bright dark:hover:bg-slate-800/40">
+                      <tr key={rm.id} className="hover:bg-surface-bright hover:bg-slate-50">
                         <td className="p-3 font-data-mono text-xs">{rm.id}</td>
-                        <td className="p-3 font-semibold dark:text-white">{rm.name}</td>
+                        <td className="p-3 font-semibold text-slate-900">{rm.name}</td>
                         <td className="p-3">{rm.room_type}</td>
                         <td className="p-3 font-data-mono">{rm.capacity}</td>
                       </tr>
@@ -1498,9 +1498,9 @@ export default function App() {
             DEVICES VIEW
           ============================================================================ */}
           {currentView === "devices" && (
-            <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex justify-between items-center border-b dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary dark:text-slate-100">ESP32 Hardware Nodes</h3>
+            <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary text-slate-800">ESP32 Hardware Nodes</h3>
                 <button
                   onClick={() => {
                     setNewDevRmId(rooms.length > 0 ? rooms[0].id : "");
@@ -1514,7 +1514,7 @@ export default function App() {
               <div className="overflow-x-auto text-left">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-low dark:bg-slate-800 text-[10px] text-outline font-bold uppercase border-b dark:border-slate-800">
+                    <tr className="bg-surface-container-low bg-slate-100 text-[10px] text-outline font-bold uppercase border-b border-slate-200">
                       <th className="p-3">MAC Address</th>
                       <th className="p-3">Device Name</th>
                       <th className="p-3">Assigned Room</th>
@@ -1529,8 +1529,8 @@ export default function App() {
                       if (orgScope === "lab") return r.name !== "MCA Lab" && r.name !== "Seminar Hall";
                       return true;
                     }).map(dev => (
-                      <tr key={dev.id} className="hover:bg-surface-bright dark:hover:bg-slate-800/40">
-                        <td className="p-3 font-semibold font-data-mono dark:text-white">{dev.mac_address}</td>
+                      <tr key={dev.id} className="hover:bg-surface-bright hover:bg-slate-50">
+                        <td className="p-3 font-semibold font-data-mono text-slate-900">{dev.mac_address}</td>
                         <td className="p-3">{dev.firmware_version}</td>
                         <td className="p-3 font-semibold text-xs">{rooms.find(r => r.id === dev.room_id)?.name || "Unassigned"}</td>
                         <td className="p-3">
@@ -1552,9 +1552,9 @@ export default function App() {
             RESIDENTS VIEW
           ============================================================================ */}
           {currentView === "residents" && (
-            <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex justify-between items-center border-b dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary dark:text-slate-100">Registered Residents</h3>
+            <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary text-slate-800">Registered Residents</h3>
                 <button
                   onClick={() => {
                     if (rooms.length === 0) {
@@ -1572,7 +1572,7 @@ export default function App() {
               <div className="overflow-x-auto text-left">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-low dark:bg-slate-800 text-[10px] text-outline font-bold uppercase border-b dark:border-slate-800">
+                    <tr className="bg-surface-container-low bg-slate-100 text-[10px] text-outline font-bold uppercase border-b border-slate-200">
                       <th className="p-3">Resident ID</th>
                       <th className="p-3">Name</th>
                       <th className="p-3">Room</th>
@@ -1586,9 +1586,9 @@ export default function App() {
                       if (orgScope === "lab") return r.name !== "MCA Lab";
                       return true;
                     }).map(r => (
-                      <tr key={r.id} className="hover:bg-surface-bright dark:hover:bg-slate-800/40">
+                      <tr key={r.id} className="hover:bg-surface-bright hover:bg-slate-50">
                         <td className="p-3 font-data-mono text-xs">{r.id}</td>
-                        <td className="p-3 font-semibold dark:text-white">{r.first_name} {r.last_name}</td>
+                        <td className="p-3 font-semibold text-slate-900">{r.first_name} {r.last_name}</td>
                         <td className="p-3 font-mono text-xs">{rooms.find(rm => rm.id === r.room_id)?.name || "Unassigned"}</td>
                       </tr>
                     ))}
@@ -1602,15 +1602,15 @@ export default function App() {
             ALERTS VIEW
           ============================================================================ */}
           {currentView === "alerts" && (
-            <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex justify-between items-center border-b dark:border-slate-800 pb-2 mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-primary dark:text-slate-100">Fall Alerts Incident Center</h3>
+            <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary text-slate-800">Fall Alerts Incident Center</h3>
                 <span className="text-[10px] text-outline font-bold uppercase">Incident Status Log</span>
               </div>
               <div className="overflow-x-auto text-left">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-low dark:bg-slate-800 text-[10px] text-outline font-bold uppercase border-b dark:border-slate-800">
+                    <tr className="bg-surface-container-low bg-slate-100 text-[10px] text-outline font-bold uppercase border-b border-slate-200">
                       <th className="p-3">Severity</th>
                       <th className="p-3">Room</th>
                       <th className="p-3">Trigger Type</th>
@@ -1621,7 +1621,7 @@ export default function App() {
                   </thead>
                   <tbody className="text-sm divide-y dark:divide-slate-800">
                     {alerts.map(a => (
-                      <tr key={a.id} className={`hover:bg-surface-bright dark:hover:bg-slate-800/40 ${a.status === "new" ? "bg-error-container/10 dark:bg-error/5" : ""}`}>
+                      <tr key={a.id} className={`hover:bg-surface-bright hover:bg-slate-50 ${a.status === "new" ? "bg-error-container/10 dark:bg-error/5" : ""}`}>
                         <td className="p-3">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
                             a.severity === "CRITICAL" ? "bg-error text-on-error" : "bg-tertiary-fixed text-on-tertiary-fixed-variant"
@@ -1629,7 +1629,7 @@ export default function App() {
                             {a.severity}
                           </span>
                         </td>
-                        <td className="p-3 font-semibold dark:text-white">{rooms.find(rm => rm.id === a.room_id)?.name || "Unknown"}</td>
+                        <td className="p-3 font-semibold text-slate-900">{rooms.find(rm => rm.id === a.room_id)?.name || "Unknown"}</td>
                         <td className="p-3 font-mono text-xs">{a.event_type}</td>
                         <td className="p-3 text-xs">{a.message}</td>
                         <td className="p-3">
@@ -1638,7 +1638,7 @@ export default function App() {
                               ? "bg-error-container text-error border border-error/20"
                               : a.status === "acknowledged"
                               ? "bg-secondary-container text-on-secondary-container border border-secondary"
-                              : "bg-slate-100 dark:bg-slate-800 text-on-surface"
+                              : "bg-slate-100 bg-slate-100 text-on-surface"
                           }`}>
                             {a.status}
                           </span>
@@ -1685,14 +1685,14 @@ export default function App() {
           {currentView === "analytics" && (
             <div className="space-y-6 text-left">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary border-b dark:border-slate-800 pb-2 mb-4 dark:text-slate-100">Occupancy Efficiency</h3>
+                <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-slate-200 pb-2 mb-4 text-slate-800">Occupancy Efficiency</h3>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-on-surface-variant dark:text-slate-400">Total Occupancy Rate</span>
+                      <span className="text-on-surface-variant text-slate-500">Total Occupancy Rate</span>
                       <span className="font-bold text-secondary font-data-mono">{occupancySummary.occupancy_rate}%</span>
                     </div>
-                    <div className="w-full bg-surface-container dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-surface-container bg-slate-100 h-2.5 rounded-full overflow-hidden">
                       <div className="bg-secondary h-full rounded-full" style={{ width: `${occupancySummary.occupancy_rate}%` }}></div>
                     </div>
                     <div className="flex justify-between items-center text-xs">
@@ -1702,24 +1702,24 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary border-b dark:border-slate-800 pb-2 mb-4 dark:text-slate-100">Fall Warnings Audit Trails</h3>
+                <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-slate-200 pb-2 mb-4 text-slate-800">Fall Warnings Audit Trails</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="border dark:border-slate-800 rounded-xl p-3 bg-surface dark:bg-slate-800/40">
+                    <div className="border border-slate-200 rounded-xl p-3 bg-surface bg-slate-100/40">
                       <span className="text-[9px] text-outline font-bold uppercase">Status: Awaiting Ack</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.filter(a => a.status === "new").length}</p>
+                      <p className="text-xl font-bold font-data-mono mt-1 text-slate-900">{alerts.filter(a => a.status === "new").length}</p>
                     </div>
-                    <div className="border dark:border-slate-800 rounded-xl p-3 bg-surface dark:bg-slate-800/40">
+                    <div className="border border-slate-200 rounded-xl p-3 bg-surface bg-slate-100/40">
                       <span className="text-[9px] text-outline font-bold uppercase">Status: In Progress</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.filter(a => a.status === "acknowledged").length}</p>
+                      <p className="text-xl font-bold font-data-mono mt-1 text-slate-900">{alerts.filter(a => a.status === "acknowledged").length}</p>
                     </div>
-                    <div className="border dark:border-slate-800 rounded-xl p-3 bg-surface dark:bg-slate-800/40">
+                    <div className="border border-slate-200 rounded-xl p-3 bg-surface bg-slate-100/40">
                       <span className="text-[9px] text-outline font-bold uppercase">Status: Resolved</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.filter(a => a.status === "resolved").length}</p>
+                      <p className="text-xl font-bold font-data-mono mt-1 text-slate-900">{alerts.filter(a => a.status === "resolved").length}</p>
                     </div>
-                    <div className="border dark:border-slate-800 rounded-xl p-3 bg-surface dark:bg-slate-800/40">
+                    <div className="border border-slate-200 rounded-xl p-3 bg-surface bg-slate-100/40">
                       <span className="text-[9px] text-outline font-bold uppercase">Total Warnings</span>
-                      <p className="text-xl font-bold font-data-mono mt-1 dark:text-white">{alerts.length}</p>
+                      <p className="text-xl font-bold font-data-mono mt-1 text-slate-900">{alerts.length}</p>
                     </div>
                   </div>
                 </div>
@@ -1736,14 +1736,14 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex justify-end">
           <div onClick={() => setShowSimulateDrawer(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"></div>
           
-          <div className="relative w-sidebar-width max-w-full h-full bg-surface-container-lowest dark:bg-slate-900 border-l dark:border-slate-800 p-6 flex flex-col justify-between shadow-2xl z-10 transition-all">
+          <div className="relative w-sidebar-width max-w-full h-full bg-white bg-slate-50 border-l border-slate-200 p-6 flex flex-col justify-between shadow-2xl z-10 transition-all">
             <div className="text-left font-sans">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-lg dark:text-white">Simulate Telemetry</h3>
+                <h3 className="font-bold text-lg text-slate-900">Simulate Telemetry</h3>
                 <button onClick={() => setShowSimulateDrawer(false)} className="material-symbols-outlined text-outline">close</button>
               </div>
 
-              <p className="text-xs text-on-surface-variant dark:text-slate-400 mb-6">
+              <p className="text-xs text-on-surface-variant text-slate-500 mb-6">
                 Send simulated subcarrier amplitude signals. Note that critical fall options will automatically trigger warnings in elder-care scopes.
               </p>
 
@@ -1751,7 +1751,7 @@ export default function App() {
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-outline mb-1">Target Node (Device)</label>
                   <select
-                    className="w-full border dark:border-slate-800 rounded p-2 text-xs bg-surface dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 rounded p-2 text-xs bg-surface bg-slate-100 text-slate-900"
                     value={simDeviceId}
                     onChange={(e) => setSimDeviceId(e.target.value)}
                   >
@@ -1771,7 +1771,7 @@ export default function App() {
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-outline mb-1">Subcarrier Pattern</label>
                   <select
-                    className="w-full border dark:border-slate-800 rounded p-2 text-xs bg-surface dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 rounded p-2 text-xs bg-surface bg-slate-100 text-slate-900"
                     value={simActivity}
                     onChange={(e) => setSimActivity(e.target.value)}
                   >
@@ -1807,14 +1807,14 @@ export default function App() {
       {/* 1. Add Org Modal */}
       {showAddOrgModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-4 dark:text-white">Add Organization</h3>
+          <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
+            <h3 className="font-bold text-headline-sm mb-4 text-slate-900">Add Organization</h3>
             <form onSubmit={addOrganization} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Organization Name</label>
                 <input
                   type="text"
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   placeholder="e.g. Sunrise Elder Care"
                   value={newOrgName}
                   onChange={(e) => setNewOrgName(e.target.value)}
@@ -1824,7 +1824,7 @@ export default function App() {
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Deployment Type</label>
                 <select
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newOrgType}
                   onChange={(e) => setNewOrgType(e.target.value)}
                 >
@@ -1836,7 +1836,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAddOrgModal(false)}
-                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container dark:text-white dark:border-slate-800"
+                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container text-slate-900 border-slate-200"
                 >
                   Cancel
                 </button>
@@ -1852,13 +1852,13 @@ export default function App() {
       {/* 2. Add Building Modal */}
       {showAddBuildingModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-4 dark:text-white">Add Building</h3>
+          <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
+            <h3 className="font-bold text-headline-sm mb-4 text-slate-900">Add Building</h3>
             <form onSubmit={addBuilding} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Parent Organization</label>
                 <select
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newBldOrgId}
                   onChange={(e) => setNewBldOrgId(e.target.value)}
                 >
@@ -1871,7 +1871,7 @@ export default function App() {
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Building Name</label>
                 <input
                   type="text"
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   placeholder="e.g. North Wing"
                   value={newBldName}
                   onChange={(e) => setNewBldName(e.target.value)}
@@ -1882,7 +1882,7 @@ export default function App() {
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Address</label>
                 <input
                   type="text"
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   placeholder="e.g. AJCE Campus"
                   value={newBldAddress}
                   onChange={(e) => setNewBldAddress(e.target.value)}
@@ -1892,7 +1892,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAddBuildingModal(false)}
-                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container dark:text-white dark:border-slate-800"
+                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container text-slate-900 border-slate-200"
                 >
                   Cancel
                 </button>
@@ -1908,13 +1908,13 @@ export default function App() {
       {/* 3. Add Floor Modal */}
       {showAddFloorModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-4 dark:text-white">Add Floor</h3>
+          <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
+            <h3 className="font-bold text-headline-sm mb-4 text-slate-900">Add Floor</h3>
             <form onSubmit={addFloor} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Parent Building</label>
                 <select
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newFlrBldId}
                   onChange={(e) => setNewFlrBldId(e.target.value)}
                 >
@@ -1927,7 +1927,7 @@ export default function App() {
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Floor Number</label>
                 <input
                   type="number"
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newFlrNum}
                   onChange={(e) => setNewFlrNum(e.target.value)}
                   required
@@ -1937,7 +1937,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAddFloorModal(false)}
-                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container dark:text-white dark:border-slate-800"
+                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container text-slate-900 border-slate-200"
                 >
                   Cancel
                 </button>
@@ -1953,13 +1953,13 @@ export default function App() {
       {/* 4. Add Room Modal */}
       {showAddRoomModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-4 dark:text-white">Add Room Layout</h3>
+          <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
+            <h3 className="font-bold text-headline-sm mb-4 text-slate-900">Add Room Layout</h3>
             <form onSubmit={addRoom} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Parent Floor</label>
                 <select
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newRmFlrId}
                   onChange={(e) => setNewRmFlrId(e.target.value)}
                 >
@@ -1974,7 +1974,7 @@ export default function App() {
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Room Name</label>
                 <input
                   type="text"
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   placeholder="e.g. Research Lab"
                   value={newRmName}
                   onChange={(e) => setNewRmName(e.target.value)}
@@ -1985,7 +1985,7 @@ export default function App() {
                 <div>
                   <label className="block text-xs font-bold uppercase text-outline mb-1">Room Type</label>
                   <select
-                    className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                     value={newRmType}
                     onChange={(e) => setNewRmType(e.target.value)}
                   >
@@ -1998,7 +1998,7 @@ export default function App() {
                   <label className="block text-xs font-bold uppercase text-outline mb-1">Capacity</label>
                   <input
                     type="number"
-                    className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                     value={newRmCapacity}
                     onChange={(e) => setNewRmCapacity(e.target.value)}
                     required
@@ -2009,7 +2009,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAddRoomModal(false)}
-                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container dark:text-white dark:border-slate-800"
+                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container text-slate-900 border-slate-200"
                 >
                   Cancel
                 </button>
@@ -2025,13 +2025,13 @@ export default function App() {
       {/* 5. Add Device Modal */}
       {showAddDeviceModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-4 dark:text-white">Register ESP32 CSI Node</h3>
+          <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
+            <h3 className="font-bold text-headline-sm mb-4 text-slate-900">Register ESP32 CSI Node</h3>
             <form onSubmit={addDevice} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Room Assignment</label>
                 <select
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newDevRmId}
                   onChange={(e) => setNewDevRmId(e.target.value)}
                 >
@@ -2044,7 +2044,7 @@ export default function App() {
                 <label className="block text-xs font-bold uppercase text-outline mb-1">MAC Address</label>
                 <input
                   type="text"
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   placeholder="e.g. 4C:75:25:AA:BB:CC"
                   value={newDevMac}
                   onChange={(e) => setNewDevMac(e.target.value)}
@@ -2055,7 +2055,7 @@ export default function App() {
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Device Name / Version</label>
                 <input
                   type="text"
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newDevFirmware}
                   onChange={(e) => setNewDevFirmware(e.target.value)}
                 />
@@ -2064,7 +2064,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAddDeviceModal(false)}
-                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container dark:text-white dark:border-slate-800"
+                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container text-slate-900 border-slate-200"
                 >
                   Cancel
                 </button>
@@ -2080,13 +2080,13 @@ export default function App() {
       {/* 6. Add Resident Modal */}
       {showAddResidentModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-4 dark:text-white">Add Resident</h3>
+          <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
+            <h3 className="font-bold text-headline-sm mb-4 text-slate-900">Add Resident</h3>
             <form onSubmit={addResident} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Assigned Room</label>
                 <select
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                   value={newResRmId}
                   onChange={(e) => setNewResRmId(e.target.value)}
                 >
@@ -2100,7 +2100,7 @@ export default function App() {
                   <label className="block text-xs font-bold uppercase text-outline mb-1">First Name</label>
                   <input
                     type="text"
-                    className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                     value={newResFirst}
                     onChange={(e) => setNewResFirst(e.target.value)}
                     required
@@ -2110,7 +2110,7 @@ export default function App() {
                   <label className="block text-xs font-bold uppercase text-outline mb-1">Last Name</label>
                   <input
                     type="text"
-                    className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white"
+                    className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900"
                     value={newResLast}
                     onChange={(e) => setNewResLast(e.target.value)}
                     required
@@ -2121,7 +2121,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAddResidentModal(false)}
-                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container dark:text-white dark:border-slate-800"
+                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container text-slate-900 border-slate-200"
                 >
                   Cancel
                 </button>
@@ -2137,7 +2137,7 @@ export default function App() {
       {/* 7. Resolve Alert Modal */}
       {showResolveModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-container-lowest dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
+          <div className="bg-white bg-slate-50 border border-slate-200 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
             <h3 className="font-bold text-headline-sm mb-2 text-error">Resolve Incident Alert</h3>
             <p className="text-xs text-outline mb-4">
               Enter resolution notes to clear the warning banner.
@@ -2146,7 +2146,7 @@ export default function App() {
               <div>
                 <label className="block text-xs font-bold uppercase text-outline mb-1">Resolution Actions / Notes</label>
                 <textarea
-                  className="w-full border dark:border-slate-800 rounded p-2 text-sm bg-surface dark:bg-slate-800 dark:text-white h-24"
+                  className="w-full border border-slate-200 rounded p-2 text-sm bg-surface bg-slate-100 text-slate-900 h-24"
                   placeholder="e.g. Caregiver dispatched. Resident verified safe."
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
@@ -2160,7 +2160,7 @@ export default function App() {
                     setShowResolveModal(null);
                     setResolutionNotes("");
                   }}
-                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container dark:text-white dark:border-slate-800"
+                  className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-surface-container text-slate-900 border-slate-200"
                 >
                   Cancel
                 </button>
