@@ -1,0 +1,16 @@
+# Python virtual environment
+backend/venv/
+backend/wifisense.db
+
+# Node.js dependencies
+frontend/node_modules/
+frontend/dist/
+
+# Python caching
+__pycache__/
+*.pyc
+
+# Local environment variables
+.env
+.DS_Store
+/CSI_data/
