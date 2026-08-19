@@ -1266,59 +1266,154 @@ export default function App() {
           )}
 
           {/* ============================================================================
-            2. ROOM OCCUPANCY VIEW (DEDICATED FULL GRID SCREEN)
+            2. ROOM OCCUPANCY VIEW (DEDICATED FULL GRID SCREEN / DETAILED ROOM 204 VIEW)
           ============================================================================ */}
           {currentView === "occupancy" && (
             <div className="space-y-6 text-left">
-              <div className="mb-stack-lg">
-                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Room Occupancy View</h2>
-                <p className="text-body-md text-slate-500 dark:text-slate-400">Live floor distribution grid mapped to real monitored users.</p>
+              {/* Breadcrumbs & Navigation */}
+              <div className="flex items-center justify-between mb-4">
+                <nav className="flex text-body-md font-body-md text-slate-500 dark:text-slate-400">
+                  <ol className="inline-flex items-center space-x-1 md:space-x-3">
+                    <li className="inline-flex items-center">
+                      <a className="inline-flex items-center hover:text-teal-650 transition-colors cursor-pointer">
+                        Building A
+                      </a>
+                    </li>
+                    <li>
+                      <div className="flex items-center">
+                        <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
+                        <a className="hover:text-teal-650 transition-colors ml-1 md:ml-2 cursor-pointer">Floor 2</a>
+                      </div>
+                    </li>
+                    <li aria-current="page">
+                      <div className="flex items-center">
+                        <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
+                        <span className="text-slate-800 dark:text-white font-semibold ml-1 md:ml-2">Room 204</span>
+                      </div>
+                    </li>
+                  </ol>
+                </nav>
+                <div className="flex gap-2">
+                  <button className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center">
+                    <span className="material-symbols-outlined">chevron_left</span>
+                  </button>
+                  <button className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center">
+                    <span className="material-symbols-outlined">chevron_right</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
-                {occupancySummary.occupied_room_details.map(rm => {
-                  const occupants = residents.filter(r => r.room_id === rm.room_id);
-                  return (
-                    <div 
-                      key={rm.room_id} 
-                      className={`border rounded-2xl p-5 relative overflow-hidden transition-all duration-300 shadow-sm ${
-                        rm.is_occupied
-                          ? rm.current_activity === "Fall_Detected"
-                            ? "bg-red-50 dark:bg-red-950/20 border-red-500 ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-950 animate-pulse"
-                            : "bg-teal-50/40 dark:bg-teal-950/10 border-teal-500"
-                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="font-bold text-base text-slate-900 dark:text-white truncate">{rm.room_name}</span>
-                        <span className={`w-2.5 h-2.5 rounded-full ${
-                          rm.is_occupied 
-                            ? rm.current_activity === "Fall_Detected" ? "bg-red-500 animate-ping" : "bg-teal-500"
-                            : "bg-slate-350"
-                        }`}></span>
-                      </div>
-                      
-                      <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-4">{rm.room_type}</p>
-                      
-                      <div className="space-y-2">
-                        <div className="text-xs text-slate-600 dark:text-slate-300">
-                          <span className="font-bold block text-slate-450 uppercase text-[9px] mb-0.5">Assigned Subject</span>
-                          {occupants.map(o => `${o.first_name} ${o.last_name}`).join(", ") || "None"}
+              {/* Bento Grid Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                {/* Current Status Card (Large) */}
+                <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden shadow-sm">
+                  <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(45deg, #0b1c30 0, #0b1c30 1px, transparent 1px, transparent 10px)" }}></div>
+                  <div className="flex justify-between items-start mb-6 relative z-10">
+                    <div>
+                      <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold mb-1">Room 204</h1>
+                      <p className="text-body-md font-body-md text-slate-500 dark:text-slate-400">Conference Room - East Wing</p>
+                    </div>
+                    <div className="bg-slate-950 dark:bg-slate-800 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full bg-teal-400 ${activeTelemetryActivity !== "Empty" ? "animate-pulse" : ""}`}></span>
+                      <span className="text-label-caps font-label-caps font-bold tracking-wider uppercase">
+                        {activeTelemetryActivity !== "Empty" ? "OCCUPIED" : "VACANT"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-5 flex flex-col justify-center">
+                      <span className="text-label-caps font-label-caps text-slate-400 mb-2">DETECTED ACTIVITY</span>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                          <span className="material-symbols-outlined" style={{ fontSize: "28px" }}>
+                            {activeTelemetryActivity === "Walking" ? "directions_walk" : activeTelemetryActivity === "Sitting" ? "bed" : "airline_seat_recline_normal"}
+                          </span>
                         </div>
-                        <div className="text-xs text-slate-650 dark:text-slate-300">
-                          <span className="font-bold block text-slate-450 uppercase text-[9px] mb-0.5">Status telemetry</span>
-                          {rm.is_occupied ? (
-                            <span className="font-semibold text-teal-650 dark:text-teal-400">
-                              Active: {rm.current_activity.replace("_", " ")}
-                            </span>
-                          ) : (
-                            <span className="text-slate-450">Vacant</span>
-                          )}
+                        <div>
+                          <span className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold block">{activeTelemetryActivity.replace("_", " ")}</span>
+                          <span className="text-data-mono font-data-mono text-teal-650 dark:text-teal-400 font-bold">High Confidence (94%)</span>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-5 flex flex-col justify-center">
+                      <span className="text-label-caps font-label-caps text-slate-400 mb-2">CURRENT DURATION</span>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center text-amber-600">
+                          <span className="material-symbols-outlined" style={{ fontSize: "28px" }}>timer</span>
+                        </div>
+                        <div>
+                          <span className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold block">
+                            {activeTelemetryActivity !== "Empty" ? "15 mins" : "0 mins"}
+                          </span>
+                          <span className="text-data-mono font-data-mono text-slate-500">Started 10:42 AM</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex justify-between items-center text-body-sm font-body-md text-slate-500 border-t border-slate-200 dark:border-slate-800 pt-4">
+                    <span>Signal Strength: Excellent (-45 dBm)</span>
+                    <span>Last Updated: Just now</span>
+                  </div>
+                </div>
+
+                {/* Occupancy Statistics (Side Panel) */}
+                <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col gap-6 shadow-sm">
+                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white border-b border-slate-250 dark:border-slate-800 pb-2 font-bold">Occupancy Statistics</h3>
+                  <div className="space-y-4 flex-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-550 dark:text-slate-400">Daily Average</span>
+                      <span className="font-data-mono text-slate-905 dark:text-white font-semibold">4.2 hours</span>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-teal-650 h-full rounded-full" style={{ width: "35%" }}></div>
+                    </div>
+                    <div className="flex justify-between items-center mt-4 text-sm">
+                      <span className="text-slate-550 dark:text-slate-400">Peak Time</span>
+                      <span className="font-data-mono text-slate-905 dark:text-white font-semibold">14:00 - 15:30</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-4 text-sm">
+                      <span className="text-slate-550 dark:text-slate-400">Total Events (24h)</span>
+                      <span className="font-data-mono text-slate-905 dark:text-white font-semibold">12</span>
+                    </div>
+                    <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
+                      <span className="text-label-caps font-label-caps text-slate-405 block mb-1">LAST KNOWN VACANCY</span>
+                      <span className="text-body-md font-body-md text-slate-800 dark:text-slate-205 block mb-1">Today, 09:15 AM - 10:42 AM</span>
+                      <span className="text-data-mono font-data-mono text-teal-650 dark:text-teal-400 block font-bold">Duration: 1h 27m</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Historical Occupancy Timeline (Full Width) */}
+                <div className="lg:col-span-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Historical Occupancy (Last 24 Hours)</h3>
+                    <div className="flex items-center gap-4 text-label-caps font-label-caps text-slate-455">
+                      <div className="flex items-center gap-1"><span className="w-3 h-3 bg-teal-600 rounded-sm"></span> Occupied</div>
+                      <div className="flex items-center gap-1"><span className="w-3 h-3 bg-slate-100 dark:bg-slate-800 rounded-sm border border-slate-200 dark:border-slate-700"></span> Vacant</div>
+                    </div>
+                  </div>
+                  {/* Gantt Chart Container */}
+                  <div className="relative pt-4 pb-8">
+                    <div className="absolute top-0 left-0 w-full flex justify-between text-data-mono font-data-mono text-slate-400 text-xs px-2">
+                      <span>12 PM</span>
+                      <span>4 PM</span>
+                      <span>8 PM</span>
+                      <span>12 AM</span>
+                      <span>4 AM</span>
+                      <span>8 AM</span>
+                      <span>Now</span>
+                    </div>
+                    <div className="h-8 bg-slate-100 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 mt-6 relative overflow-hidden flex">
+                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "15%" }}></div>
+                      <div className="h-full bg-transparent border-r border-slate-200 dark:border-slate-800" style={{ width: "10%" }}></div>
+                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "8%" }}></div>
+                      <div className="h-full bg-transparent border-r border-slate-200 dark:border-slate-800" style={{ width: "40%" }}></div>
+                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "12%" }}></div>
+                      <div className="h-full bg-transparent border-r border-slate-200 dark:border-slate-800" style={{ width: "10%" }}></div>
+                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "5%" }}></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1328,64 +1423,182 @@ export default function App() {
           ============================================================================ */}
           {currentView === "caregiver" && (
             <div className="space-y-6 text-left">
-              <div className="mb-stack-lg">
-                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Caregiver Dashboard</h2>
-                <p className="text-body-md text-slate-500 dark:text-slate-400">Shift handovers, caregiver logs, and patient safety tracking.</p>
+              {/* Page Header */}
+              <div className="mb-stack-lg flex justify-between items-end">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Caregiver Dashboard</h2>
+                  <p className="text-body-md text-slate-500 dark:text-slate-400">Shift handovers, caregiver logs, and patient safety tracking.</p>
+                </div>
+                <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                  System Scan Status: Normal
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
-                {/* Left Form (Shift Note) */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold border-b pb-2 mb-4">Log Shift Note</h3>
-                    <form onSubmit={addShiftNote} className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Author Caregiver</label>
-                        <select
-                          className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-800 dark:text-white"
-                          value={newShiftCaregiver}
-                          onChange={(e) => setNewShiftCaregiver(e.target.value)}
-                        >
-                          <option value="Blesson Joseph Byju">Blesson Joseph Byju</option>
-                          <option value="Abhinanth S Pillai">Abhinanth S Pillai</option>
-                          <option value="Abhinand M A">Abhinand M A</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Observations / Notes</label>
-                        <textarea
-                          className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-850 dark:text-white h-28"
-                          placeholder="e.g. Conducted rounds. Checked seniors. All safe."
-                          value={newShiftNote}
-                          onChange={(e) => setNewShiftNote(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        className="w-full py-2 bg-teal-600 text-white rounded-lg text-xs font-bold uppercase shadow hover:bg-teal-700"
-                      >
-                        Submit Shift Log
-                      </button>
-                    </form>
+              {/* Critical Alert Banner */}
+              {activeFallAlert && (
+                <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg p-4 mb-6 flex items-center justify-between shadow-sm pulse-animation">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined fill text-red-500 text-2xl">warning</span>
+                    <div>
+                      <h2 className="text-headline-sm font-headline-sm font-bold uppercase text-red-700">POTENTIAL FALL DETECTED - {activeFallAlert.message.split(" ")[0] || "Room"}</h2>
+                      <p className="text-body-md font-body-md">{activeFallAlert.message}</p>
+                    </div>
                   </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleAcknowledge(activeFallAlert.id)}
+                      className="px-4 py-2 bg-transparent border border-red-500 text-red-600 rounded font-body-md font-semibold hover:bg-red-500/10 transition-colors"
+                    >
+                      Acknowledge
+                    </button>
+                    <button 
+                      onClick={() => setShowResolveModal(activeFallAlert.id)}
+                      className="px-4 py-2 bg-red-650 text-white rounded font-body-md font-semibold hover:opacity-90 transition-opacity"
+                    >
+                      Dispatch Help
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Dashboard Layout: 12-column Grid */}
+              <div className="grid grid-cols-12 gap-gutter">
+                {/* Left Column: Active Incidents & Assigned Residents (8 cols on desktop) */}
+                <div className="col-span-12 xl:col-span-8 flex flex-col gap-gutter">
+                  {/* Active Incidents Table */}
+                  <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
+                      <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Active Incidents</h3>
+                      <span className={`px-2 py-1 rounded text-label-caps font-label-caps ${alerts.filter(a => a.status !== "resolved").length > 0 ? "bg-red-50 text-red-650 font-bold" : "bg-teal-50 text-teal-650 font-bold"}`}>
+                        {alerts.filter(a => a.status !== "resolved").length} Active
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 uppercase">
+                          <tr>
+                            <th className="px-5 py-3">Severity</th>
+                            <th className="px-5 py-3">Room</th>
+                            <th className="px-5 py-3">Resident</th>
+                            <th className="px-5 py-3">Type</th>
+                            <th className="px-5 py-3">Time</th>
+                            <th className="px-5 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-body-md font-body-md">
+                          {alerts.filter(a => a.status !== "resolved").map(a => (
+                            <tr key={a.id} className="bg-red-50/20 dark:bg-red-950/10">
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                                  <span className="text-red-600 font-semibold">{a.event_type === "Fall_Detected" ? "Critical" : "Warning"}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 font-data-mono text-data-mono">{rooms.find(r => r.id === a.room_id)?.name || "Room"}</td>
+                              <td className="px-5 py-4 font-semibold text-slate-900 dark:text-white">
+                                {residents.filter(r => r.room_id === a.room_id).map(r => `${r.first_name} ${r.last_name}`).join(", ") || "Mary Smith"}
+                              </td>
+                              <td className="px-5 py-4">{a.event_type.replace("_", " ")}</td>
+                              <td className="px-5 py-4 text-slate-500 font-data-mono text-data-mono">{new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                              <td className="px-5 py-4 text-right">
+                                {a.status === "new" && (
+                                  <button onClick={() => handleAcknowledge(a.id)} className="text-teal-650 hover:underline mr-3 font-semibold">Acknowledge</button>
+                                )}
+                                <button onClick={() => setShowResolveModal(a.id)} className="px-3 py-1 bg-teal-600 text-white rounded hover:opacity-90 transition-opacity">Resolve</button>
+                              </td>
+                            </tr>
+                          ))}
+                          {alerts.filter(a => a.status !== "resolved").length === 0 && (
+                            <tr>
+                              <td colSpan="6" className="p-8 text-center text-slate-400 italic">No pending health incidents. All clear.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  {/* Assigned Residents Grid */}
+                  <section>
+                    <div className="flex justify-between items-end mb-4">
+                      <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Assigned Residents Overview</h3>
+                      <div className="flex gap-2">
+                        <span className="flex items-center gap-1 text-label-caps font-label-caps text-slate-550"><span className="w-2 h-2 bg-teal-500 rounded-full"></span> Monitored</span>
+                        <span className="flex items-center gap-1 text-label-caps font-label-caps text-slate-550"><span className="w-2 h-2 bg-slate-300 rounded-full"></span> Vacant</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {residents.map((res, i) => {
+                        const rm = rooms.find(r => r.id === res.room_id);
+                        const isFall = rm && occupancySummary.occupied_room_details.find(d => d.room_id === rm.id)?.current_activity === "Fall_Detected";
+                        return (
+                          <div 
+                            key={res.id} 
+                            onClick={() => {
+                              setCurrentView("occupancy");
+                            }}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3 hover:border-teal-500 transition-colors cursor-pointer group"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-950/30 flex items-center justify-center text-teal-700 dark:text-teal-400 font-headline-sm font-bold">
+                                  {res.first_name[0]}{res.last_name[0]}
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-slate-900 dark:text-white">{res.first_name} {res.last_name}</h4>
+                                  <p className="text-body-md font-data-mono text-slate-500">{rm?.name || "Room"}</p>
+                                </div>
+                              </div>
+                              <span className={`material-symbols-outlined ${isFall ? "text-red-500 fill animate-bounce" : "text-teal-650"}`} title="Assigned Subject">
+                                {isFall ? "emergency_home" : "home"}
+                              </span>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-950 rounded-lg p-3 mt-2 flex justify-between items-center text-xs">
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-405 uppercase">ACTIVITY STATUS</p>
+                                <p className="font-semibold text-slate-850 dark:text-white flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[16px]">person</span> 
+                                  {occupancySummary.occupied_room_details.find(d => d.room_id === res.room_id)?.current_activity.replace("_", " ") || "Resting"}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-bold text-slate-405 uppercase">LAST TIMEOUT</p>
+                                <p className="font-data-mono text-data-mono text-slate-850 dark:text-white">Live</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
                 </div>
 
-                {/* Right Lists (Shift Handovers) */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold border-b pb-2 mb-4">Shift Handover Logs</h3>
-                  <div className="space-y-4 max-h-[360px] overflow-y-auto pr-2">
-                    {caregiverLogs.map(log => (
-                      <div key={log.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 flex flex-col gap-1">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-sm text-slate-900 dark:text-white">{log.caregiver}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{log.time}</span>
+                {/* Right Column: Alert History Sidebar (4 cols on desktop) */}
+                <aside className="col-span-12 xl:col-span-4 flex flex-col gap-gutter">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
+                    <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
+                      <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-slate-500">history</span>
+                        Alert Timeline
+                      </h3>
+                      <button onClick={() => setCurrentView("alerts")} className="text-teal-605 text-label-caps font-label-caps font-semibold hover:underline">View All</button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                      {alerts.map((al, idx) => (
+                        <div key={al.id} className="relative pl-6 pb-4 border-l-2 border-slate-200 dark:border-slate-800 last:border-0 last:pb-0">
+                          <span className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 ${al.status === "resolved" ? "bg-slate-400" : "bg-red-500 animate-pulse"}`}></span>
+                          <div className="flex justify-between items-start mb-1 text-xs">
+                            <span className="text-slate-400 font-data-mono">{new Date(al.created_at).toLocaleTimeString()}</span>
+                            <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-full ${al.status === "resolved" ? "bg-slate-100 text-slate-650" : "bg-red-50 text-red-650"}`}>{al.status}</span>
+                          </div>
+                          <p className="font-bold text-slate-900 dark:text-white text-sm">{al.event_type.replace("_", " ")}</p>
+                          <p className="text-xs text-slate-550">{rooms.find(r => r.id === al.room_id)?.name || "Room"}</p>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-350">{log.notes}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </aside>
               </div>
             </div>
           )}
@@ -1445,41 +1658,229 @@ export default function App() {
             5. SYSTEM ADMIN DASHBOARD (USER & ROLES AUDITING)
           ============================================================================ */}
           {currentView === "sysadmin" && (
-            <div className="space-y-6 text-left">
-              <div className="mb-stack-lg">
-                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">System Admin Dashboard</h2>
-                <p className="text-body-md text-slate-500 dark:text-slate-400">Global system-wide caregiver accounts and administrative configurations.</p>
+            <div className="flex flex-col gap-gutter text-left">
+              {/* Page Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-label-caps text-label-caps mb-2">
+                    <span>System Config</span>
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                    <span className="text-teal-650 font-bold">User Management</span>
+                  </div>
+                  <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">User Administration</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-body-md text-body-md mt-1">Manage institutional access, role scopes, and system permissions.</p>
+                </div>
+                <button 
+                  onClick={() => setIsRegistering(true)}
+                  className="bg-teal-600 text-white px-5 py-2.5 rounded-lg font-label-caps text-label-caps hover:bg-teal-700 transition-colors flex items-center gap-2 self-start md:self-auto shadow-sm font-semibold"
+                >
+                  <span className="material-symbols-outlined">person_add</span>
+                  Add New User
+                </button>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white border-b pb-2 mb-4">Caregivers & Administrators Accounts</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
-                        <th className="p-3">Name</th>
-                        <th className="p-3">Email Address</th>
-                        <th className="p-3">System Access Role</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="p-3 font-semibold text-slate-900 dark:text-white">Blesson Joseph Byju</td>
-                        <td className="p-3">blesson@wifisense.com</td>
-                        <td className="p-3 font-bold text-teal-650 dark:text-teal-400 uppercase text-xs">system_admin</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="p-3 font-semibold text-slate-900 dark:text-white">Abhinand M A</td>
-                        <td className="p-3">abhinand@wifisense.com</td>
-                        <td className="p-3 font-bold text-teal-650 dark:text-teal-400 uppercase text-xs">facility_manager</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="p-3 font-semibold text-slate-900 dark:text-white">Abhinanth S Pillai</td>
-                        <td className="p-3">abhinanth@wifisense.com</td>
-                        <td className="p-3 font-bold text-teal-655 dark:text-teal-450 uppercase text-xs">caregiver</td>
-                      </tr>
-                    </tbody>
-                  </table>
+              {/* Bento Grid Layout for Content */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-gutter">
+                {/* Left/Main Column: Active Users Table */}
+                <div className="xl:col-span-2 flex flex-col gap-4">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col h-full shadow-sm">
+                    <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
+                      <h2 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Active Personnel</h2>
+                      <button className="text-teal-600 dark:text-teal-400 font-label-caps text-label-caps hover:underline flex items-center gap-1">
+                        Export CSV <span className="material-symbols-outlined text-[16px]">download</span>
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
+                            <th className="p-4 font-label-caps text-label-caps text-slate-500 dark:text-slate-400 font-semibold">User Details</th>
+                            <th className="p-4 font-label-caps text-label-caps text-slate-500 dark:text-slate-400 font-semibold">Role & Scope</th>
+                            <th className="p-4 font-label-caps text-label-caps text-slate-500 dark:text-slate-400 font-semibold">Permissions Profile</th>
+                            <th className="p-4 font-label-caps text-label-caps text-slate-500 dark:text-slate-400 font-semibold text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {/* Dr. Evelyn Lin (Static/Seeded) */}
+                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">EL</div>
+                                <div>
+                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Dr. Evelyn Lin</div>
+                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: 948-AX-01</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-col gap-1">
+                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
+                                  <span className="material-symbols-outlined text-[14px]">shield_person</span> Admin
+                                </span>
+                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">St. Jude - Ward A, B, C</span>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-wrap gap-1">
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">SysConfig</span>
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">AlertRes</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-right">
+                              <span className="inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/20 text-teal-600 dark:text-teal-400 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span> Active
+                              </span>
+                            </td>
+                          </tr>
+
+                          {/* Dynamic Active Registered Users */}
+                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">BJ</div>
+                                <div>
+                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Blesson Joseph Byju</div>
+                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: System-Admin</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-col gap-1">
+                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
+                                  <span className="material-symbols-outlined text-[14px]">shield_person</span> system_admin
+                                </span>
+                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">Global Deployment Scope</span>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-wrap gap-1">
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">SysConfig</span>
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">AlertRes</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-right">
+                              <span className="inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> Active
+                              </span>
+                            </td>
+                          </tr>
+
+                          {/* Abhinand M A */}
+                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">AM</div>
+                                <div>
+                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Abhinand M A</div>
+                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: Facility-Manager</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-col gap-1">
+                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-750 rounded px-2 py-0.5 w-max">
+                                  <span className="material-symbols-outlined text-[14px]">supervisor_account</span> facility_manager
+                                </span>
+                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">Amal Jyothi College</span>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-wrap gap-1">
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">AlertRes</span>
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">Analytics</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-right">
+                              <span className="inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/20 text-teal-655 dark:text-teal-450 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> Active
+                              </span>
+                            </td>
+                          </tr>
+
+                          {/* Abhinanth S Pillai */}
+                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">AP</div>
+                                <div>
+                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Abhinanth S Pillai</div>
+                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: Caregiver-Lab</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-col gap-1">
+                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-750 rounded px-2 py-0.5 w-max bg-slate-50 dark:bg-slate-800">
+                                  <span className="material-symbols-outlined text-[14px]">badge</span> caregiver
+                                </span>
+                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">WiFi Sense Research Lab</span>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-wrap gap-1">
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">ViewOnly</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-right">
+                              <span className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full font-label-caps text-label-caps">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Offline
+                              </span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between text-xs">
+                      <span className="text-slate-550 dark:text-slate-400">Showing 4 of 4 active accounts</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Role Permissions Grid */}
+                <div className="xl:col-span-1 flex flex-col gap-4">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col h-full">
+                    <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                      <h2 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Role Matrix</h2>
+                      <p className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs mt-1">System-wide access levels.</p>
+                    </div>
+                    <div className="p-0 flex-1">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 font-bold uppercase text-[10px] text-slate-450">
+                            <th className="p-3 font-semibold">Capability</th>
+                            <th className="p-3 text-center font-semibold">Admin</th>
+                            <th className="p-3 text-center font-semibold">Manager</th>
+                            <th className="p-3 text-center font-semibold">Caregiver</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          <tr>
+                            <td className="p-3 font-body-md text-body-md text-slate-800 dark:text-slate-200">Live Monitoring</td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 font-body-md text-body-md text-slate-800 dark:text-slate-200">Alert Resolution</td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-slate-300 dark:text-slate-700 text-[18px]">remove</span></td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 font-body-md text-body-md text-slate-800 dark:text-slate-200">Device Config</td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-slate-300 dark:text-slate-700 text-[18px]">remove</span></td>
+                            <td className="p-3 text-center"><span className="material-symbols-outlined text-slate-300 dark:text-slate-700 text-[18px]">remove</span></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-center">
+                      <button className="text-teal-600 dark:text-teal-400 font-label-caps text-label-caps hover:underline flex items-center gap-1">
+                        Edit Policy <span className="material-symbols-outlined text-[16px]">edit</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1489,32 +1890,808 @@ export default function App() {
             OTHERS (CORPORATE, FAMILY, PHYSICAL CONFIG, DEVICE HEALTH, ALERTS, ANALYTICS)
           ============================================================================ */}
           {currentView === "corporate" && (
-            /* Corporate Facility View: defined above */
-            null
+            <div className="space-y-6 text-left">
+              {/* Corporate Facility View Title Row */}
+              <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Corporate Overview</h2>
+                  <p className="text-body-md text-slate-500 dark:text-slate-400">Meeting Room Occupancy and Underutilized Spaces Management.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setToastMessage({ type: "success", text: "Report triggered: Occupancy metrics logged." })}
+                    className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
+                  >
+                    Export Analytics
+                  </button>
+                </div>
+              </div>
+
+              {/* Util Bento Widgets */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-gutter">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                  <div className="text-label-caps font-label-caps text-slate-400 mb-1">Peak Utilization</div>
+                  <div className="font-headline-lg text-slate-900 dark:text-white font-bold">88%</div>
+                  <div className="w-full bg-slate-100 dark:bg-slate-850 h-2 rounded-full mt-3 overflow-hidden">
+                    <div className="bg-teal-600 h-full rounded-full" style={{ width: "88%" }}></div>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                  <div className="text-label-caps font-label-caps text-slate-400 mb-1">Underutilized Spaces</div>
+                  <div className="font-headline-lg text-slate-900 dark:text-white font-bold">
+                    {occupancySummary.vacant_rooms} rooms
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">Space efficiency optimizations identified.</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                  <div className="text-label-caps font-label-caps text-slate-400 mb-1">Potential Savings</div>
+                  <div className="font-headline-lg text-teal-600 dark:text-teal-400 font-bold">15%</div>
+                  <p className="text-xs text-slate-500 mt-2">Idle HVAC and lighting energy recovery rate.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-gutter items-start">
+                {/* Meeting Rooms Table */}
+                <div className="xl:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white">
+                    Real-time Meeting Room Status
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-450 uppercase font-semibold">
+                          <th className="p-4">Room Name</th>
+                          <th className="p-4">Capacity</th>
+                          <th className="p-4">Status</th>
+                          <th className="p-4">Current Stance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {rooms.filter(r => r.name.includes("MCA") || r.name.includes("Staff") || r.name.includes("IoT") || r.name.includes("Seminar")).map(r => {
+                          const occ = occupancySummary.occupied_room_details.find(d => d.room_id === r.id);
+                          return (
+                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
+                              <td className="p-4 font-bold text-slate-900 dark:text-white">{r.name}</td>
+                              <td className="p-4">{r.capacity} pax</td>
+                              <td className="p-4">
+                                {occ?.is_occupied ? (
+                                  <span className="bg-teal-50 dark:bg-teal-950/20 text-teal-650 px-2 py-0.5 rounded text-[10px] font-bold">OCCUPIED</span>
+                                ) : (
+                                  <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded text-[10px] font-bold">VACANT</span>
+                                )}
+                              </td>
+                              <td className="p-4 font-mono text-slate-500">
+                                {occ?.is_occupied ? occ.current_activity : "No movement"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Underutilized spaces list */}
+                <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold mb-4">Underutilized Spaces</h3>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded">
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">MCA Seminar Hall</div>
+                      <div className="text-[10px] text-slate-500 mt-1">Average Utilization: 8.5%</div>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded">
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">Staff Room A</div>
+                      <div className="text-[10px] text-slate-500 mt-1">Average Utilization: 11.2%</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setToastMessage({ type: "success", text: "Repurposing report compiled successfully." })}
+                    className="w-full mt-4 bg-teal-600 text-white py-2 rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
+                  >
+                    Generate Repurposing Report
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
+
           {currentView === "family" && (
-            /* Family Portal View: defined above */
-            null
+            <div className="space-y-6 text-left">
+              {/* Page Header */}
+              <div className="mb-stack-lg flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                  <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold mb-1">Access Control &amp; Privacy</h1>
+                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400">Configure family member visibility and manage privacy settings for resident monitoring.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setToastMessage({ type: "success", text: "Exporting access audit logs..." })}
+                    className="px-4 py-2 border border-teal-600 text-teal-600 dark:text-teal-400 rounded-lg text-label-caps font-label-caps hover:bg-teal-50 dark:hover:bg-teal-950/20 font-bold"
+                  >
+                    Export Logs
+                  </button>
+                  <button 
+                    onClick={() => setToastMessage({ type: "success", text: "Privacy settings saved." })}
+                    className="px-4 py-2 bg-teal-650 text-white rounded-lg text-label-caps font-label-caps hover:opacity-90 font-bold"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+
+              {/* Bento Grid Layout */}
+              <div className="grid grid-cols-12 gap-gutter">
+                {/* Privacy Guarantee Hero Card (Span 8) */}
+                <div className="col-span-12 lg:col-span-8 bg-teal-50/40 dark:bg-teal-950/10 rounded-xl border border-slate-200 dark:border-slate-800 p-8 relative overflow-hidden flex flex-col justify-between shadow-sm">
+                  {/* Abstract Wi-Fi wave background element */}
+                  <div className="absolute -right-20 -top-20 w-64 h-64 border-[40px] border-teal-100/30 dark:border-teal-900/10 rounded-full opacity-50"></div>
+                  
+                  <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 mb-6">
+                      <span className="material-symbols-outlined text-[16px] text-teal-600 dark:text-teal-400">verified_user</span>
+                      <span className="text-label-caps font-label-caps text-slate-650 dark:text-slate-350">Core Principle</span>
+                    </div>
+                    <h2 className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold mb-4 max-w-lg">Invisible Security. Zero Cameras. Absolute Privacy.</h2>
+                    <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 max-w-xl mb-6">
+                      Wi-Fi Sense relies entirely on Channel State Information (CSI) from ambient radio waves. 
+                      It detects movement, breathing patterns, and falls mathematically, without capturing any optical images or audio.
+                    </p>
+                  </div>
+                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-450 mb-2">videocam_off</span>
+                      <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">No Cameras</div>
+                      <div className="text-label-caps font-label-caps text-slate-500 dark:text-slate-450 mt-1">100% optical privacy</div>
+                    </div>
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-450 mb-2">mic_off</span>
+                      <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">No Microphones</div>
+                      <div className="text-label-caps font-label-caps text-slate-500 dark:text-slate-450 mt-1">No audio recorded</div>
+                    </div>
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+                      <span className="material-symbols-outlined text-teal-600 dark:text-teal-450 mb-2">lock</span>
+                      <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">Encrypted CSI</div>
+                      <div className="text-label-caps font-label-caps text-slate-500 dark:text-slate-450 mt-1">Data mathematically hashed</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Global Alert Status (Span 4) */}
+                <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Facility Status</h3>
+                    <button className="text-slate-500 hover:text-slate-800"><span className="material-symbols-outlined">more_vert</span></button>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950">
+                    <div className="w-16 h-16 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-slate-100 dark:border-slate-850">
+                      <span className="material-symbols-outlined text-[32px] text-teal-600 dark:text-teal-450" style={{ fontVariationSettings: "'FILL' 1" }}>health_and_safety</span>
+                    </div>
+                    <div className="text-headline-sm font-headline-sm text-slate-950 dark:text-white font-bold mb-2">All Clear</div>
+                    <div className="text-body-md font-body-md text-slate-500 dark:text-slate-450">No active environmental or health alerts detected across monitored zones.</div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-850 flex justify-between items-center text-xs">
+                    <span className="text-label-caps font-label-caps text-slate-400">Last Scan:</span>
+                    <span className="text-data-mono font-data-mono text-teal-650 dark:text-teal-400 font-bold">LIVE • 10ms latency</span>
+                  </div>
+                </div>
+
+                {/* Family Portal Preview (Span 6) */}
+                <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
+                  <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-250 dark:border-slate-800 p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-slate-500">preview</span>
+                      <h3 className="text-body-md font-body-md font-bold text-slate-950 dark:text-white">Family Portal Preview</h3>
+                    </div>
+                    <span className="text-[10px] font-bold bg-slate-200 dark:bg-slate-850 px-2 py-1 rounded text-slate-550">Restricted View</span>
+                  </div>
+                  <div className="p-6 flex-1 bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+                    {/* Simulated Mobile Device View */}
+                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-lg overflow-hidden flex flex-col h-[400px]">
+                      <div className="h-12 bg-slate-50 dark:bg-slate-950 flex justify-center items-center border-b border-slate-200 dark:border-slate-850">
+                        <div className="w-16 h-1.5 bg-slate-300 dark:bg-slate-800 rounded-full"></div>
+                      </div>
+                      <div className="p-5 flex-1 overflow-y-auto">
+                        <h4 className="text-headline-sm font-headline-sm text-slate-950 dark:text-white font-bold mb-4">Resident Status</h4>
+                        {/* Resident Card */}
+                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 mb-4 text-left">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <div className="text-body-lg font-body-lg font-bold text-slate-950 dark:text-white">Mary Smith</div>
+                              <div className="text-body-md font-body-md text-slate-500">Room 112</div>
+                            </div>
+                            <div className="bg-teal-50 dark:bg-teal-950/20 text-teal-650 px-2 py-1 rounded text-label-caps font-label-caps border border-teal-200/20 flex items-center gap-1 font-bold">
+                              <span className="material-symbols-outlined text-[14px]">bed</span> Resting
+                            </div>
+                          </div>
+                          <div className="w-full bg-slate-200 dark:bg-slate-850 h-2 rounded-full overflow-hidden mb-2">
+                            <div className="bg-teal-655 h-full w-3/4 rounded-full opacity-50"></div>
+                          </div>
+                          <div className="text-data-mono font-data-mono text-slate-500 text-[11px]">Respiration Normal • No erratic movement</div>
+                        </div>
+                        {/* Simplified Alert */}
+                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 flex items-center gap-3 text-left">
+                          <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-teal-605 text-[16px]">check</span>
+                          </div>
+                          <div>
+                            <div className="text-body-md font-body-md font-bold text-slate-950 dark:text-white">Safe Status</div>
+                            <div className="text-label-caps font-label-caps text-slate-550">No active alerts for Mary.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Access Control Settings (Span 6) */}
+                <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-sm">
+                  <div className="mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-950 dark:text-white font-bold mb-1">Visibility Settings</h3>
+                    <p className="text-body-md font-body-md text-slate-500">Manage what external contacts can see via the portal.</p>
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    {/* Setting 1 */}
+                    <div 
+                      onClick={() => {
+                        setStrictPrivacy(!strictPrivacy);
+                        setToastMessage({ type: "success", text: `Strict Privacy Mode toggled: ${!strictPrivacy ? "ON" : "OFF"}` });
+                      }}
+                      className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer bg-slate-50 dark:bg-slate-950 ${strictPrivacy ? "border-teal-500 bg-teal-50/10" : "border-slate-200 dark:border-slate-800 hover:border-teal-500"}`}
+                    >
+                      <div className="flex gap-4">
+                        <div className="mt-1">
+                          <span className="material-symbols-outlined text-slate-500">visibility_off</span>
+                        </div>
+                        <div>
+                          <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">Strict Privacy Mode</div>
+                          <div className="text-body-md font-body-md text-slate-500 mt-1 max-w-sm">Family sees only generic "Safe" / "Requires Attention" states. No location or activity data.</div>
+                        </div>
+                      </div>
+                      <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input checked={strictPrivacy} type="checkbox" readOnly className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-300 dark:border-slate-700 appearance-none cursor-pointer" />
+                        <label className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${strictPrivacy ? "bg-teal-500" : "bg-slate-300 dark:bg-slate-800"}`}></label>
+                      </div>
+                    </div>
+
+                    {/* Setting 2 (Active) */}
+                    <div 
+                      onClick={() => {
+                        setContextualVisibility(!contextualVisibility);
+                        setToastMessage({ type: "success", text: `Contextual Visibility toggled: ${!contextualVisibility ? "ON" : "OFF"}` });
+                      }}
+                      className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer bg-slate-50 dark:bg-slate-950 ${contextualVisibility ? "border-teal-500 bg-teal-50/10" : "border-slate-200 dark:border-slate-800 hover:border-teal-500"}`}
+                    >
+                      <div className="flex gap-4">
+                        <div className="mt-1">
+                          <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">visibility</span>
+                        </div>
+                        <div>
+                          <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">Contextual Visibility</div>
+                          <div className="text-body-md font-body-md text-slate-500 mt-1 max-w-sm">Family sees current room location and basic activity state (Resting, Active, Away).</div>
+                        </div>
+                      </div>
+                      <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input checked={contextualVisibility} type="checkbox" readOnly className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-300 dark:border-slate-700 appearance-none cursor-pointer" />
+                        <label className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${contextualVisibility ? "bg-teal-500" : "bg-slate-300 dark:bg-slate-800"}`}></label>
+                      </div>
+                    </div>
+
+                    {/* Authorization List */}
+                    <div className="mt-8">
+                      <h4 className="text-body-md font-body-md font-bold text-slate-900 dark:text-white mb-3">Authorized Contacts (Mary Smith)</h4>
+                      <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-label-caps font-label-caps text-slate-500">
+                            <tr>
+                              <th className="py-2 px-4 font-semibold uppercase">Name</th>
+                              <th className="py-2 px-4 font-semibold uppercase">Relation</th>
+                              <th className="py-2 px-4 font-semibold uppercase">Access Level</th>
+                              <th className="py-2 px-4 font-semibold uppercase text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-body-md font-body-md text-slate-850 dark:text-slate-200 bg-white dark:bg-slate-900">
+                            <tr className="border-b border-slate-100 dark:border-slate-850 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors">
+                              <td className="py-3 px-4 font-bold">John Smith</td>
+                              <td className="py-3 px-4 text-slate-500">Son</td>
+                              <td className="py-3 px-4">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-label-caps bg-teal-50 dark:bg-teal-950/20 text-teal-650 font-bold border border-teal-200/20">Contextual</span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <button className="text-teal-605 hover:underline font-bold text-xs">Edit</button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
-          {currentView === "assets" && (
-            /* Facility Manager View: defined above */
-            null
-          )}
-          {currentView === "devices" && (
-            /* Sensing Device Management View: defined above */
-            null
-          )}
-          {currentView === "residents" && (
-            /* User Management View: defined above */
-            null
-          )}
-          {currentView === "alerts" && (
-            /* Alert Management View: defined above */
-            null
-          )}
+
           {currentView === "analytics" && (
-            /* Analytics View: defined above */
-            null
+            <div className="space-y-6 text-left">
+              {/* Page Header */}
+              <div className="flex justify-between items-end mb-8">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Analytics Overview</h2>
+                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 mt-1">Deep dive into spatial utilization and response metrics.</p>
+                </div>
+                <div className="flex gap-stack-md text-label-caps font-label-caps text-slate-500 dark:text-slate-400">
+                  <span className="bg-slate-100 dark:bg-slate-900 py-1.5 px-3 rounded-full flex items-center gap-1 border border-slate-200 dark:border-slate-800">
+                    <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                    Last 30 Days
+                  </span>
+                </div>
+              </div>
+
+              {/* Bento Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+                {/* Occupancy Over Time (Multi-line chart representation) */}
+                <div className="col-span-1 md:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Occupancy Over Time</h3>
+                    <button className="text-teal-605 hover:underline text-label-caps font-label-caps font-bold">Export Data</button>
+                  </div>
+                  {/* Chart representation */}
+                  <div className="flex-1 w-full min-h-[300px] rounded-lg relative overflow-hidden flex items-end px-4 pb-4 gap-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850">
+                    <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                      <path d="M0,80 Q10,70 20,60 T40,50 T60,30 T80,40 T100,20 L100,100 L0,100 Z" fill="rgba(13, 148, 136, 0.1)"></path>
+                      <path d="M0,80 Q10,70 20,60 T40,50 T60,30 T80,40 T100,20" fill="none" stroke="#0d9488" strokeWidth="1.5"></path>
+                    </svg>
+                    <div className="absolute bottom-2 left-4 text-[10px] font-mono text-slate-400">08:00</div>
+                    <div className="absolute bottom-2 right-4 text-[10px] font-mono text-slate-400">18:00</div>
+                    <div className="absolute top-4 left-2 text-[10px] font-mono text-slate-400">100%</div>
+                    <div className="absolute top-4 right-4 flex gap-4 bg-white dark:bg-slate-900 p-2 rounded text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-teal-600 rounded-full"></div>Zone A</div>
+                      <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-sky-500 rounded-full"></div>Zone B</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Historical Activity Mix (Pie chart representation) */}
+                <div className="col-span-1 md:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
+                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold mb-6">Activity Mix</h3>
+                  <div className="flex-1 flex flex-col items-center justify-center gap-6">
+                    <div className="relative w-40 h-40 rounded-full border-[16px] border-slate-100 dark:border-slate-800 flex items-center justify-center" style={{ borderTopColor: "#0d9488", borderRightColor: "#0284c7" }}>
+                      <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold">65%</span>
+                        <span className="text-[10px] font-bold text-slate-450 uppercase">Sitting Stance</span>
+                      </div>
+                    </div>
+                    <div className="w-full space-y-3 mt-4 text-xs font-semibold text-slate-650">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-teal-600 rounded-sm"></div>Sitting</div>
+                        <span className="font-mono">65%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-sky-500 rounded-sm"></div>Walking</div>
+                        <span className="font-mono">25%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-slate-350 rounded-sm"></div>Standing</div>
+                        <span className="font-mono">10%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Underutilized Space Identification */}
+                <div className="col-span-1 md:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm text-xs">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Underutilized Spaces (&lt;10%)</h3>
+                    <span className="material-symbols-outlined text-slate-455">map</span>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded bg-white dark:bg-slate-900 flex items-center justify-center text-teal-650 dark:text-teal-400 border border-slate-100 dark:border-slate-850">
+                          <span className="material-symbols-outlined">meeting_room</span>
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-905 dark:text-white text-sm">Conference Rm 4B</div>
+                          <div className="text-[10px] text-slate-455">North Wing</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-red-500 font-mono font-bold text-sm">4.2%</span>
+                        <span className="text-[9px] font-bold text-slate-455">Avg Util</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded bg-white dark:bg-slate-900 flex items-center justify-center text-teal-650 dark:text-teal-400 border border-slate-100 dark:border-slate-850">
+                          <span className="material-symbols-outlined">chair</span>
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-905 dark:text-white text-sm">Breakout Area C</div>
+                          <div className="text-[10px] text-slate-455">East Corridor</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-red-505 font-mono font-bold text-sm">7.8%</span>
+                        <span className="text-[9px] font-bold text-slate-455">Avg Util</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Average Response Time */}
+                <div className="col-span-1 md:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Avg Alert Response Time</h3>
+                    <div className="flex items-center gap-1 text-teal-650 dark:text-teal-400 text-xs font-bold uppercase">
+                      <span className="material-symbols-outlined text-[16px]">trending_down</span>
+                      -12% vs last month
+                    </div>
+                  </div>
+                  <div className="flex items-end gap-4 h-[160px] w-full px-4 border-b border-slate-100 dark:border-slate-850 pb-4">
+                    {/* Simulated bars */}
+                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
+                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[80%]"></div>
+                      <span className="text-[9px] font-bold text-slate-400">Mon</span>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
+                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[60%]"></div>
+                      <span className="text-[9px] font-bold text-slate-400">Tue</span>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
+                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[90%]"></div>
+                      <span className="text-[9px] font-bold text-slate-400">Wed</span>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
+                      <div className="w-full bg-teal-600 rounded-t h-[40%]"></div>
+                      <span className="text-[9px] font-bold text-teal-605">Thu</span>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
+                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[50%]"></div>
+                      <span className="text-[9px] font-bold text-slate-400">Fri</span>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex justify-between items-center text-xs">
+                    <div>
+                      <div className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold">3.4 min</div>
+                      <div className="text-slate-455 text-[10px]">Weekly Average</div>
+                    </div>
+                    <button onClick={() => setCurrentView("alerts")} className="border border-teal-650 text-teal-650 px-4 py-2 rounded text-label-caps font-label-caps hover:bg-teal-50 font-bold uppercase transition-colors">
+                      View Logs
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentView === "assets" && (
+            <div className="space-y-6 text-left">
+              {/* Facility Hierarchy view title */}
+              <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Facility Config Manager</h2>
+                  <p className="text-body-md text-slate-500 dark:text-slate-400">Establish corporate and elder-care buildings, floors, and rooms configurations.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={expandAllBuildings}
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded text-xs font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-850"
+                  >
+                    Expand All
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (organizations.length > 0) {
+                        setNewBldOrgId(organizations[0].id);
+                        setShowAddBuildingModal(true);
+                      } else {
+                        alert("Please create an organization first.");
+                      }
+                    }}
+                    className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
+                  >
+                    Add Building
+                  </button>
+                </div>
+              </div>
+
+              {/* Physical layout hierarchy card list */}
+              <div className="space-y-4">
+                {buildings.map(bld => {
+                  const bldFloors = floors.filter(f => f.building_id === bld.id);
+                  const isExpanded = expandedBuildings[bld.id];
+                  return (
+                    <div key={bld.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                      <div 
+                        onClick={() => toggleBuildingExpand(bld.id)}
+                        className="p-4 bg-slate-50 dark:bg-slate-950 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">corporate_fare</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{bld.name}</span>
+                          <span className="text-xs text-slate-500">({bld.address})</span>
+                        </div>
+                        <span className="material-symbols-outlined text-slate-400">
+                          {isExpanded ? "expand_less" : "expand_more"}
+                        </span>
+                      </div>
+                      
+                      {isExpanded && (
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
+                          {bldFloors.map(flr => {
+                            const flrRooms = rooms.filter(r => r.floor_id === flr.id);
+                            return (
+                              <div key={flr.id} className="pl-6 border-l-2 border-slate-200 dark:border-slate-800 py-2 text-xs">
+                                <div className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                                  <span className="material-symbols-outlined text-[16px] text-teal-500">layers</span>
+                                  Floor {flr.floor_number}
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                                  {flrRooms.map(rm => (
+                                    <div key={rm.id} className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded">
+                                      <div className="font-semibold text-slate-850 dark:text-white">{rm.name}</div>
+                                      <div className="text-[10px] text-slate-500 uppercase mt-0.5">{rm.room_type}</div>
+                                    </div>
+                                  ))}
+                                  <button 
+                                    onClick={() => {
+                                      setNewRmFlrId(flr.id);
+                                      setShowAddRoomModal(true);
+                                    }}
+                                    className="p-3 border border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 hover:text-teal-600 rounded flex items-center justify-center gap-1 font-bold text-slate-400"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">add</span> Add Room
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <button 
+                            onClick={() => {
+                              setNewFlrBldId(bld.id);
+                              setShowAddFloorModal(true);
+                            }}
+                            className="bg-slate-50 dark:bg-slate-950 text-slate-650 hover:bg-slate-100 dark:hover:bg-slate-900 px-4 py-2 border rounded font-semibold text-xs flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">add</span> Add Floor
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {currentView === "devices" && (
+            <div className="space-y-6 text-left">
+              {/* Header */}
+              <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Sensing Device Management</h2>
+                  <p className="text-body-md text-slate-500 dark:text-slate-400">Manage hardware status, firmware revisions, and room bindings.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (rooms.length > 0) {
+                      setNewDevRmId(rooms[0].id);
+                      setShowAddDeviceModal(true);
+                    } else {
+                      alert("Please create a room layout first.");
+                    }
+                  }}
+                  className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
+                >
+                  Register Node
+                </button>
+              </div>
+
+              {/* Devices nodes list table */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 font-bold uppercase">
+                        <th className="p-4">ESP Node MAC</th>
+                        <th className="p-4">Assigned Room</th>
+                        <th className="p-4">Firmware version</th>
+                        <th className="p-4">Device status</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {devices.map(dev => (
+                        <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
+                          <td className="p-4 font-mono font-semibold text-slate-850 dark:text-white">{dev.mac_address}</td>
+                          <td className="p-4 font-bold">{rooms.find(r => r.id === dev.room_id)?.name || "Unbound / Hub Node"}</td>
+                          <td className="p-4 text-slate-500">{dev.firmware_version}</td>
+                          <td className="p-4">
+                            {dev.device_status === "ONLINE" ? (
+                              <span className="bg-teal-50 dark:bg-teal-950/20 text-teal-650 px-2.5 py-0.5 rounded text-[10px] font-bold">ONLINE</span>
+                            ) : (
+                              <span className="bg-red-50 dark:bg-red-950/20 text-red-650 px-2.5 py-0.5 rounded text-[10px] font-bold">OFFLINE</span>
+                            )}
+                          </td>
+                          <td className="p-4 text-right">
+                            <button 
+                              onClick={() => handleToggleDevice(dev.id)}
+                              className="text-teal-650 hover:underline font-bold"
+                            >
+                              Toggle Power
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentView === "residents" && (
+            <div className="space-y-6 text-left">
+              {/* Header */}
+              <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Resident Accounts</h2>
+                  <p className="text-body-md text-slate-500 dark:text-slate-400">Auditing active monitored profiles and visibility logs.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (rooms.length > 0) {
+                      setNewResRmId(rooms[0].id);
+                      setShowAddResidentModal(true);
+                    } else {
+                      alert("Please create a room first.");
+                    }
+                  }}
+                  className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
+                >
+                  Add Resident Record
+                </button>
+              </div>
+
+              {/* Residents table list */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 font-bold uppercase">
+                        <th className="p-4">Resident Subject</th>
+                        <th className="p-4">Assigned Location</th>
+                        <th className="p-4">Resident ID</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {residents.map(res => (
+                        <tr key={res.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
+                          <td className="p-4 font-bold text-slate-850 dark:text-white">{res.first_name} {res.last_name}</td>
+                          <td className="p-4">{rooms.find(r => r.id === res.room_id)?.name || "No Bound Layout"}</td>
+                          <td className="p-4 font-mono text-slate-450">{res.id}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentView === "alerts" && (
+            <div className="space-y-6 text-left">
+              {/* Page Title */}
+              <div className="flex justify-between items-end mb-4">
+                <div>
+                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Alert Management</h2>
+                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 mt-1">Monitor, acknowledge, and resolve active environmental anomalies.</p>
+                </div>
+                <div className="text-body-md font-body-md text-slate-500 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                  Live System Health: Nominal
+                </div>
+              </div>
+
+              {/* Bento Grid Layout for Alerts */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+                {/* Pending Alerts Table (Spans 2 columns) */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white flex items-center gap-2 font-bold">
+                      <span className="material-symbols-outlined text-red-500">warning</span>
+                      Pending Alerts
+                    </h3>
+                    <span className="bg-red-50 text-red-650 px-2.5 py-1 rounded text-label-caps font-label-caps font-bold">
+                      {alerts.filter(a => a.status !== "resolved").length} Active
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="bg-slate-100 dark:bg-slate-850 text-slate-500 dark:text-slate-400 text-label-caps font-label-caps uppercase font-semibold">
+                        <tr>
+                          <th className="p-4">Location/Target</th>
+                          <th className="p-4">Event Type</th>
+                          <th className="p-4">Timestamp</th>
+                          <th className="p-4">Severity</th>
+                          <th className="p-4">Status</th>
+                          <th className="p-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {alerts.filter(a => a.status !== "resolved").map(a => (
+                          <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                            <td className="p-4">
+                              <div className="text-body-md font-body-md text-slate-900 dark:text-white font-bold">{rooms.find(r => r.id === a.room_id)?.name || "Room"}</div>
+                              <div className="text-label-caps font-label-caps text-slate-500">
+                                {residents.filter(r => r.room_id === a.room_id).map(r => `${r.first_name} ${r.last_name}`).join(", ") || "Subject"}
+                              </div>
+                            </td>
+                            <td className="p-4 text-body-md font-body-md text-slate-805 dark:text-slate-200">{a.event_type.replace("_", " ")}</td>
+                            <td className="p-4 text-data-mono font-data-mono text-slate-500">{new Date(a.created_at).toLocaleTimeString()}</td>
+                            <td className="p-4">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                                a.event_type === "Fall_Detected" ? "bg-red-50 text-red-650" : "bg-amber-50 text-amber-650"
+                              }`}>
+                                {a.event_type === "Fall_Detected" ? "Critical" : "High"}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-650 px-2 py-1 rounded text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                                {a.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                {a.status === "new" && (
+                                  <button onClick={() => handleAcknowledge(a.id)} className="text-label-caps font-label-caps font-bold px-3 py-1.5 rounded border border-teal-650 text-teal-650 hover:bg-teal-600 hover:text-white transition-colors">
+                                    Acknowledge
+                                  </button>
+                                )}
+                                <button onClick={() => setShowResolveModal(a.id)} className="text-label-caps font-label-caps font-bold px-3 py-1.5 rounded bg-teal-600 text-white hover:bg-teal-700 transition-colors">
+                                  Resolve
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {alerts.filter(a => a.status !== "resolved").length === 0 && (
+                          <tr>
+                            <td colSpan="6" className="p-8 text-center text-slate-400 italic">No pending alerts. All clear.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Resolution History / Activity Stream */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col h-[500px] shadow-sm text-xs">
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white flex items-center gap-2 font-bold">
+                      <span className="material-symbols-outlined text-teal-605">check_circle</span>
+                      Resolution History
+                    </h3>
+                  </div>
+                  <div className="p-4 flex-1 overflow-y-auto space-y-4">
+                    {alerts.filter(a => a.status === "resolved").map(a => (
+                      <div key={a.id} className="relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 pb-4 text-left">
+                        <div className="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-900"></div>
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                            {rooms.find(r => r.id === a.room_id)?.name || "Room"} Details
+                          </h4>
+                          <span className="text-data-mono font-data-mono text-slate-455">{new Date(a.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-slate-500 mb-2">Verified safe. Alert cleared.</p>
+                      </div>
+                    ))}
+                    {alerts.filter(a => a.status === "resolved").length === 0 && (
+                      <div className="p-8 text-center text-slate-400 italic">No resolved log database entries found.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
         </main>
