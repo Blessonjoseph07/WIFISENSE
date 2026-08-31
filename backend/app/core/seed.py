@@ -2,7 +2,7 @@ from sqlmodel import Session, select, text
 from datetime import datetime, timedelta
 from app.models.entities import (
     Role, User, UserRole, Organization, Building, Floor, Room, 
-    SensingDevice, Resident, ActivityType, SensingEvent, Alert, AlertAcknowledgement
+    SensingDevice, Resident, ActivityType, SensingEvent, Alert, AlertAcknowledgement, AccessRequest
 )
 from app.core.security import hash_password
 
@@ -453,3 +453,61 @@ def seed_database(session: Session):
     )
     session.add(alert_3)
     session.commit()
+
+    # 12. Seed Family Members (emergency_contact) and AccessRequests
+    # John Smith - Linked to Annamma Joseph (Approved)
+    john_user = User(
+        email="john@wifisense.com",
+        password_hash=hash_password("johnpassword"),
+        first_name="John",
+        last_name="Smith",
+        resident_id=res_annamma.id,
+        is_active=True
+    )
+    session.add(john_user)
+    session.commit()
+    session.refresh(john_user)
+    
+    session.add(UserRole(
+        user_id=john_user.id,
+        role_id=ROLE_MAPPING["emergency_contact"],
+        organization_id=org_lab.id
+    ))
+    
+    req_john = AccessRequest(
+        requesting_user_id=john_user.id,
+        resident_id=res_annamma.id,
+        status="approved",
+        reviewed_by=blesson_user.id,
+        reviewed_at=datetime.utcnow() - timedelta(days=2)
+    )
+    session.add(req_john)
+    session.commit()
+
+    # Susan Varghese - Linked to Devassy Varghese (Pending)
+    susan_user = User(
+        email="susan@wifisense.com",
+        password_hash=hash_password("susanpassword"),
+        first_name="Susan",
+        last_name="Varghese",
+        resident_id=None,
+        is_active=True
+    )
+    session.add(susan_user)
+    session.commit()
+    session.refresh(susan_user)
+
+    session.add(UserRole(
+        user_id=susan_user.id,
+        role_id=ROLE_MAPPING["emergency_contact"],
+        organization_id=org_lab.id
+    ))
+
+    req_susan = AccessRequest(
+        requesting_user_id=susan_user.id,
+        resident_id=res_devassy.id,
+        status="pending"
+    )
+    session.add(req_susan)
+    session.commit()
+
