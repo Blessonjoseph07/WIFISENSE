@@ -79,6 +79,7 @@ class User(SQLModel, table=True):
     first_name: str = Field(nullable=False)
     last_name: str = Field(nullable=False)
     is_active: bool = Field(default=True)
+    resident_id: Optional[str] = Field(default=None, foreign_key="residents.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -99,6 +100,17 @@ class UserRole(SQLModel, table=True):
     user: User = Relationship(back_populates="roles")
     role: Role = Relationship()
     organization: Optional[Organization] = Relationship(back_populates="users")
+
+class AccessRequest(SQLModel, table=True):
+    __tablename__ = "access_requests"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    requesting_user_id: str = Field(foreign_key="users.id", nullable=False)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    status: str = Field(default="pending") # 'pending', 'approved', 'declined'
+    reviewed_by: Optional[str] = Field(default=None, foreign_key="users.id")
+    reviewed_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 # ============================================================================
 # 3. DEVICE & SENSING ENGINE

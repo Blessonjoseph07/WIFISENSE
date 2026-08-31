@@ -26,6 +26,7 @@ class UserOut(BaseModel):
     first_name: str
     last_name: str
     is_active: bool
+    resident_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -36,6 +37,26 @@ class Token(BaseModel):
     token_type: str
     role: str
     user: UserOut
+
+class AccessRequestCreate(BaseModel):
+    resident_id: str
+
+class AccessRequestOut(BaseModel):
+    id: str
+    requesting_user_id: str
+    resident_id: str
+    status: str
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AccessRequestReview(BaseModel):
+    status: str # 'approved' or 'declined'
+
 
 # ============================================================================
 # 2. CRUD SCHEMAS
