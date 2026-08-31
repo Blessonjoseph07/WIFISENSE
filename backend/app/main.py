@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 from app.core.database import init_db, engine
 from app.core.seed import seed_database
-from app.routers import auth, crud, sensing, alerts, analytics
+from app.routers import auth, crud, sensing, alerts, analytics, family_portal
 
 app = FastAPI(
     title="Wi-Fi Sense Focus API",
@@ -26,6 +26,7 @@ app.include_router(crud.router)
 app.include_router(sensing.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
+app.include_router(family_portal.router)
 
 @app.on_event("startup")
 def on_startup():
