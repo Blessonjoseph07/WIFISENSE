@@ -145,27 +145,57 @@ def get_linked_resident_status(
             "request_status": None
         }
 
+    from app.models.entities import SharingPolicy
+
     resident = session.get(Resident, current_user.resident_id)
     if not resident:
         return {"linked": False, "request_status": None}
 
     room = session.get(Room, resident.room_id)
-    stmt = select(SensingEvent).where(SensingEvent.room_id == resident.room_id).order_by(SensingEvent.timestamp.desc())
-    latest_event = session.exec(stmt).first()
+    floor = session.get(Floor, room.floor_id)
+    building = session.get(Building, floor.building_id)
+
+    # Fetch Policy (resident override or org default)
+    policy_stmt = select(SharingPolicy).where(SharingPolicy.resident_id == resident.id)
+    policy = session.exec(policy_stmt).first()
+    if not policy:
+        policy_stmt = select(SharingPolicy).where(SharingPolicy.organization_id == building.organization_id, SharingPolicy.resident_id == None)
+        policy = session.exec(policy_stmt).first()
+    
+    # Fallback default policy if none exists
+    share_presence = policy.share_presence if policy else True
+    share_activity_detail = policy.share_activity_detail if policy else True
+    share_room_name = policy.share_room_name if policy else True
+    share_alert_history = policy.share_alert_history if policy else True
 
     is_present = False
     activity = "Empty"
     last_update = None
 
-    if latest_event:
-        act_type = session.get(ActivityType, latest_event.inferred_activity_id)
-        if act_type:
-            activity = act_type.name
-            if activity != "Empty":
-                is_present = True
-        last_update = latest_event.timestamp.isoformat()
+    if share_presence or share_activity_detail:
+        stmt = select(SensingEvent).where(SensingEvent.room_id == resident.room_id).order_by(SensingEvent.timestamp.desc())
+        latest_event = session.exec(stmt).first()
 
-    alerts = session.exec(select(Alert).where(Alert.room_id == resident.room_id).order_by(Alert.created_at.desc())).all()
+        if latest_event:
+            act_type = session.get(ActivityType, latest_event.inferred_activity_id)
+            if act_type:
+                activity = act_type.name
+                if activity != "Empty":
+                    is_present = True
+            last_update = latest_event.timestamp.isoformat()
+
+    alerts_list = []
+    if share_alert_history:
+        alerts = session.exec(select(Alert).where(Alert.room_id == resident.room_id).order_by(Alert.created_at.desc())).all()
+        for a in alerts:
+            alerts_list.append({
+                "id": a.id,
+                "event_type": a.event_type,
+                "severity": a.severity,
+                "message": a.message,
+                "status": a.status,
+                "created_at": a.created_at.isoformat()
+            })
 
     return {
         "linked": True,
@@ -174,26 +204,16 @@ def get_linked_resident_status(
             "id": resident.id,
             "first_name": resident.first_name,
             "last_name": resident.last_name,
-            "room_name": room.name if room else "Unknown Room"
+            "room_name": room.name if room and share_room_name else "Restricted View"
         },
-        "presence_status": "present" if is_present else "not detected",
+        "presence_status": "present" if is_present else "not detected" if share_presence else "restricted",
         "recent_activity": {
-            "activity": activity,
-            "timestamp": last_update
+            "activity": activity if share_activity_detail else "Restricted View",
+            "timestamp": last_update if (share_presence or share_activity_detail) else None
         },
-        "alerts": [
-            {
-                "id": a.id,
-                "event_type": a.event_type,
-                "severity": a.severity,
-                "message": a.message,
-                "status": a.status,
-                "created_at": a.created_at.isoformat()
-            }
-            for a in alerts
-        ],
+        "alerts": alerts_list,
         "facility_contact": {
-            "name": "WiFi Sense Research Lab Care Desk",
+            "name": "Care Desk",
             "phone": "+91 4828 251122",
             "email": "caredesk@wifisense.com"
         }

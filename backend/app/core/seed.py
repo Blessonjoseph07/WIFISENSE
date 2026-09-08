@@ -2,7 +2,8 @@ from sqlmodel import Session, select, text
 from datetime import datetime, timedelta
 from app.models.entities import (
     Role, User, UserRole, Organization, Building, Floor, Room, 
-    SensingDevice, Resident, ActivityType, SensingEvent, Alert, AlertAcknowledgement, AccessRequest
+    SensingDevice, Resident, ActivityType, SensingEvent, Alert, AlertAcknowledgement, AccessRequest,
+    SharingPolicy, HealthCondition, CaregiverProfile
 )
 from app.core.security import hash_password
 
@@ -24,7 +25,10 @@ ACTIVITY_MAPPING = {
 }
 
 def seed_database(session: Session):
-    # 1. Clear existing database contents
+    session.execute(text("DELETE FROM health_conditions"))
+    session.execute(text("DELETE FROM caregiver_profiles"))
+    session.execute(text("DELETE FROM sharing_policies"))
+    session.execute(text("DELETE FROM access_requests"))
     session.execute(text("DELETE FROM alert_acknowledgements"))
     session.execute(text("DELETE FROM alerts"))
     session.execute(text("DELETE FROM sensing_events"))
@@ -56,7 +60,7 @@ def seed_database(session: Session):
     org_ajce = Organization(name="Amal Jyothi College of Engineering", type="CORPORATE")
     session.add(org_ajce)
     
-    org_lab = Organization(name="WiFi Sense Research Lab", type="ELDER_CARE")
+    org_lab = Organization(name="St. Peter's Elder Care Home", type="ELDER_CARE")
     session.add(org_lab)
     session.commit()
     session.refresh(org_ajce)
@@ -113,7 +117,7 @@ def seed_database(session: Session):
     rm_iot_lab = Room(floor_id=flr_rd_1.id, name="Internet IoT Lab", room_type="Conference Room", capacity=25)
     session.add(rm_iot_lab)
 
-    # Elder Care rooms (WiFi Sense Research Lab)
+    # Elder Care rooms (St. Peter's Elder Care Home)
     rm_room_101 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 101", room_type="Resident Bedroom", capacity=2)
     session.add(rm_room_101)
     rm_room_102 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 102", room_type="Resident Bedroom", capacity=2)
@@ -200,7 +204,13 @@ def seed_database(session: Session):
         user_id=abhinanth_user.id,
         role_id=ROLE_MAPPING["caregiver"],
         organization_id=org_lab.id,
-        building_id=bld_wing_a.id
+        building_id=bld_wing_a.id,
+        room_id=rm_room_101.id  # Assign specifically to 101 for isolation testing
+    ))
+    session.add(CaregiverProfile(
+        user_id=abhinanth_user.id,
+        bio="Senior Caregiver with 8 years of experience in assisted living.",
+        work_history=[{"title": "Nurse Assistant", "years": 3}]
     ))
     session.commit()
 
@@ -242,29 +252,42 @@ def seed_database(session: Session):
 
     # 9. Seed Residents (Monitored Persons)
     # Corporate block monitored users
-    res_abhinand = Resident(room_id=rm_mca_lab.id, first_name="Abhinand", last_name="M A")
+    res_abhinand = Resident(room_id=rm_mca_lab.id, first_name="Abhinand", last_name="M A", date_of_birth=datetime(1995, 5, 12))
     session.add(res_abhinand)
-    res_tomy = Resident(room_id=rm_staff_room.id, first_name="Prof. Tomy", last_name="Joseph")
+    res_tomy = Resident(room_id=rm_staff_room.id, first_name="Prof. Tomy", last_name="Joseph", date_of_birth=datetime(1978, 11, 23))
     session.add(res_tomy)
-    res_anandhu = Resident(room_id=rm_iot_lab.id, first_name="Anandhu", last_name="K S")
+    res_anandhu = Resident(room_id=rm_iot_lab.id, first_name="Anandhu", last_name="K S", date_of_birth=datetime(1999, 1, 15))
     session.add(res_anandhu)
-    res_jerin = Resident(room_id=rm_mca_lab.id, first_name="Jerin", last_name="Sebastian")
+    res_jerin = Resident(room_id=rm_mca_lab.id, first_name="Jerin", last_name="Sebastian", date_of_birth=datetime(1998, 8, 30))
     session.add(res_jerin)
 
     # Elder Care monitored residents
-    res_devassy = Resident(room_id=rm_room_101.id, first_name="Devassy", last_name="Varghese")
+    res_devassy = Resident(room_id=rm_room_101.id, first_name="Devassy", last_name="Varghese", date_of_birth=datetime(1942, 3, 10))
     session.add(res_devassy)
-    res_annamma = Resident(room_id=rm_room_102.id, first_name="Annamma", last_name="Joseph")
+    res_annamma = Resident(room_id=rm_room_102.id, first_name="Annamma", last_name="Joseph", date_of_birth=datetime(1938, 7, 22))
     session.add(res_annamma)
-    res_mathew = Resident(room_id=rm_recreation.id, first_name="K. C.", last_name="Mathew")
+    res_mathew = Resident(room_id=rm_recreation.id, first_name="K. C.", last_name="Mathew", date_of_birth=datetime(1945, 12, 5))
     session.add(res_mathew)
-    res_rosamma = Resident(room_id=rm_ward_1.id, first_name="Rosamma", last_name="Thomas")
+    res_rosamma = Resident(room_id=rm_ward_1.id, first_name="Rosamma", last_name="Thomas", date_of_birth=datetime(1940, 9, 18))
     session.add(res_rosamma)
     session.commit()
     session.refresh(res_devassy)
     session.refresh(res_annamma)
     session.refresh(res_mathew)
     session.refresh(res_rosamma)
+
+    # Seed Health Conditions for Elder Care
+    session.add(HealthCondition(resident_id=res_devassy.id, condition_name="Hypertension", diagnosed_date=datetime(2015, 6, 1)))
+    session.add(HealthCondition(resident_id=res_devassy.id, condition_name="Osteoarthritis", diagnosed_date=datetime(2018, 2, 14)))
+    session.add(HealthCondition(resident_id=res_annamma.id, condition_name="Type 2 Diabetes", notes="Requires daily insulin", diagnosed_date=datetime(2010, 11, 5)))
+    session.commit()
+
+    # Seed Sharing Policies
+    session.add(SharingPolicy(organization_id=org_lab.id, share_presence=True, share_activity_detail=True, share_room_name=True, share_alert_history=True))
+    session.add(SharingPolicy(organization_id=org_ajce.id, share_presence=False, share_activity_detail=False, share_room_name=False, share_alert_history=False))
+    # Override for Annamma
+    session.add(SharingPolicy(resident_id=res_annamma.id, share_presence=True, share_activity_detail=False, share_room_name=True, share_alert_history=True))
+    session.commit()
 
     # 10. Seed Devices
     # Corporate device nodes
