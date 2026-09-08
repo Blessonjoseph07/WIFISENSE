@@ -1,27 +1,36 @@
 from fastapi import APIRouter, Depends, status
-from sqlmodel import Session, select
+from sqlmodel import Session, select, or_
 from app.core.database import get_session
-from app.routers.auth import get_current_user
-from app.models.entities import Room, SensingEvent, ActivityType, Alert
+from app.routers.auth import get_current_user, require_roles, get_user_scopes
+from app.models.entities import Room, Floor, Building, SensingEvent, ActivityType, Alert
 from app.schemas.schemas import OccupancySummaryOut, AlertSummaryOut
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
+STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
 
-@router.get("/occupancy-summary", response_model=OccupancySummaryOut)
+@router.get("/occupancy-summary", response_model=OccupancySummaryOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
 def get_occupancy_summary(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
 ):
-    rooms = session.exec(select(Room)).all()
+    scopes = get_user_scopes(current_user)
+    stmt = select(Room)
+    if not scopes["is_system_admin"]:
+        stmt = stmt.join(Floor).join(Building).where(or_(
+            Building.organization_id.in_(list(scopes["organization_ids"])),
+            Building.id.in_(list(scopes["building_ids"])),
+            Room.id.in_(list(scopes["room_ids"]))
+        ))
+    
+    rooms = session.exec(stmt).all()
     total_rooms = len(rooms)
     occupied_rooms = 0
     vacant_rooms = 0
     occupied_room_details = []
 
     for r in rooms:
-        # Query the latest sensing event for the room to check its status
-        stmt = select(SensingEvent).where(SensingEvent.room_id == r.id).order_by(SensingEvent.timestamp.desc())
-        latest_event = session.exec(stmt).first()
+        stmt_evt = select(SensingEvent).where(SensingEvent.room_id == r.id).order_by(SensingEvent.timestamp.desc())
+        latest_event = session.exec(stmt_evt).first()
         
         is_occupied = False
         activity = "Empty"
@@ -29,7 +38,6 @@ def get_occupancy_summary(
         last_update = None
 
         if latest_event:
-            # Look up inferred activity name
             act_type = session.get(ActivityType, latest_event.inferred_activity_id)
             if act_type:
                 activity = act_type.name
@@ -62,25 +70,32 @@ def get_occupancy_summary(
         occupied_room_details=occupied_room_details
     )
 
-@router.get("/alert-summary", response_model=AlertSummaryOut)
+@router.get("/alert-summary", response_model=AlertSummaryOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
 def get_alert_summary(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
 ):
-    alerts = session.exec(select(Alert)).all()
+    scopes = get_user_scopes(current_user)
+    stmt = select(Alert)
+    if not scopes["is_system_admin"]:
+        stmt = stmt.join(Room).join(Floor).join(Building).where(or_(
+            Building.organization_id.in_(list(scopes["organization_ids"])),
+            Building.id.in_(list(scopes["building_ids"])),
+            Room.id.in_(list(scopes["room_ids"]))
+        ))
+
+    alerts = session.exec(stmt).all()
     total_alerts = len(alerts)
 
     status_counts = {"new": 0, "acknowledged": 0, "resolved": 0}
     severity_counts = {"LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
 
     for a in alerts:
-        # Increment status counts
         if a.status in status_counts:
             status_counts[a.status] += 1
         else:
             status_counts[a.status] = 1
 
-        # Increment severity counts
         if a.severity in severity_counts:
             severity_counts[a.severity] += 1
         else:

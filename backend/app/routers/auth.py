@@ -173,3 +173,22 @@ def require_roles(allowed_roles: list):
             )
         return role
     return dependency
+
+def get_user_scopes(user: User):
+    scopes = {
+        "is_system_admin": False,
+        "organization_ids": set(),
+        "building_ids": set(),
+        "room_ids": set()
+    }
+    for role in user.roles:
+        if role.role_id == 1:
+            scopes["is_system_admin"] = True
+            return scopes
+        if role.organization_id:
+            scopes["organization_ids"].add(role.organization_id)
+        if role.building_id:
+            scopes["building_ids"].add(role.building_id)
+        if role.room_id:
+            scopes["room_ids"].add(role.room_id)
+    return scopes

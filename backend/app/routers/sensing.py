@@ -3,11 +3,12 @@ from sqlmodel import Session, select
 import random
 from datetime import datetime
 from app.core.database import get_session
-from app.routers.auth import get_current_user
-from app.models.entities import SensingDevice, Room, SensingEvent, ActivityType, Alert, AlertConfiguration, AlertTemplate
+from app.routers.auth import get_current_user, require_roles, get_user_scopes
+from app.models.entities import SensingDevice, Room, Floor, Building, SensingEvent, ActivityType, Alert
 from app.schemas.schemas import SensingEventSimulate
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
+STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "corporate_staff"]
 
 ACTIVITY_MAPPING = {
     "Empty": (1, "STATUS"),
@@ -25,7 +26,7 @@ def seed_activity_types_if_empty(session: Session):
             session.add(new_act)
     session.commit()
 
-@router.post("/simulate-event", status_code=status.HTTP_201_CREATED)
+@router.post("/simulate-event", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(STAFF_ROLES))])
 def simulate_event(
     event_data: SensingEventSimulate,
     session: Session = Depends(get_session),
@@ -33,45 +34,36 @@ def simulate_event(
 ):
     seed_activity_types_if_empty(session)
 
-    # 1. Fetch Device
     device = session.get(SensingDevice, event_data.device_id)
     if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Registered sensing device not found."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registered sensing device not found.")
 
-    # 2. Validate Room Assignment
     if not device.room_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The device must be registered to a room before simulating events."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The device must be registered to a room before simulating events.")
 
     room = session.get(Room, device.room_id)
     if not room:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Room assigned to device does not exist."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room assigned to device does not exist.")
 
-    # Update device status
+    # Scoping check
+    scopes = get_user_scopes(current_user)
+    if not scopes["is_system_admin"]:
+        flr = session.get(Floor, room.floor_id)
+        bld = session.get(Building, flr.building_id)
+        if bld.organization_id not in scopes["organization_ids"] and bld.id not in scopes["building_ids"] and room.id not in scopes["room_ids"]:
+            raise HTTPException(status_code=403, detail="Not authorized to simulate events for this room.")
+
     device.device_status = "ONLINE"
     device.last_seen_at = datetime.utcnow()
     session.add(device)
     session.commit()
 
-    # 3. Validate simulated activity input
     activity_name = event_data.simulated_activity
     if activity_name not in ACTIVITY_MAPPING:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid simulated activity name. Allowed: {list(ACTIVITY_MAPPING.keys())}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid simulated activity name. Allowed: {list(ACTIVITY_MAPPING.keys())}")
 
     activity_id, category = ACTIVITY_MAPPING[activity_name]
 
-    # Generate mock features
     rssi_val = random.randint(-65, -35)
     confidence = round(random.uniform(0.85, 0.99), 4)
     mock_features = {
@@ -80,7 +72,6 @@ def simulate_event(
         "doppler_shift_hz": round(random.uniform(0.0, 5.0), 2)
     }
 
-    # 4. Create Sensing Event
     sensing_event = SensingEvent(
         device_id=device.id,
         room_id=room.id,
@@ -96,7 +87,6 @@ def simulate_event(
     session.commit()
     session.refresh(sensing_event)
 
-    # 5. Presence & Fall Check Pipeline
     presence_detected = (activity_name != "Empty")
     alert_triggered = False
     db_alert = None
@@ -104,11 +94,7 @@ def simulate_event(
 
     if activity_name == "Fall_Detected":
         alert_triggered = True
-        
-        # Check if an alert config template exists, or fallback to default message
         alert_msg = f"Critical Fall Detected in Room {room.name}!"
-        
-        # Create Alert
         db_alert = Alert(
             room_id=room.id,
             event_type="Fall_Detected",
@@ -120,7 +106,6 @@ def simulate_event(
         session.commit()
         session.refresh(db_alert)
 
-        # Notify Caregivers (Mock notification dispatch details)
         notification_details = {
             "channel": "dashboard_ws_push",
             "recipient_role": "caregiver",
