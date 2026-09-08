@@ -15,7 +15,6 @@ class Organization(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     buildings: List["Building"] = Relationship(back_populates="organization", cascade_delete=True)
     users: List["UserRole"] = Relationship(back_populates="organization", cascade_delete=True)
 
@@ -28,7 +27,6 @@ class Building(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     organization: Organization = Relationship(back_populates="buildings")
     floors: List["Floor"] = Relationship(back_populates="building", cascade_delete=True)
 
@@ -41,7 +39,6 @@ class Floor(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     building: Building = Relationship(back_populates="floors")
     rooms: List["Room"] = Relationship(back_populates="floor", cascade_delete=True)
 
@@ -50,13 +47,12 @@ class Room(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     floor_id: str = Field(foreign_key="floors.id", nullable=False)
     name: str = Field(nullable=False)
-    room_type: str = Field(nullable=False) # e.g. 'Resident Bedroom', 'Conference Room'
+    room_type: str = Field(nullable=False)
     capacity: int = Field(default=1)
     dimensions_metadata: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     floor: Floor = Relationship(back_populates="rooms")
     devices: List["SensingDevice"] = Relationship(back_populates="room")
     residents: List["Resident"] = Relationship(back_populates="room", cascade_delete=True)
@@ -83,8 +79,8 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     roles: List["UserRole"] = Relationship(back_populates="user", cascade_delete=True)
+    caregiver_profile: Optional["CaregiverProfile"] = Relationship(back_populates="user", cascade_delete=True)
 
 class UserRole(SQLModel, table=True):
     __tablename__ = "user_roles"
@@ -96,7 +92,6 @@ class UserRole(SQLModel, table=True):
     room_id: Optional[str] = Field(default=None, foreign_key="rooms.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     user: User = Relationship(back_populates="roles")
     role: Role = Relationship()
     organization: Optional[Organization] = Relationship(back_populates="users")
@@ -106,9 +101,34 @@ class AccessRequest(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     requesting_user_id: str = Field(foreign_key="users.id", nullable=False)
     resident_id: str = Field(foreign_key="residents.id", nullable=False)
-    status: str = Field(default="pending") # 'pending', 'approved', 'declined'
+    status: str = Field(default="pending")
     reviewed_by: Optional[str] = Field(default=None, foreign_key="users.id")
     reviewed_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CaregiverProfile(SQLModel, table=True):
+    __tablename__ = "caregiver_profiles"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(foreign_key="users.id", unique=True, nullable=False)
+    photo_url: Optional[str] = Field(default=None)
+    bio: Optional[str] = Field(default=None)
+    work_history: Optional[List[Dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    user: User = Relationship(back_populates="caregiver_profile")
+
+class SharingPolicy(SQLModel, table=True):
+    __tablename__ = "sharing_policies"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    organization_id: Optional[str] = Field(default=None, foreign_key="organizations.id")
+    resident_id: Optional[str] = Field(default=None, foreign_key="residents.id")
+    share_presence: bool = Field(default=True)
+    share_activity_detail: bool = Field(default=True)
+    share_room_name: bool = Field(default=True)
+    share_alert_history: bool = Field(default=True)
+    share_alert_severity_threshold: str = Field(default="MEDIUM") # LOW, MEDIUM, HIGH, CRITICAL
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -121,13 +141,12 @@ class SensingDevice(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     room_id: Optional[str] = Field(default=None, foreign_key="rooms.id")
     mac_address: str = Field(unique=True, index=True, nullable=False)
-    device_status: str = Field(default="OFFLINE") # 'ONLINE', 'OFFLINE', 'MAINTENANCE'
+    device_status: str = Field(default="OFFLINE")
     firmware_version: Optional[str] = Field(default=None)
     last_seen_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     room: Optional[Room] = Relationship(back_populates="devices")
 
 class Resident(SQLModel, table=True):
@@ -136,29 +155,31 @@ class Resident(SQLModel, table=True):
     room_id: str = Field(foreign_key="rooms.id", nullable=False)
     first_name: str = Field(nullable=False)
     last_name: str = Field(nullable=False)
+    date_of_birth: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     room: Room = Relationship(back_populates="residents")
+    health_conditions: List["HealthCondition"] = Relationship(back_populates="resident", cascade_delete=True)
+
+class HealthCondition(SQLModel, table=True):
+    __tablename__ = "health_conditions"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    condition_name: str = Field(nullable=False)
+    notes: Optional[str] = Field(default=None)
+    diagnosed_date: Optional[datetime] = Field(default=None)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resident: Resident = Relationship(back_populates="health_conditions")
 
 class ActivityType(SQLModel, table=True):
     __tablename__ = "activity_types"
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(unique=True, nullable=False) # 'Empty', 'Presence', 'Walking', 'Sitting', 'Fall_Detected'
-    category: str = Field(nullable=False) # 'STATUS', 'ACTIVITY', 'CRITICAL'
-
-class SensingTemplate(SQLModel, table=True):
-    __tablename__ = "sensing_templates"
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    organization_id: Optional[str] = Field(default=None, foreign_key="organizations.id")
-    activity_type_id: int = Field(foreign_key="activity_types.id", nullable=False)
-    template_name: str = Field(nullable=False)
-    csi_amplitude_baseline: List[float] = Field(sa_column=Column(JSON, nullable=False))
-    csi_phase_baseline: List[float] = Field(sa_column=Column(JSON, nullable=False))
-    environment_metadata: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    name: str = Field(unique=True, nullable=False)
+    category: str = Field(nullable=False)
 
 class SensingEvent(SQLModel, table=True):
     __tablename__ = "sensing_events"
@@ -177,39 +198,17 @@ class SensingEvent(SQLModel, table=True):
 # 4. ALERTS & NOTIFICATION ENGINE
 # ============================================================================
 
-class AlertTemplate(SQLModel, table=True):
-    __tablename__ = "alert_templates"
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    organization_id: Optional[str] = Field(default=None, foreign_key="organizations.id")
-    event_type_id: int = Field(foreign_key="activity_types.id", nullable=False)
-    alert_severity: str = Field(default="MEDIUM") # 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
-    message_template: str = Field(nullable=False)
-    cooldown_period_seconds: int = Field(default=60)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-class AlertConfiguration(SQLModel, table=True):
-    __tablename__ = "alert_configurations"
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    room_id: str = Field(foreign_key="rooms.id", nullable=False)
-    alert_template_id: str = Field(foreign_key="alert_templates.id", nullable=False)
-    is_enabled: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
 class Alert(SQLModel, table=True):
     __tablename__ = "alerts"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    alert_configuration_id: Optional[str] = Field(default=None, foreign_key="alert_configurations.id")
     room_id: str = Field(foreign_key="rooms.id", nullable=False)
     event_type: str = Field(nullable=False)
     severity: str = Field(nullable=False)
     message: str = Field(nullable=False)
-    status: str = Field(default="new") # 'new', 'acknowledged', 'resolved'
+    status: str = Field(default="new")
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
     room: Room = Relationship(back_populates="alerts")
     acknowledgement: Optional["AlertAcknowledgement"] = Relationship(back_populates="alert", cascade_delete=True)
 
@@ -222,5 +221,4 @@ class AlertAcknowledgement(SQLModel, table=True):
     resolved_at: Optional[datetime] = Field(default=None)
     resolution_notes: Optional[str] = Field(default=None)
 
-    # Relationships
     alert: Alert = Relationship(back_populates="acknowledgement")

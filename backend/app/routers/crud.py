@@ -3,7 +3,7 @@ from sqlmodel import Session, select, or_
 from typing import List
 from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
-from app.models.entities import Organization, Building, Floor, Room, SensingDevice, Resident
+from app.models.entities import Organization, Building, Floor, Room, SensingDevice, Resident, HealthCondition
 from app.schemas.schemas import (
     OrganizationCreate, OrganizationOut,
     BuildingCreate, BuildingOut,
@@ -290,3 +290,46 @@ def toggle_device_status(
     session.commit()
     session.refresh(db_dev)
     return db_dev
+
+@router.get("/residents/{resident_id}/health", dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_resident_health(
+    resident_id: str,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    res = session.get(Resident, resident_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Resident not found.")
+    
+    rm = session.get(Room, res.room_id)
+    flr = session.get(Floor, rm.floor_id)
+    bld = session.get(Building, flr.building_id)
+    scopes = get_user_scopes(current_user)
+    if not scopes["is_system_admin"] and bld.organization_id not in scopes["organization_ids"] and bld.id not in scopes["building_ids"] and rm.id not in scopes["room_ids"]:
+        raise HTTPException(status_code=403, detail="Not authorized to view health record.")
+
+    conditions = session.exec(select(HealthCondition).where(HealthCondition.resident_id == resident_id)).all()
+    
+    age = None
+    if res.date_of_birth:
+        from datetime import date
+        today = date.today()
+        dob = res.date_of_birth.date()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+    return {
+        "resident_id": res.id,
+        "first_name": res.first_name,
+        "last_name": res.last_name,
+        "date_of_birth": res.date_of_birth.isoformat() if res.date_of_birth else None,
+        "computed_age": age,
+        "conditions": [
+            {
+                "condition_name": c.condition_name,
+                "notes": c.notes,
+                "diagnosed_date": c.diagnosed_date.isoformat() if c.diagnosed_date else None,
+                "is_active": c.is_active
+            }
+            for c in conditions
+        ]
+    }
