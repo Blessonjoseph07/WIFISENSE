@@ -1,48 +1,71 @@
-@import "tailwindcss";
-@config "../tailwind.config.js";
-@variant dark (&:where(.dark, .dark *));
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-background text-on-background font-body-md antialiased;
+    @apply bg-background text-on-surface antialiased;
   }
 }
 
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  -webkit-font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
+/* Base variables (Corporate Default) */
+:root {
+  --bg-color: #F4F6F8;
+  --text-color: #2B3646;
+  --primary-color: #2F6FED;
+  --border-color: #e5e7eb;
+  --alert-color: #ba1a1a;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-serif: 'Inter', sans-serif; /* Fallback */
 }
 
-.material-symbols-outlined.fill {
-  font-variation-settings: 'FILL' 1;
+/* Elder Care Theme */
+.theme-elder-care {
+  --bg-color: #F6F3EC;
+  --text-color: #1F2E28;
+  --primary-color: #4A7C6A;
+  --border-color: #8B8578;
+  --alert-color: #C4622D;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Source Serif 4', 'Lora', serif;
 }
 
-.bg-wave-pattern {
-  background-image: radial-gradient(circle at 0% 50%, rgba(134, 242, 228, 0.1) 0%, transparent 50%),
-                    radial-gradient(circle at 100% 50%, rgba(218, 226, 253, 0.4) 0%, transparent 50%);
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-sans);
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: .5;
-  }
+.font-elder-heading {
+  font-family: var(--font-serif) !important;
 }
 
-.pulse-animation {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.theme-elder-care * {
+  border-color: var(--border-color);
+}
+
+.theme-elder-care .shadow-md,
+.theme-elder-care .shadow-lg,
+.theme-elder-care .shadow-sm,
+.theme-elder-care .shadow {
+  box-shadow: none !important;
+}
+
+.theme-elder-care .rounded-xl,
+.theme-elder-care .rounded-2xl,
+.theme-elder-care .rounded-lg,
+.theme-elder-care .rounded-md {
+  border-radius: 0.25rem !important;
+}
+
+.theme-elder-care .uppercase {
+  text-transform: none !important;
+}
+
+.bg-primary {
+  background-color: var(--primary-color) !important;
+}
+.text-primary {
+  color: var(--primary-color) !important;
 }
