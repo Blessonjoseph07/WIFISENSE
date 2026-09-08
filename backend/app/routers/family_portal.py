@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, select, or_
 from typing import List
 from datetime import datetime
 import uuid
 
 from app.core.database import get_session
-from app.routers.auth import get_current_user
-from app.models.entities import User, AccessRequest, Resident, SensingEvent, ActivityType, Alert, Room
+from app.routers.auth import get_current_user, require_roles, get_user_scopes
+from app.models.entities import User, AccessRequest, Resident, SensingEvent, ActivityType, Alert, Room, Floor, Building
 from app.schemas.schemas import AccessRequestCreate, AccessRequestOut, AccessRequestReview
 
 router = APIRouter(prefix="/family", tags=["Family Portal"])
@@ -17,28 +17,20 @@ def submit_access_request(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    # Verify target resident exists
     resident = session.get(Resident, req.resident_id)
     if not resident:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Target resident record not found."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target resident record not found.")
 
-    # Check if there is already a pending or approved request for this user and resident
     existing = session.exec(
         select(AccessRequest).where(
             AccessRequest.requesting_user_id == current_user.id,
-            AccessRequest.resident_id == req.resident_id
+            AccessRequest.resident_id == req.resident_id,
+            AccessRequest.status.in_(["pending", "org_approved", "active"])
         )
     ).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An access request for this resident already exists."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An active or pending access request for this resident already exists.")
 
-    # Create new access request
     db_req = AccessRequest(
         id=str(uuid.uuid4()),
         requesting_user_id=current_user.id,
@@ -55,16 +47,15 @@ def list_access_requests(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    # System Admin (role_id 1) or Organization Admin (role_id 2)
-    # Check current_user's roles
-    user_roles = [r.role_id for r in current_user.roles]
-    if 1 not in user_roles and 2 not in user_roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Administrators only."
+    scopes = get_user_scopes(current_user)
+    stmt = select(AccessRequest)
+    
+    if not scopes["is_system_admin"]:
+        stmt = stmt.join(Resident).join(Room).join(Floor).join(Building).where(
+            Building.organization_id.in_(list(scopes["organization_ids"]))
         )
     
-    return session.exec(select(AccessRequest)).all()
+    return session.exec(stmt).all()
 
 @router.patch("/requests/{request_id}", response_model=AccessRequestOut)
 def review_access_request(
@@ -73,25 +64,44 @@ def review_access_request(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    user_roles = [r.role_id for r in current_user.roles]
-    if 1 not in user_roles and 2 not in user_roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Administrators only."
-        )
-
     db_req = session.get(AccessRequest, request_id)
     if not db_req:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Access request not found."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access request not found.")
 
-    if review.status not in ["approved", "declined"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid status. Must be 'approved' or 'declined'."
-        )
+    resident = session.get(Resident, db_req.resident_id)
+    room = session.get(Room, resident.room_id)
+    floor = session.get(Floor, room.floor_id)
+    building = session.get(Building, floor.building_id)
+    org_id = building.organization_id
+
+    scopes = get_user_scopes(current_user)
+    
+    if review.status == "org_approved":
+        if db_req.status != "pending":
+            raise HTTPException(status_code=400, detail="Only pending requests can be org_approved.")
+        if not scopes["is_system_admin"] and org_id not in scopes["organization_ids"]:
+            raise HTTPException(status_code=403, detail="Not authorized to approve requests for this organization.")
+        
+    elif review.status == "active":
+        if db_req.status != "org_approved":
+            raise HTTPException(status_code=400, detail="Only org_approved requests can be made active.")
+        if not scopes["is_system_admin"]:
+            raise HTTPException(status_code=403, detail="Only system administrators can activate requests.")
+            
+    elif review.status == "declined":
+        if db_req.status not in ["pending", "org_approved"]:
+            raise HTTPException(status_code=400, detail="Cannot decline this request from its current state.")
+        if not scopes["is_system_admin"] and org_id not in scopes["organization_ids"]:
+            raise HTTPException(status_code=403, detail="Not authorized to decline requests for this organization.")
+            
+    elif review.status == "revoked":
+        if db_req.status != "active":
+            raise HTTPException(status_code=400, detail="Only active requests can be revoked.")
+        if not scopes["is_system_admin"] and org_id not in scopes["organization_ids"]:
+            raise HTTPException(status_code=403, detail="Not authorized to revoke requests for this organization.")
+            
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status transition.")
 
     db_req.status = review.status
     db_req.reviewed_by = current_user.id
@@ -99,11 +109,15 @@ def review_access_request(
     db_req.updated_at = datetime.utcnow()
     session.add(db_req)
 
-    if review.status == "approved":
-        # Link resident to target requesting user
+    if review.status == "active":
         target_user = session.get(User, db_req.requesting_user_id)
         if target_user:
             target_user.resident_id = db_req.resident_id
+            session.add(target_user)
+    elif review.status == "revoked":
+        target_user = session.get(User, db_req.requesting_user_id)
+        if target_user and target_user.resident_id == db_req.resident_id:
+            target_user.resident_id = None
             session.add(target_user)
 
     session.commit()
@@ -133,14 +147,9 @@ def get_linked_resident_status(
 
     resident = session.get(Resident, current_user.resident_id)
     if not resident:
-        return {
-            "linked": False,
-            "request_status": None
-        }
+        return {"linked": False, "request_status": None}
 
     room = session.get(Room, resident.room_id)
-    
-    # Query latest activity event
     stmt = select(SensingEvent).where(SensingEvent.room_id == resident.room_id).order_by(SensingEvent.timestamp.desc())
     latest_event = session.exec(stmt).first()
 
@@ -156,14 +165,11 @@ def get_linked_resident_status(
                 is_present = True
         last_update = latest_event.timestamp.isoformat()
 
-    # Query alert history (read-only, THAT resident/room only)
-    alerts = session.exec(
-        select(Alert).where(Alert.room_id == resident.room_id).order_by(Alert.created_at.desc())
-    ).all()
+    alerts = session.exec(select(Alert).where(Alert.room_id == resident.room_id).order_by(Alert.created_at.desc())).all()
 
     return {
         "linked": True,
-        "request_status": "approved",
+        "request_status": "active",
         "resident": {
             "id": resident.id,
             "first_name": resident.first_name,
