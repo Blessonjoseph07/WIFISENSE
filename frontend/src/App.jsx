@@ -1603,6 +1603,32 @@ export default function App() {
           ============================================================================ */}
           {currentView === "occupancy" && isViewAllowed("occupancy", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
+              {/* Organization Filter Tabs (for System Admin) */}
+              {isSystemAdmin && (
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg self-start inline-flex mb-2">
+                  <button 
+                    onClick={() => setFacilityFilter("ALL")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${facilityFilter === "ALL" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  >
+                    All Facilities
+                  </button>
+                  <button 
+                    onClick={() => setFacilityFilter("CORPORATE")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "CORPORATE" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">corporate_fare</span>
+                    Corporate Workplace (AJCE)
+                  </button>
+                  <button 
+                    onClick={() => setFacilityFilter("ELDER_CARE")}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "ELDER_CARE" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">health_and_safety</span>
+                    Old Age Care Home (St. Peter's)
+                  </button>
+                </div>
+              )}
+
               {/* Breadcrumbs & Navigation */}
               <div className="flex items-center justify-between mb-4">
                 <nav className="flex text-body-md font-body-md text-slate-500 dark:text-slate-400">
