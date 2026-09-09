@@ -95,19 +95,19 @@ export const VIEW_DEFINITIONS = {
 const MATRIX = {
   [APP_CONTEXTS.CARE]: {
     caregiver: {
-      allowedViews: ["dashboard", "caregiver", "alerts", "residents", "occupancy"],
+      allowedViews: ["dashboard", "caregiver", "alerts", "residents", "occupancy", "family"],
       defaultView: "dashboard",
       badgeText: "CARE • Caregiver",
       theme: "care"
     },
     facility_manager: {
-      allowedViews: ["assets", "devices", "dashboard", "alerts", "occupancy", "analytics"],
+      allowedViews: ["assets", "devices", "dashboard", "alerts", "occupancy", "analytics", "family"],
       defaultView: "assets",
       badgeText: "CARE • Facility Manager",
       theme: "care"
     },
     organization_admin: {
-      allowedViews: ["orgadmin", "assets", "devices", "alerts", "analytics", "residents"],
+      allowedViews: ["orgadmin", "assets", "devices", "alerts", "analytics", "residents", "family"],
       defaultView: "orgadmin",
       badgeText: "CARE • Org Administrator",
       theme: "care"

@@ -76,6 +76,31 @@ export default function CareAppShell({
           })}
         </div>
 
+        {/* Family Member Portal Dedicated Web Page Switcher */}
+        <div className="p-3 border-t border-emerald-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+          <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px]">family_restroom</span>
+              Family Portal
+            </span>
+            <span className="text-[9px] bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 px-1 py-0.2 rounded font-bold uppercase">PAGE</span>
+          </div>
+          <button
+            onClick={() => setCurrentView("family")}
+            className={`w-full p-2 rounded-lg text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+              currentView === "family"
+                ? "bg-emerald-600 text-white shadow-xs font-extrabold"
+                : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-emerald-200 dark:border-slate-700 hover:border-emerald-500 shadow-2xs"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-emerald-600 dark:text-emerald-400">group</span>
+              <span>Resident Family Portal</span>
+            </div>
+            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          </button>
+        </div>
+
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-emerald-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 flex flex-col gap-3">
           <button
@@ -107,12 +132,33 @@ export default function CareAppShell({
       <div className="ml-sidebar-width flex-1 flex flex-col min-h-screen">
         {/* TopAppBar */}
         <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-emerald-100 dark:border-slate-800 fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter">
-          <div className="flex items-center gap-stack-md text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400">healing</span>
-            <span>Care Deployment: <span className="text-slate-950 dark:text-white font-extrabold">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentView("dashboard")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer ${
+                currentView !== "family"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-emerald-600"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">health_and_safety</span>
+              Care Operations
+            </button>
+            <button
+              onClick={() => setCurrentView("family")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer ${
+                currentView === "family"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 font-extrabold"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">group</span>
+              Family Member Portal
+            </button>
+            <span className="hidden sm:inline-block text-[11px] text-slate-400 dark:text-slate-500 font-mono">|</span>
+            <span className="hidden sm:inline-block text-[11px] font-bold text-slate-600 dark:text-slate-400">
               {organizations[0]?.name || "St. Peter's Elder Care Home"}
-            </span></span>
-            <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-extrabold">CARE REPOSITORY</span>
+            </span>
           </div>
 
           <div className="flex items-center gap-gutter">

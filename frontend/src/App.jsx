@@ -112,6 +112,18 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Node Classification & Hardware Token Tracer states
+  const [nodeFilter, setNodeFilter] = useState("ALL"); // "ALL", "CORPORATE", "ELDER_CARE", "TRACER"
+  const [faultReports, setFaultReports] = useState([]);
+  const [showReportFaultModal, setShowReportFaultModal] = useState(false);
+  const [selectedFaultDevice, setSelectedFaultDevice] = useState(null);
+  const [faultIssueType, setFaultIssueType] = useState("FAULTY_CSI_VALUES");
+  const [faultDescription, setFaultDescription] = useState("");
+  const [faultSeverity, setFaultSeverity] = useState("HIGH");
+  const [selectedInspectTicket, setSelectedInspectTicket] = useState(null);
+  const [serviceActionNotes, setServiceActionNotes] = useState("");
+  const [serviceActionStatus, setServiceActionStatus] = useState("DISPATCHED_SERVICE");
+
   // Form Input States
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -466,6 +478,9 @@ export default function App() {
       const devRes = await fetch(`${API_BASE}/devices`, { headers });
       if (devRes.ok) setDevices(await devRes.json());
 
+      const faultRes = await fetch(`${API_BASE}/devices/fault-tracer`, { headers });
+      if (faultRes.ok) setFaultReports(await faultRes.json());
+
       // Only fetch residents for elder care or system admin (zero leak to corporate)
       if (appContext !== "CORPORATE" && role !== "corporate_staff") {
         const resRes = await fetch(`${API_BASE}/residents`, { headers });
@@ -811,6 +826,81 @@ export default function App() {
   };
 
   // ============================================================================
+  // HARDWARE TOKEN & FAULT TRACER HANDLERS
+  // ============================================================================
+  const handleResetDeviceToken = async (deviceId) => {
+    if (!confirm("Are you sure you want to regenerate and reset the hardware pairing token for this ESP node?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/devices/${deviceId}/reset-token`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({})
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to reset token.");
+      }
+      const data = await res.json();
+      fetchAllData();
+      setToastMessage({ type: "success", text: `Token regenerated: ${data.hardware_token}` });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleReportFault = async (e) => {
+    e.preventDefault();
+    if (!selectedFaultDevice) return;
+    try {
+      const res = await fetch(`${API_BASE}/devices/${selectedFaultDevice.id}/report-fault`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          issue_type: faultIssueType,
+          description: faultDescription,
+          severity: faultSeverity
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to submit fault report.");
+      }
+      const data = await res.json();
+      setShowReportFaultModal(false);
+      setFaultDescription("");
+      setSelectedFaultDevice(null);
+      fetchAllData();
+      setToastMessage({ type: "success", text: `Token tracer query ${data.tracer_token} submitted to Global Admin Desk!` });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleServiceTicket = async (ticketId, statusVal, notes) => {
+    try {
+      const res = await fetch(`${API_BASE}/devices/fault-tracer/${ticketId}/service`, {
+        method: "PATCH",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          status: statusVal,
+          service_notes: notes || "Serviced by Global Super Admin Desk"
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to service ticket.");
+      }
+      setSelectedInspectTicket(null);
+      setServiceActionNotes("");
+      fetchAllData();
+      setToastMessage({ type: "success", text: `Tracer ticket status updated to ${statusVal}!` });
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+
+  // ============================================================================
   // INFRASTRUCTURE ADD HANDLERS
   // ============================================================================
   const addOrganization = async (e) => {
@@ -1051,49 +1141,6 @@ export default function App() {
 
         {/* Login Panel (Clean Light Theme) */}
         <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 lg:p-14 relative bg-white overflow-y-auto">
-          <div className="absolute top-4 right-4 sm:top-5 sm:right-5 flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-[11px] flex-wrap max-w-xl justify-end shadow-xs">
-            <span className="text-slate-400 px-1 font-semibold">Demo:</span>
-            <button
-              type="button"
-              onClick={() => { setLoginEmail("blesson@wifisense.com"); setLoginPassword("blessonpassword"); }}
-              className="px-2.5 py-1 bg-white text-slate-750 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
-            >
-              SysAdmin
-            </button>
-            <button
-              type="button"
-              onClick={() => { setLoginEmail("abhinand@wifisense.com"); setLoginPassword("abhinandpassword"); }}
-              className="px-2.5 py-1 bg-white text-slate-750 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
-            >
-              Corporate
-            </button>
-            <button
-              type="button"
-              onClick={() => { setLoginEmail("abhinanth@wifisense.com"); setLoginPassword("abhinanthpassword"); }}
-              className="px-2.5 py-1 bg-white text-slate-750 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
-            >
-              Caregiver
-            </button>
-            <button
-              type="button"
-              onClick={() => { setLoginEmail("john@wifisense.com"); setLoginPassword("johnpassword"); }}
-              className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg shadow-2xs font-bold hover:text-emerald-800 border border-emerald-300/70 cursor-pointer transition-colors flex items-center gap-1"
-              title="Emergency Contact for Annamma Joseph (Verified Link)"
-            >
-              <span className="material-symbols-outlined text-[13px]">group</span>
-              Family (John)
-            </button>
-            <button
-              type="button"
-              onClick={() => { setLoginEmail("susan@wifisense.com"); setLoginPassword("susanpassword"); }}
-              className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg shadow-2xs font-bold hover:text-amber-800 border border-amber-300/70 cursor-pointer transition-colors flex items-center gap-1"
-              title="Emergency Contact with Pending Link Request"
-            >
-              <span className="material-symbols-outlined text-[13px]">pending</span>
-              Family (Susan)
-            </button>
-          </div>
-
           <div className="w-full max-w-md mx-auto">
             <div className="mb-stack-lg text-center md:text-left">
               <h1 className="font-headline-lg text-headline-lg text-slate-900 mb-2 font-bold tracking-tight">Welcome to WiFi Sense</h1>
@@ -2910,71 +2957,408 @@ export default function App() {
             </div>
           )}
 
-          {currentView === "devices" && isViewAllowed("devices", appContext, role, isSystemAdmin) && (
-            <div className="space-y-6 text-left">
-              {/* Header */}
-              <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Sensing Device Management</h2>
-                  <p className="text-body-md text-slate-500 dark:text-slate-400">Manage hardware status, firmware revisions, and room bindings.</p>
-                </div>
-                <button 
-                  onClick={() => {
-                    if (rooms.length > 0) {
-                      setNewDevRmId(rooms[0].id);
-                      setShowAddDeviceModal(true);
-                    } else {
-                      alert("Please create a room layout first.");
-                    }
-                  }}
-                  className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
-                >
-                  Register Node
-                </button>
-              </div>
+          {currentView === "devices" && isViewAllowed("devices", appContext, role, isSystemAdmin) && (() => {
+            const corpDevices = devices.filter(d => d.organization_type === "CORPORATE" || (!d.firmware_version?.includes("EC") && (d.organization_name?.includes("Amal") || d.firmware_version?.includes("101") || d.firmware_version?.includes("102") || d.firmware_version?.includes("103"))));
+            const careDevices = devices.filter(d => d.organization_type === "ELDER_CARE" || d.firmware_version?.includes("EC") || d.organization_name?.includes("Peter") || d.organization_name?.includes("Elder"));
+            const activeTracerReports = faultReports.filter(r => r.status !== "REPLACED_RESOLVED");
 
-              {/* Devices nodes list table */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 font-bold uppercase">
-                        <th className="p-4">ESP Node MAC</th>
-                        <th className="p-4">Assigned Room</th>
-                        <th className="p-4">Firmware version</th>
-                        <th className="p-4">Device status</th>
-                        <th className="p-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {devices.map(dev => (
-                        <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
-                          <td className="p-4 font-mono font-semibold text-slate-850 dark:text-white">{dev.mac_address}</td>
-                          <td className="p-4 font-bold">{rooms.find(r => r.id === dev.room_id)?.name || "Unbound / Hub Node"}</td>
-                          <td className="p-4 text-slate-500">{dev.firmware_version}</td>
-                          <td className="p-4">
-                            {dev.device_status === "ONLINE" ? (
-                              <span className="bg-teal-50 dark:bg-teal-950/20 text-teal-650 px-2.5 py-0.5 rounded text-[10px] font-bold">ONLINE</span>
-                            ) : (
-                              <span className="bg-red-50 dark:bg-red-950/20 text-red-600 px-2.5 py-0.5 rounded text-[10px] font-bold">OFFLINE</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-right">
-                            <button 
-                              onClick={() => handleToggleDevice(dev.id)}
-                              className="text-teal-650 hover:underline font-bold"
-                            >
-                              Toggle Power
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            let displayedDevices = devices;
+            if (nodeFilter === "CORPORATE") displayedDevices = corpDevices;
+            else if (nodeFilter === "ELDER_CARE") displayedDevices = careDevices;
+
+            return (
+              <div className="space-y-6 text-left">
+                {/* Header with Classification Badge */}
+                <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Sensing Node &amp; Device Management</h2>
+                      <span className="bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Hardware Classification
+                      </span>
+                    </div>
+                    <p className="text-body-md text-slate-500 dark:text-slate-400">
+                      Multi-tenant ESP32 sensor fleet oversight, organization-type classification, hardware pairing tokens, and token tracer service desk.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => {
+                        if (rooms.length > 0) {
+                          setNewDevRmId(rooms[0].id);
+                          setShowAddDeviceModal(true);
+                        } else {
+                          alert("Please create a room layout first.");
+                        }
+                      }}
+                      className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold uppercase transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                      Register ESP Node
+                    </button>
+                  </div>
                 </div>
+
+                {/* Classification Metric Tiles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div 
+                    onClick={() => setNodeFilter("ALL")}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                      nodeFilter === "ALL" 
+                        ? "bg-teal-50/60 dark:bg-teal-950/40 border-teal-500 shadow-xs" 
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Fleet Nodes</span>
+                      <span className="material-symbols-outlined text-teal-600">sensors</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white">{devices.length}</div>
+                    <div className="text-[11px] text-slate-400 mt-1">All active sensing receivers</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setNodeFilter("CORPORATE")}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                      nodeFilter === "CORPORATE" 
+                        ? "bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-500 shadow-xs" 
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Corporate Nodes</span>
+                      <span className="material-symbols-outlined text-indigo-600">domain</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white">{corpDevices.length}</div>
+                    <div className="text-[11px] text-slate-500 truncate">Amal Jyothi College of Engineering</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setNodeFilter("ELDER_CARE")}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                      nodeFilter === "ELDER_CARE" 
+                        ? "bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-500 shadow-xs" 
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Old Age Care Nodes</span>
+                      <span className="material-symbols-outlined text-emerald-600">health_and_safety</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white">{careDevices.length}</div>
+                    <div className="text-[11px] text-slate-500 truncate">St. Peter's Elder Care Home</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setNodeFilter("TRACER")}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                      nodeFilter === "TRACER" 
+                        ? "bg-amber-50/60 dark:bg-amber-950/40 border-amber-500 shadow-xs" 
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Token Tracer Queries</span>
+                      <span className="material-symbols-outlined text-amber-600">bug_report</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      {activeTracerReports.length}
+                      {activeTracerReports.length > 0 && (
+                        <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full animate-pulse">ATTENTION</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500">Fault tickets awaiting service</div>
+                  </div>
+                </div>
+
+                {/* Filter Switcher Tabs */}
+                <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 flex-wrap">
+                  <button
+                    onClick={() => setNodeFilter("ALL")}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                      nodeFilter === "ALL"
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">sensors</span>
+                    All Monitored Nodes ({devices.length})
+                  </button>
+
+                  <button
+                    onClick={() => setNodeFilter("CORPORATE")}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                      nodeFilter === "CORPORATE"
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900 hover:bg-indigo-100"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">domain</span>
+                    Corporate Workplace (AJCE) ({corpDevices.length})
+                  </button>
+
+                  <button
+                    onClick={() => setNodeFilter("ELDER_CARE")}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                      nodeFilter === "ELDER_CARE"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">health_and_safety</span>
+                    Old Age Care Home (St. Peter's) ({careDevices.length})
+                  </button>
+
+                  <button
+                    onClick={() => setNodeFilter("TRACER")}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                      nodeFilter === "TRACER"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900 hover:bg-amber-100"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">build</span>
+                    Hardware Token Tracer &amp; Service Desk ({faultReports.length})
+                  </button>
+                </div>
+
+                {/* View 1: Sensing Nodes Table with Classification & Pairing Token */}
+                {nodeFilter !== "TRACER" && (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                            <th className="p-4 text-left">ESP Node MAC &amp; Token</th>
+                            <th className="p-4 text-left">Organization &amp; Classification</th>
+                            <th className="p-4 text-left">Assigned Room &amp; Wing</th>
+                            <th className="p-4 text-left">Firmware Version</th>
+                            <th className="p-4 text-left">Node Status</th>
+                            <th className="p-4 text-right">Actions &amp; Fault Tracer</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {displayedDevices.map(dev => {
+                            const isCorp = dev.organization_type === "CORPORATE" || (!dev.firmware_version?.includes("EC") && (dev.organization_name?.includes("Amal") || dev.firmware_version?.includes("101") || dev.firmware_version?.includes("102") || dev.firmware_version?.includes("103")));
+                            const orgLabel = isCorp ? "Amal Jyothi College of Engineering" : "St. Peter's Elder Care Home";
+                            const orgBadgeType = isCorp ? "CORPORATE" : "OLD AGE CARE";
+                            const assignedRoom = rooms.find(r => r.id === dev.room_id)?.name || dev.room_name || "Unbound / Hub Node";
+                            const hasActiveFault = faultReports.some(r => r.device_id === dev.id && r.status !== "REPLACED_RESOLVED");
+
+                            return (
+                              <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40 transition-colors">
+                                <td className="p-4">
+                                  <div className="font-mono font-bold text-slate-900 dark:text-white text-xs">{dev.mac_address}</div>
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase">Token:</span>
+                                    <code className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                                      {dev.hardware_token || "TK-ESP32-GEN01"}
+                                    </code>
+                                  </div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    {isCorp ? (
+                                      <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                                        <span className="material-symbols-outlined text-[12px]">domain</span>
+                                        {orgBadgeType}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                                        <span className="material-symbols-outlined text-[12px]">health_and_safety</span>
+                                        {orgBadgeType}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">{orgLabel}</div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="font-bold text-slate-900 dark:text-white">{assignedRoom}</div>
+                                  <div className="text-[10px] text-slate-400">{dev.building_name || (isCorp ? "Academic Block" : "Elder Care Wing")}</div>
+                                </td>
+                                <td className="p-4 text-slate-500 font-mono text-[11px]">
+                                  {dev.firmware_version || "ESP32-CSI-v1.4"}
+                                </td>
+                                <td className="p-4">
+                                  {hasActiveFault ? (
+                                    <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 px-2.5 py-1 rounded text-[10px] font-black inline-flex items-center gap-1 animate-pulse">
+                                      <span className="material-symbols-outlined text-[12px]">warning</span>
+                                      FAULT REPORTED
+                                    </span>
+                                  ) : dev.device_status === "ONLINE" ? (
+                                    <span className="bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-0.5 rounded text-[10px] font-bold">
+                                      ONLINE
+                                    </span>
+                                  ) : (
+                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded text-[10px] font-bold">
+                                      OFFLINE
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-4 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button 
+                                      onClick={() => handleToggleDevice(dev.id)}
+                                      className="px-2.5 py-1 border border-slate-200 dark:border-slate-700 rounded text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                      title="Toggle node operational power"
+                                    >
+                                      Power
+                                    </button>
+                                    <button 
+                                      onClick={() => handleResetDeviceToken(dev.id)}
+                                      className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                                      title="Reset & regenerate hardware pairing token"
+                                    >
+                                      <span className="material-symbols-outlined text-[13px]">lock_reset</span>
+                                      Reset Token
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        setSelectedFaultDevice(dev);
+                                        setShowReportFaultModal(true);
+                                      }}
+                                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                                      title="Report faulty CSI, hardware damage or electronic problem"
+                                    >
+                                      <span className="material-symbols-outlined text-[13px]">report</span>
+                                      Report Fault
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* View 2: Hardware Token Tracer & Fault Service Desk */}
+                {nodeFilter === "TRACER" && (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <div className="p-4 bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-amber-500">build_circle</span>
+                          Global Hardware Token Tracer &amp; Service Desk
+                        </h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Active fault queries submitted by Corporate and Old Age Home admins for node service, CSI recalibration, or hardware replacement.
+                        </p>
+                      </div>
+                      <span className="text-[11px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-lg font-bold text-slate-700 dark:text-slate-300">
+                        {faultReports.length} Queries Logged
+                      </span>
+                    </div>
+
+                    {faultReports.length === 0 ? (
+                      <div className="p-12 text-center text-slate-400">
+                        <span className="material-symbols-outlined text-4xl mb-2 text-slate-300 dark:text-slate-600">check_circle</span>
+                        <p className="font-bold text-sm">No Active Fault Reports</p>
+                        <p className="text-xs text-slate-400 mt-1">All ESP32 sensing nodes across Corporate and Old Age Home facilities are operational.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                              <th className="p-4 text-left">Tracer Token</th>
+                              <th className="p-4 text-left">Target Node &amp; Room</th>
+                              <th className="p-4 text-left">Classification Domain</th>
+                              <th className="p-4 text-left">Issue Type &amp; Diagnosis</th>
+                              <th className="p-4 text-left">Severity</th>
+                              <th className="p-4 text-left">Service Status</th>
+                              <th className="p-4 text-right">Global Admin Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {faultReports.map(rep => {
+                              const isCorp = rep.organization_type === "CORPORATE";
+                              return (
+                                <tr key={rep.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40 transition-colors">
+                                  <td className="p-4">
+                                    <div className="font-mono font-bold text-amber-600 dark:text-amber-400 text-xs flex items-center gap-1">
+                                      <span className="material-symbols-outlined text-[14px]">confirmation_number</span>
+                                      {rep.tracer_token}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">
+                                      {new Date(rep.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="font-mono font-semibold text-slate-900 dark:text-white">{rep.mac_address}</div>
+                                    <div className="text-[11px] text-slate-500 font-semibold">{rep.room_name}</div>
+                                  </td>
+                                  <td className="p-4">
+                                    {isCorp ? (
+                                      <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                                        🏢 CORPORATE
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                                        🏥 OLD AGE HOME
+                                      </span>
+                                    )}
+                                    <div className="text-[10px] text-slate-500 mt-0.5 font-bold truncate max-w-xs">{rep.organization_name}</div>
+                                  </td>
+                                  <td className="p-4 max-w-xs">
+                                    <div className="font-bold text-slate-900 dark:text-white text-xs">
+                                      {rep.issue_type === "FAULTY_CSI_VALUES" ? "Erratic / Faulty CSI Values" :
+                                       rep.issue_type === "PHYSICAL_DAMAGE" ? "Physical Hardware Damage" :
+                                       rep.issue_type === "ELECTRONIC_FAILURE" ? "Electronic / Power Failure" : "Connectivity / Wi-Fi Drop"}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 truncate mt-0.5" title={rep.description}>{rep.description}</div>
+                                    {rep.service_notes && (
+                                      <div className="text-[10px] text-teal-650 dark:text-teal-400 font-semibold mt-1 bg-teal-50 dark:bg-teal-950/30 p-1 rounded">
+                                        Desk Note: {rep.service_notes}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="p-4">
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                                      rep.severity === "CRITICAL" ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300" :
+                                      rep.severity === "HIGH" ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" :
+                                      "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                                    }`}>
+                                      {rep.severity}
+                                    </span>
+                                  </td>
+                                  <td className="p-4">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                      rep.status === "REPORTED" ? "bg-amber-50 text-amber-700 border border-amber-300" :
+                                      rep.status === "UNDER_INSPECTION" ? "bg-blue-50 text-blue-700 border border-blue-300" :
+                                      rep.status === "DISPATCHED_SERVICE" ? "bg-purple-50 text-purple-700 border border-purple-300" :
+                                      "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                                    }`}>
+                                      {rep.status}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    {isSystemAdmin || role === "system_admin" ? (
+                                      <button
+                                        onClick={() => setSelectedInspectTicket(rep)}
+                                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded text-xs font-bold uppercase transition-colors shadow-2xs cursor-pointer flex items-center gap-1 ml-auto"
+                                      >
+                                        <span className="material-symbols-outlined text-[14px]">handyman</span>
+                                        Service Node
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 italic">Global Admin Desk Action</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {currentView === "residents" && isViewAllowed("residents", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
@@ -3688,6 +4072,217 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* 9. Report ESP Node Fault / Token Tracer Modal */}
+      {showReportFaultModal && selectedFaultDevice && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl text-left">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-amber-50 dark:bg-amber-950/50 text-amber-600 rounded-lg material-symbols-outlined text-[20px]">
+                  report_problem
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">Report ESP Node Fault</h3>
+                  <p className="text-[11px] text-slate-500">Submit hardware tracer query to Global Admin Desk</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowReportFaultModal(false);
+                  setSelectedFaultDevice(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl mb-4 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Node MAC:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{selectedFaultDevice.mac_address}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Hardware Token:</span>
+                <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{selectedFaultDevice.hardware_token || "TK-ESP32-GEN01"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Domain:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {selectedFaultDevice.organization_name || (selectedFaultDevice.organization_type === "CORPORATE" ? "Amal Jyothi College of Engineering" : "St. Peter's Elder Care Home")}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleReportFault} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Issue Category</label>
+                <select
+                  value={faultIssueType}
+                  onChange={(e) => setFaultIssueType(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 bg-slate-50 dark:bg-slate-800 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-hidden"
+                >
+                  <option value="FAULTY_CSI_VALUES">Faulty CSI Values (Erratic Amplitude/Phase Noise)</option>
+                  <option value="PHYSICAL_DAMAGE">Physical Damage (Antenna Broken / Enclosure Damaged)</option>
+                  <option value="ELECTRONIC_FAILURE">Electronic / Circuit Problem (Power Surge / Desync)</option>
+                  <option value="CONNECTIVITY_DROP">Connectivity Drop (Wi-Fi CSI Telemetry Disconnected)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Impact Severity</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {["LOW", "MEDIUM", "HIGH", "CRITICAL"].map(lvl => (
+                    <button
+                      type="button"
+                      key={lvl}
+                      onClick={() => setFaultSeverity(lvl)}
+                      className={`py-1.5 px-2 rounded-lg font-bold text-center text-[10px] cursor-pointer transition-all ${
+                        faultSeverity === lvl
+                          ? lvl === "CRITICAL" ? "bg-red-600 text-white shadow-xs" :
+                            lvl === "HIGH" ? "bg-amber-600 text-white shadow-xs" :
+                            lvl === "MEDIUM" ? "bg-blue-600 text-white shadow-xs" : "bg-slate-700 text-white shadow-xs"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Fault Description &amp; Electronic Diagnostics</label>
+                <textarea
+                  value={faultDescription}
+                  onChange={(e) => setFaultDescription(e.target.value)}
+                  placeholder="Describe the faulty values, hardware symptoms, or electronic issues observed..."
+                  required
+                  rows={3}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 bg-slate-50 dark:bg-slate-800 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-hidden resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReportFaultModal(false);
+                    setSelectedFaultDevice(null);
+                  }}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">send</span>
+                  Dispatch Tracer Query
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 10. Global Super Admin Service & Inspection Modal */}
+      {selectedInspectTicket && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl text-left">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg material-symbols-outlined text-[20px]">
+                  handyman
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">Global Admin Service Desk</h3>
+                  <p className="text-[11px] text-slate-500">Inspect ticket &amp; dispatch service to ESP sensor</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedInspectTicket(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl mb-4 text-xs space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-semibold">Tracer Ticket Token:</span>
+                <span className="font-mono font-bold text-amber-600 dark:text-amber-400 text-sm">{selectedInspectTicket.tracer_token}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Target Node MAC:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{selectedInspectTicket.mac_address}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Classification Domain:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {selectedInspectTicket.organization_type === "CORPORATE" ? "🏢 Corporate (AJCE)" : "🏥 Old Age Care (St. Peter's)"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-semibold">Location / Room:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedInspectTicket.room_name}</span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 font-semibold block mb-0.5">Reported Issue:</span>
+                <p className="text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
+                  {selectedInspectTicket.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Action Status</label>
+                <select
+                  value={serviceActionStatus}
+                  onChange={(e) => setServiceActionStatus(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 bg-slate-50 dark:bg-slate-800 dark:text-white font-medium focus:ring-2 focus:ring-teal-500 outline-hidden"
+                >
+                  <option value="UNDER_INSPECTION">Under Inspection (Reviewing CSI Waveform Logs)</option>
+                  <option value="DISPATCHED_SERVICE">Dispatched Service (Technician En Route to Facility)</option>
+                  <option value="REPLACED_RESOLVED">Replaced &amp; Resolved (Node Restored ONLINE with New Token)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Service Notes &amp; Dispatch Resolution</label>
+                <textarea
+                  value={serviceActionNotes}
+                  onChange={(e) => setServiceActionNotes(e.target.value)}
+                  placeholder="e.g. Technician dispatched with new ESP32-S3 receiver module. Repaired antenna and verified CSI subcarrier signals."
+                  rows={3}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 bg-slate-50 dark:bg-slate-800 dark:text-white font-medium focus:ring-2 focus:ring-teal-500 outline-hidden resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setSelectedInspectTicket(null)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleServiceTicket(selectedInspectTicket.id, serviceActionStatus, serviceActionNotes)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-lg font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">verified</span>
+                  Confirm Service Action
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
