@@ -4,7 +4,7 @@ import random
 from app.models.entities import (
     Role, User, UserRole, Organization, Building, Floor, Room, 
     SensingDevice, Resident, ActivityType, SensingEvent, Alert, AlertAcknowledgement, AccessRequest,
-    SharingPolicy, HealthCondition, CaregiverProfile
+    SharingPolicy, HealthCondition, CaregiverProfile, NodeFaultReport
 )
 from app.core.security import hash_password
 
@@ -27,6 +27,10 @@ ACTIVITY_MAPPING = {
 
 def seed_database(session: Session):
     # 1. Clean existing tables
+    try:
+        session.execute(text("DELETE FROM node_fault_reports"))
+    except Exception:
+        pass
     session.execute(text("DELETE FROM health_conditions"))
     session.execute(text("DELETE FROM caregiver_profiles"))
     session.execute(text("DELETE FROM sharing_policies"))
@@ -317,24 +321,38 @@ def seed_database(session: Session):
     session.commit()
 
     # 10. Seed Devices
-    dev_c1 = SensingDevice(mac_address="4C:75:25:AA:BB:CC", room_id=rm_mca_lab.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 101", last_seen_at=datetime.utcnow())
-    dev_c2 = SensingDevice(mac_address="4C:75:25:11:22:33", room_id=rm_staff_room.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 102", last_seen_at=datetime.utcnow())
-    dev_c3 = SensingDevice(mac_address="4C:75:25:99:88:77", room_id=rm_iot_lab.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 103", last_seen_at=datetime.utcnow())
+    dev_c1 = SensingDevice(mac_address="4C:75:25:AA:BB:CC", room_id=rm_mca_lab.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 101", hardware_token="TK-ESP32-9A4B12", last_seen_at=datetime.utcnow())
+    dev_c2 = SensingDevice(mac_address="4C:75:25:11:22:33", room_id=rm_staff_room.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 102", hardware_token="TK-ESP32-8C3D44", last_seen_at=datetime.utcnow())
+    dev_c3 = SensingDevice(mac_address="4C:75:25:99:88:77", room_id=rm_iot_lab.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 103", hardware_token="TK-ESP32-7E2F55", last_seen_at=datetime.utcnow())
 
-    dev_ec1 = SensingDevice(mac_address="24:0A:C4:00:11:22", room_id=rm_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC101", last_seen_at=datetime.utcnow())
-    dev_ec2 = SensingDevice(mac_address="24:0A:C4:33:44:55", room_id=rm_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC102", last_seen_at=datetime.utcnow())
-    dev_ec3 = SensingDevice(mac_address="24:0A:C4:66:77:88", room_id=rm_recreation.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-REC", last_seen_at=datetime.utcnow())
-    dev_ec4 = SensingDevice(mac_address="24:0A:C4:99:AA:BB", room_id=rm_103.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC103", last_seen_at=datetime.utcnow())
-    dev_ec5 = SensingDevice(mac_address="24:0A:C4:CC:DD:EE", room_id=rm_104.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC104", last_seen_at=datetime.utcnow())
-    dev_ec6 = SensingDevice(mac_address="24:0A:C4:12:34:56", room_id=rm_201.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC201", last_seen_at=datetime.utcnow())
-    dev_ec7 = SensingDevice(mac_address="24:0A:C4:78:9A:BC", room_id=rm_ward_1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-WRD", last_seen_at=datetime.utcnow())
-    dev_ec8 = SensingDevice(mac_address="24:0A:C4:DE:F0:12", room_id=rm_physio.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-PHY", last_seen_at=datetime.utcnow())
+    dev_ec1 = SensingDevice(mac_address="24:0A:C4:00:11:22", room_id=rm_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC101", hardware_token="TK-ESP32-6A1B22", last_seen_at=datetime.utcnow())
+    dev_ec2 = SensingDevice(mac_address="24:0A:C4:33:44:55", room_id=rm_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC102", hardware_token="TK-ESP32-5B2C33", last_seen_at=datetime.utcnow())
+    dev_ec3 = SensingDevice(mac_address="24:0A:C4:66:77:88", room_id=rm_recreation.id, device_status="FAULT_REPORTED", firmware_version="ESP32-CSI Node EC-REC", hardware_token="TK-ESP32-4C3D99", last_seen_at=datetime.utcnow())
+    dev_ec4 = SensingDevice(mac_address="24:0A:C4:99:AA:BB", room_id=rm_103.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC103", hardware_token="TK-ESP32-3D4E88", last_seen_at=datetime.utcnow())
+    dev_ec5 = SensingDevice(mac_address="24:0A:C4:CC:DD:EE", room_id=rm_104.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC104", hardware_token="TK-ESP32-2E5F77", last_seen_at=datetime.utcnow())
+    dev_ec6 = SensingDevice(mac_address="24:0A:C4:12:34:56", room_id=rm_201.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC201", hardware_token="TK-ESP32-1F6A66", last_seen_at=datetime.utcnow())
+    dev_ec7 = SensingDevice(mac_address="24:0A:C4:78:9A:BC", room_id=rm_ward_1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-WRD", hardware_token="TK-ESP32-0A7B55", last_seen_at=datetime.utcnow())
+    dev_ec8 = SensingDevice(mac_address="24:0A:C4:DE:F0:12", room_id=rm_physio.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-PHY", hardware_token="TK-ESP32-9B8C44", last_seen_at=datetime.utcnow())
 
     all_devices = [dev_c1, dev_c2, dev_c3, dev_ec1, dev_ec2, dev_ec3, dev_ec4, dev_ec5, dev_ec6, dev_ec7, dev_ec8]
     session.add_all(all_devices)
     session.commit()
     for d in all_devices:
         session.refresh(d)
+
+    # Seed Sample Node Fault Query (Token Tracer item)
+    sample_fault = NodeFaultReport(
+        device_id=dev_ec3.id,
+        reported_by_user_id=mary_user.id,
+        issue_type="FAULTY_CSI_VALUES",
+        description="Subcarrier amplitudes fluctuating with 90% phase variance spikes. Suspected receiver antenna desync.",
+        severity="HIGH",
+        tracer_token="TRC-94A2F801",
+        status="REPORTED",
+        service_notes="Awaiting global admin service dispatch."
+    )
+    session.add(sample_fault)
+    session.commit()
 
     # 11. Seed Realistic Historical Sensing Events (spanning past 7 days, ~120 events)
     now = datetime.utcnow()

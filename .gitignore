@@ -1,6 +1,6 @@
 # Python virtual environment
 backend/venv/
-backend/wifisense.db
+*.db
 
 # Node.js dependencies
 frontend/node_modules/
