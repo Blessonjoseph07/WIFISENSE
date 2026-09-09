@@ -115,6 +115,7 @@ export default function App() {
   // Node Classification & Hardware Token Tracer states
   const [nodeFilter, setNodeFilter] = useState("ALL"); // "ALL", "CORPORATE", "ELDER_CARE", "TRACER"
   const [facilityFilter, setFacilityFilter] = useState("ALL"); // "ALL", "CORPORATE", "ELDER_CARE"
+  const [occupancyRoomIndex, setOccupancyRoomIndex] = useState(0);
 
   const [faultReports, setFaultReports] = useState([]);
   const [showReportFaultModal, setShowReportFaultModal] = useState(false);
@@ -1601,77 +1602,102 @@ export default function App() {
           {/* ============================================================================
             2. ROOM OCCUPANCY VIEW (DEDICATED FULL GRID SCREEN / DETAILED ROOM 204 VIEW)
           ============================================================================ */}
-          {currentView === "occupancy" && isViewAllowed("occupancy", appContext, role, isSystemAdmin) && (
-            <div className="space-y-6 text-left">
-              {/* Organization Filter Tabs (for System Admin) */}
-              {isSystemAdmin && (
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg self-start inline-flex mb-2">
-                  <button 
-                    onClick={() => setFacilityFilter("ALL")}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${facilityFilter === "ALL" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                  >
-                    All Facilities
-                  </button>
-                  <button 
-                    onClick={() => setFacilityFilter("CORPORATE")}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "CORPORATE" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">corporate_fare</span>
-                    Corporate Workplace (AJCE)
-                  </button>
-                  <button 
-                    onClick={() => setFacilityFilter("ELDER_CARE")}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "ELDER_CARE" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">health_and_safety</span>
-                    Old Age Care Home (St. Peter's)
-                  </button>
-                </div>
-              )}
+          {currentView === "occupancy" && isViewAllowed("occupancy", appContext, role, isSystemAdmin) && (() => {
+            const filteredOccupancyRooms = rooms.filter(rm => {
+              if (facilityFilter === "ALL") return true;
+              const flr = floors.find(f => f.id === rm.floor_id);
+              if (!flr) return false;
+              const bld = buildings.find(b => b.id === flr.building_id);
+              if (!bld) return false;
+              const org = organizations.find(o => o.id === bld.organization_id);
+              if (!org) return false;
+              return org.organization_type === facilityFilter;
+            });
+            const safeRooms = filteredOccupancyRooms.length > 0 ? filteredOccupancyRooms : [{name: "No rooms available", room_type: "N/A", floor_id: null}];
+            const activeRoomIndex = occupancyRoomIndex % safeRooms.length;
+            const activeRm = safeRooms[activeRoomIndex];
+            const activeFlr = floors.find(f => f.id === activeRm.floor_id) || {floor_number: "Unknown"};
+            const activeBld = buildings.find(b => b.id === activeFlr.building_id) || {name: "Unknown Building"};
 
-              {/* Breadcrumbs & Navigation */}
-              <div className="flex items-center justify-between mb-4">
-                <nav className="flex text-body-md font-body-md text-slate-500 dark:text-slate-400">
-                  <ol className="inline-flex items-center space-x-1 md:space-x-3">
-                    <li className="inline-flex items-center">
-                      <a className="inline-flex items-center hover:text-teal-650 transition-colors cursor-pointer">
-                        Building A
-                      </a>
-                    </li>
-                    <li>
-                      <div className="flex items-center">
-                        <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
-                        <a className="hover:text-teal-650 transition-colors ml-1 md:ml-2 cursor-pointer">Floor 2</a>
-                      </div>
-                    </li>
-                    <li aria-current="page">
-                      <div className="flex items-center">
-                        <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
-                        <span className="text-slate-800 dark:text-white font-semibold ml-1 md:ml-2">Room 204</span>
-                      </div>
-                    </li>
-                  </ol>
-                </nav>
-                <div className="flex gap-2">
-                  <button className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center">
-                    <span className="material-symbols-outlined">chevron_left</span>
-                  </button>
-                  <button className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center">
-                    <span className="material-symbols-outlined">chevron_right</span>
-                  </button>
-                </div>
-              </div>
+            return (
+              <div className="space-y-6 text-left">
+                {/* Organization Filter Tabs (for System Admin) */}
+                {isSystemAdmin && (
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg self-start inline-flex mb-2">
+                    <button 
+                      onClick={() => { setFacilityFilter("ALL"); setOccupancyRoomIndex(0); }}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${facilityFilter === "ALL" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                    >
+                      All Facilities
+                    </button>
+                    <button 
+                      onClick={() => { setFacilityFilter("CORPORATE"); setOccupancyRoomIndex(0); }}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "CORPORATE" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">corporate_fare</span>
+                      Corporate Workplace (AJCE)
+                    </button>
+                    <button 
+                      onClick={() => { setFacilityFilter("ELDER_CARE"); setOccupancyRoomIndex(0); }}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "ELDER_CARE" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">health_and_safety</span>
+                      Old Age Care Home (St. Peter's)
+                    </button>
+                  </div>
+                )}
 
-              {/* Bento Grid Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-                {/* Current Status Card (Large) */}
-                <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden shadow-sm">
-                  <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(45deg, #0b1c30 0, #0b1c30 1px, transparent 1px, transparent 10px)" }}></div>
-                  <div className="flex justify-between items-start mb-6 relative z-10">
-                    <div>
-                      <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold mb-1">Room 204</h1>
-                      <p className="text-body-md font-body-md text-slate-500 dark:text-slate-400">Conference Room - East Wing</p>
-                    </div>
+                {/* Breadcrumbs & Navigation */}
+                <div className="flex items-center justify-between mb-4">
+                  <nav className="flex text-body-md font-body-md text-slate-500 dark:text-slate-400">
+                    <ol className="inline-flex items-center space-x-1 md:space-x-3">
+                      <li className="inline-flex items-center">
+                        <a className="inline-flex items-center hover:text-teal-650 transition-colors cursor-pointer">
+                          {activeBld.name}
+                        </a>
+                      </li>
+                      <li>
+                        <div className="flex items-center">
+                          <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
+                          <a className="hover:text-teal-650 transition-colors ml-1 md:ml-2 cursor-pointer">Floor {activeFlr.floor_number}</a>
+                        </div>
+                      </li>
+                      <li aria-current="page">
+                        <div className="flex items-center">
+                          <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
+                          <span className="text-slate-800 dark:text-white font-semibold ml-1 md:ml-2">{activeRm.name}</span>
+                        </div>
+                      </li>
+                    </ol>
+                  </nav>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setOccupancyRoomIndex(Math.max(0, activeRoomIndex - 1))}
+                      className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-30"
+                      disabled={activeRoomIndex === 0}
+                    >
+                      <span className="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <button 
+                      onClick={() => setOccupancyRoomIndex(Math.min(safeRooms.length - 1, activeRoomIndex + 1))}
+                      className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-30"
+                      disabled={activeRoomIndex === safeRooms.length - 1}
+                    >
+                      <span className="material-symbols-outlined">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bento Grid Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                  {/* Current Status Card (Large) */}
+                  <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden shadow-sm">
+                    <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(45deg, #0b1c30 0, #0b1c30 1px, transparent 1px, transparent 10px)" }}></div>
+                    <div className="flex justify-between items-start mb-6 relative z-10">
+                      <div>
+                        <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold mb-1">{activeRm.name}</h1>
+                        <p className="text-body-md font-body-md text-slate-500 dark:text-slate-400">{activeRm.room_type || "General Space"} - {activeBld.name}</p>
+                      </div>
                     <div className="bg-slate-950 dark:bg-slate-800 text-white px-4 py-2 rounded-full flex items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-full bg-teal-400 ${activeTelemetryActivity !== "Empty" ? "animate-pulse" : ""}`}></span>
                       <span className="text-label-caps font-label-caps font-bold tracking-wider uppercase">
@@ -1775,7 +1801,8 @@ export default function App() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ============================================================================
             3. CAREGIVER DASHBOARD
