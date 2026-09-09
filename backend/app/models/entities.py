@@ -75,6 +75,7 @@ class User(SQLModel, table=True):
     first_name: str = Field(nullable=False)
     last_name: str = Field(nullable=False)
     is_active: bool = Field(default=True)
+    photo_url: Optional[str] = Field(default=None)
     resident_id: Optional[str] = Field(default=None, foreign_key="residents.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
