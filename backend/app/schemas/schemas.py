@@ -165,7 +165,41 @@ class SensingDeviceOut(BaseModel):
     mac_address: str
     device_status: str
     firmware_version: Optional[str]
+    hardware_token: Optional[str] = None
     last_seen_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+    organization_id: Optional[str] = None
+    organization_name: Optional[str] = None
+    organization_type: Optional[str] = None
+    building_name: Optional[str] = None
+    room_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class FaultReportCreate(BaseModel):
+    issue_type: str = "FAULTY_CSI_VALUES"
+    description: str
+    severity: str = "HIGH"
+
+class FaultReportServiceUpdate(BaseModel):
+    status: str # UNDER_INSPECTION, DISPATCHED_SERVICE, REPLACED_RESOLVED
+    service_notes: Optional[str] = None
+
+class FaultReportOut(BaseModel):
+    id: str
+    device_id: str
+    mac_address: Optional[str] = None
+    room_name: Optional[str] = None
+    organization_name: Optional[str] = None
+    organization_type: Optional[str] = None
+    issue_type: str
+    description: str
+    severity: str
+    tracer_token: str
+    status: str
+    service_notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

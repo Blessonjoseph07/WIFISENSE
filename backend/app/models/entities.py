@@ -144,11 +144,26 @@ class SensingDevice(SQLModel, table=True):
     mac_address: str = Field(unique=True, index=True, nullable=False)
     device_status: str = Field(default="OFFLINE")
     firmware_version: Optional[str] = Field(default=None)
+    hardware_token: Optional[str] = Field(default=None)
     last_seen_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     room: Optional[Room] = Relationship(back_populates="devices")
+
+class NodeFaultReport(SQLModel, table=True):
+    __tablename__ = "node_fault_reports"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    device_id: str = Field(foreign_key="devices.id", nullable=False)
+    reported_by_user_id: Optional[str] = Field(default=None, foreign_key="users.id")
+    issue_type: str = Field(default="FAULTY_CSI_VALUES")
+    description: str = Field(nullable=False)
+    severity: str = Field(default="HIGH")
+    tracer_token: str = Field(default_factory=lambda: f"TRC-{uuid.uuid4().hex[:8].upper()}")
+    status: str = Field(default="REPORTED") # REPORTED, UNDER_INSPECTION, DISPATCHED_SERVICE, REPLACED_RESOLVED
+    service_notes: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Resident(SQLModel, table=True):
     __tablename__ = "residents"
