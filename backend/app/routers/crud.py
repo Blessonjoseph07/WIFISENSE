@@ -3,14 +3,15 @@ from sqlmodel import Session, select, or_
 from typing import List
 from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
-from app.models.entities import Organization, Building, Floor, Room, SensingDevice, Resident, HealthCondition
+from app.models.entities import Organization, Building, Floor, Room, SensingDevice, Resident, HealthCondition, SharingPolicy
 from app.schemas.schemas import (
     OrganizationCreate, OrganizationOut,
     BuildingCreate, BuildingOut,
     FloorCreate, FloorOut,
     RoomCreate, RoomOut,
     SensingDeviceCreate, SensingDeviceOut,
-    ResidentCreate, ResidentOut
+    ResidentCreate, ResidentOut,
+    SharingPolicyOut, SharingPolicyUpdate
 )
 
 router = APIRouter(tags=["Hierarchical Asset Management"])
@@ -242,6 +243,13 @@ def create_resident(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target Room not found.")
     flr = session.get(Floor, rm.floor_id)
     bld = session.get(Building, flr.building_id)
+    org = session.get(Organization, bld.organization_id)
+    if not org or org.type != "ELDER_CARE":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Residents can only be registered in ELDER_CARE organizations."
+        )
+
     scopes = get_user_scopes(current_user)
     if not scopes["is_system_admin"] and bld.organization_id not in scopes["organization_ids"] and bld.id not in scopes["building_ids"]:
         raise HTTPException(status_code=403, detail="Not authorized to add resident to this room.")
@@ -260,11 +268,14 @@ def list_residents(
     scopes = get_user_scopes(current_user)
     stmt = select(Resident)
     if not scopes["is_system_admin"]:
-        stmt = stmt.join(Room).join(Floor).join(Building).where(or_(
-            Building.organization_id.in_(list(scopes["organization_ids"])),
-            Building.id.in_(list(scopes["building_ids"])),
-            Room.id.in_(list(scopes["room_ids"]))
-        ))
+        stmt = stmt.join(Room).join(Floor).join(Building).join(Organization).where(
+            Organization.type == "ELDER_CARE",
+            or_(
+                Building.organization_id.in_(list(scopes["organization_ids"])),
+                Building.id.in_(list(scopes["building_ids"])),
+                Room.id.in_(list(scopes["room_ids"]))
+            )
+        )
     return session.exec(stmt).all()
 
 @router.patch("/devices/{device_id}/toggle", response_model=SensingDeviceOut, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "corporate_staff"]))])
@@ -304,6 +315,13 @@ def get_resident_health(
     rm = session.get(Room, res.room_id)
     flr = session.get(Floor, rm.floor_id)
     bld = session.get(Building, flr.building_id)
+    org = session.get(Organization, bld.organization_id)
+    if not org or org.type != "ELDER_CARE":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Health records are only available for ELDER_CARE organizations."
+        )
+
     scopes = get_user_scopes(current_user)
     if not scopes["is_system_admin"] and bld.organization_id not in scopes["organization_ids"] and bld.id not in scopes["building_ids"] and rm.id not in scopes["room_ids"]:
         raise HTTPException(status_code=403, detail="Not authorized to view health record.")
@@ -333,3 +351,67 @@ def get_resident_health(
             for c in conditions
         ]
     }
+
+# ============================================================================
+# 7. SHARING POLICIES (ELDER_CARE ONLY)
+# ============================================================================
+
+@router.get("/sharing-policies", response_model=List[SharingPolicyOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+def list_sharing_policies(
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    scopes = get_user_scopes(current_user)
+    if not scopes["is_system_admin"]:
+        elder_orgs = session.exec(
+            select(Organization).where(
+                Organization.id.in_(list(scopes["organization_ids"])),
+                Organization.type == "ELDER_CARE"
+            )
+        ).all()
+        if not elder_orgs:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Sharing policies are only accessible for ELDER_CARE organizations."
+            )
+        elder_org_ids = [o.id for o in elder_orgs]
+        stmt = select(SharingPolicy).where(SharingPolicy.organization_id.in_(elder_org_ids))
+    else:
+        stmt = select(SharingPolicy)
+    return session.exec(stmt).all()
+
+@router.put("/sharing-policies/{policy_id}", response_model=SharingPolicyOut, dependencies=[Depends(require_roles(["system_admin", "organization_admin"]))])
+def update_sharing_policy(
+    policy_id: str,
+    update_data: SharingPolicyUpdate,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    policy = session.get(SharingPolicy, policy_id)
+    if not policy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sharing policy not found.")
+    
+    scopes = get_user_scopes(current_user)
+    if not scopes["is_system_admin"]:
+        if policy.organization_id not in scopes["organization_ids"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to modify sharing policy for this organization."
+            )
+        org = session.get(Organization, policy.organization_id)
+        if not org or org.type != "ELDER_CARE":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Sharing policies can only be updated for ELDER_CARE organizations."
+            )
+
+    update_dict = update_data.dict(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(policy, key, value)
+    
+    from datetime import datetime
+    policy.updated_at = datetime.utcnow()
+    session.add(policy)
+    session.commit()
+    session.refresh(policy)
+    return policy

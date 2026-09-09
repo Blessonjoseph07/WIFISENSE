@@ -37,7 +37,31 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     role: str
+    application_context: str
+    is_system_admin: bool = False
     user: UserOut
+
+class SharingPolicyOut(BaseModel):
+    id: str
+    organization_id: Optional[str] = None
+    resident_id: Optional[str] = None
+    share_presence: bool
+    share_activity_detail: bool
+    share_room_name: bool
+    share_alert_history: bool
+    share_alert_severity_threshold: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SharingPolicyUpdate(BaseModel):
+    share_presence: Optional[bool] = None
+    share_activity_detail: Optional[bool] = None
+    share_room_name: Optional[bool] = None
+    share_alert_history: Optional[bool] = None
+    share_alert_severity_threshold: Optional[str] = None
 
 class AccessRequestCreate(BaseModel):
     resident_id: str
