@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import WifiModemVisualizer from "./WifiModemVisualizer";
 
 const API_BASE = "http://localhost:8000";
 
@@ -8,12 +9,22 @@ export default function App() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
   const [role, setRole] = useState(localStorage.getItem("role") || "");
   
-  // Navigation State
+  // Navigation State & Browser History Management
   // Views: 'family', 'analytics', 'devices', 'alerts', 'occupancy', 'dashboard', 'caregiver', 'corporate', 'facilitymanager', 'orgadmin', 'sysadmin'
-  const [currentView, setCurrentView] = useState("dashboard"); 
-  
-  // Multi-tenant Org Scope Switcher
-  const [orgScope, setOrgScope] = useState("all"); 
+  const [currentView, _setCurrentView] = useState("dashboard"); 
+  const navHistoryRef = useRef([]);
+
+  const setCurrentView = (newView, pushHistory = true) => {
+    _setCurrentView((prev) => {
+      if (prev !== newView && pushHistory) {
+        navHistoryRef.current.push(prev);
+        try {
+          window.history.pushState({ app: "wifisense", view: newView }, "", window.location.pathname);
+        } catch (_) {}
+      }
+      return newView;
+    });
+  };
 
   // System Dark/Light Mode state
   const [darkMode, setDarkMode] = useState(localStorage.getItem("darkMode") === "true");
@@ -72,6 +83,8 @@ export default function App() {
   const [showAddResidentModal, setShowAddResidentModal] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(null); 
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Form Input States
   const [loginEmail, setLoginEmail] = useState("");
@@ -121,6 +134,150 @@ export default function App() {
 
   // Toast Notification Message
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Helper to step backward one step through user interactions
+  const stepBack = () => {
+    // 1. Close any active modal / popup drawer first
+    if (showAddOrgModal) { setShowAddOrgModal(false); return true; }
+    if (showAddBuildingModal) { setShowAddBuildingModal(false); return true; }
+    if (showAddFloorModal) { setShowAddFloorModal(false); return true; }
+    if (showAddRoomModal) { setShowAddRoomModal(false); return true; }
+    if (showAddDeviceModal) { setShowAddDeviceModal(false); return true; }
+    if (showAddResidentModal) { setShowAddResidentModal(false); return true; }
+    if (showEmergencyModal) { setShowEmergencyModal(false); return true; }
+    if (showResolveModal) { setShowResolveModal(null); return true; }
+    if (showSimulateDrawer) { setShowSimulateDrawer(false); return true; }
+    if (showProfileMenu) { setShowProfileMenu(false); return true; }
+
+    // 2. If user is on the registration view of the landing page, step back to login
+    if (!token && isRegistering) {
+      setIsRegistering(false);
+      return true;
+    }
+
+    // 3. Step back in view navigation history
+    if (navHistoryRef.current.length > 0) {
+      const prevView = navHistoryRef.current.pop();
+      if (prevView && prevView !== currentView) {
+        _setCurrentView(prevView);
+        return true;
+      }
+    } else if (currentView !== "dashboard") {
+      _setCurrentView("dashboard");
+      return true;
+    }
+
+    return false;
+  };
+
+  // Push browser history state when registration form opens
+  useEffect(() => {
+    if (isRegistering) {
+      try {
+        window.history.pushState({ app: "wifisense", registering: true }, "", window.location.pathname);
+      } catch (_) {}
+    }
+  }, [isRegistering]);
+
+  // Push browser history state when any modal opens
+  const anyModalActive = Boolean(
+    showAddOrgModal ||
+    showAddBuildingModal ||
+    showAddFloorModal ||
+    showAddRoomModal ||
+    showAddDeviceModal ||
+    showAddResidentModal ||
+    showEmergencyModal ||
+    showResolveModal ||
+    showSimulateDrawer ||
+    showProfileMenu
+  );
+
+  const prevModalStateRef = useRef(false);
+  useEffect(() => {
+    if (anyModalActive && !prevModalStateRef.current) {
+      try {
+        window.history.pushState({ app: "wifisense", modal: true }, "", window.location.pathname);
+      } catch (_) {}
+    }
+    prevModalStateRef.current = anyModalActive;
+  }, [anyModalActive]);
+
+  // Handle Desktop Browser Back Arrow Button (popstate)
+  useEffect(() => {
+    try {
+      window.history.replaceState({ app: "wifisense", view: currentView }, "", window.location.pathname);
+      window.history.pushState({ app: "wifisense", view: currentView }, "", window.location.pathname);
+    } catch (_) {}
+
+    const handlePopState = () => {
+      stepBack();
+      try {
+        window.history.pushState({ app: "wifisense", view: currentView }, "", window.location.pathname);
+      } catch (_) {}
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [
+    currentView,
+    isRegistering,
+    showAddOrgModal,
+    showAddBuildingModal,
+    showAddFloorModal,
+    showAddRoomModal,
+    showAddDeviceModal,
+    showAddResidentModal,
+    showEmergencyModal,
+    showResolveModal,
+    showSimulateDrawer,
+    showProfileMenu,
+    token
+  ]);
+
+  // Handle Desktop Backspace & Alt+ArrowLeft Keys
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isBackNav = e.key === "Backspace" || (e.altKey && e.key === "ArrowLeft");
+      if (!isBackNav) return;
+
+      const target = e.target;
+      const isEditable =
+        target &&
+        (target.tagName === "TEXTAREA" ||
+          (target.tagName === "INPUT" &&
+            !["button", "submit", "checkbox", "radio", "file", "image", "reset"].includes((target.type || "").toLowerCase()) &&
+            !target.readOnly &&
+            !target.disabled) ||
+          target.isContentEditable);
+
+      // If user is editing text in an input field, allow normal backspace deletion
+      if (e.key === "Backspace" && isEditable) {
+        return;
+      }
+
+      // Otherwise prevent browser from navigating back / closing tab, and step back in the app
+      e.preventDefault();
+      stepBack();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    currentView,
+    isRegistering,
+    showAddOrgModal,
+    showAddBuildingModal,
+    showAddFloorModal,
+    showAddRoomModal,
+    showAddDeviceModal,
+    showAddResidentModal,
+    showEmergencyModal,
+    showResolveModal,
+    showSimulateDrawer,
+    showProfileMenu,
+    token
+  ]);
 
   useEffect(() => {
     if (darkMode) {
@@ -202,29 +359,17 @@ export default function App() {
       const occRes = await fetch(`${API_BASE}/analytics/occupancy-summary`, { headers });
       if (occRes.ok) {
         const data = await occRes.json();
-        
-        let filteredDetails = data.occupied_room_details;
-        if (orgScope === "ajce") {
-          filteredDetails = filteredDetails.filter(rm => rm.room_name.includes("MCA") || rm.room_name.includes("Staff") || rm.room_name.includes("IoT"));
-        } else if (orgScope === "lab") {
-          filteredDetails = filteredDetails.filter(rm => !rm.room_name.includes("MCA") && !rm.room_name.includes("Staff") && !rm.room_name.includes("IoT"));
-        }
-
-        const totalFiltered = filteredDetails.length;
-        const occupiedCount = filteredDetails.filter(rm => rm.is_occupied).length;
-        const vacantCount = totalFiltered - occupiedCount;
-        const rate = totalFiltered > 0 ? (occupiedCount / totalFiltered * 100) : 0;
-
+        const details = data.occupied_room_details || [];
         setOccupancySummary({
-          total_rooms: totalFiltered,
-          occupied_rooms: occupiedCount,
-          vacant_rooms: vacantCount,
-          occupancy_rate: Math.round(rate),
-          occupied_room_details: filteredDetails
+          total_rooms: data.total_rooms,
+          occupied_rooms: data.occupied_rooms,
+          vacant_rooms: data.vacant_rooms,
+          occupancy_rate: data.occupancy_rate,
+          occupied_room_details: details
         });
 
-        const criticalRoom = filteredDetails.find(rm => rm.current_activity === "Fall_Detected");
-        const activeRoom = filteredDetails.find(rm => rm.is_occupied && rm.current_activity !== "Empty");
+        const criticalRoom = details.find(rm => rm.current_activity === "Fall_Detected");
+        const activeRoom = details.find(rm => rm.is_occupied && rm.current_activity !== "Empty");
         
         if (criticalRoom) {
           setActiveTelemetryActivity("Fall_Detected");
@@ -238,15 +383,7 @@ export default function App() {
       // 2. Fetch Alerts List
       const alertRes = await fetch(`${API_BASE}/alerts`, { headers });
       if (alertRes.ok) {
-        let alertData = await alertRes.json();
-        if (orgScope === "ajce") {
-          alertData = [];
-        } else if (orgScope === "lab") {
-          alertData = alertData.filter(a => {
-            const rm = rooms.find(r => r.id === a.room_id);
-            return rm && !rm.name.includes("MCA") && !rm.name.includes("Staff") && !rm.name.includes("IoT");
-          });
-        }
+        const alertData = await alertRes.json();
         setAlerts(alertData);
         const activeFall = alertData.find(a => a.event_type === "Fall_Detected" && a.status !== "resolved");
         setActiveFallAlert(activeFall || null);
@@ -255,18 +392,12 @@ export default function App() {
       // 3. Fetch Asset Lists
       const orgRes = await fetch(`${API_BASE}/organizations`, { headers });
       if (orgRes.ok) {
-        const orgData = await orgRes.json();
-        setOrganizations(orgScope === "all" ? orgData : orgData.filter(o => {
-          return orgScope === "ajce" ? o.name.includes("Amal Jyothi") : o.name.includes("Research Lab");
-        }));
+        setOrganizations(await orgRes.json());
       }
 
       const bldRes = await fetch(`${API_BASE}/buildings`, { headers });
       if (bldRes.ok) {
-        const bldData = await bldRes.json();
-        setBuildings(orgScope === "all" ? bldData : bldData.filter(b => {
-          return orgScope === "ajce" ? (b.name.includes("MCA") || b.name.includes("R&D")) : b.name.includes("Care Wing");
-        }));
+        setBuildings(await bldRes.json());
       }
 
       const flrRes = await fetch(`${API_BASE}/floors`, { headers });
@@ -292,20 +423,7 @@ export default function App() {
       const interval = setInterval(fetchAllData, 3000);
       return () => clearInterval(interval);
     }
-  }, [token, orgScope]);
-
-  useEffect(() => {
-    if (orgScope === "ajce") {
-      setLoginEmail("abhinand@wifisense.com");
-      setLoginPassword("abhinandpassword");
-    } else if (orgScope === "lab") {
-      setLoginEmail("abhinanth@wifisense.com");
-      setLoginPassword("abhinanthpassword");
-    } else {
-      setLoginEmail("blesson@wifisense.com");
-      setLoginPassword("blessonpassword");
-    }
-  }, [orgScope]);
+  }, [token]);
 
   // ============================================================================
   // AUTHENTICATION LOGIC
@@ -377,6 +495,114 @@ export default function App() {
     setUser(null);
     setRole("");
     setCurrentView("dashboard");
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setToastMessage({ type: "error", text: "Please select an image file." });
+      return;
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch(`${API_BASE}/users/me/photo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+      if (res.ok) {
+        const updatedUser = await res.json();
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setToastMessage({ type: "success", text: "Profile photo updated successfully!" });
+        setShowProfileMenu(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setToastMessage({ type: "error", text: err.detail || "Failed to upload photo" });
+      }
+    } catch (err) {
+      setToastMessage({ type: "error", text: "Network error uploading photo" });
+    }
+  };
+
+  // Helper to trigger real browser file downloads
+  const downloadFile = (filename, content, mimeType = "text/csv;charset=utf-8;") => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPersonnelCSV = () => {
+    const headers = ["Name", "Role", "Email", "Department/Scope", "Status"];
+    const rows = [
+      ["Dr. Evelyn Lin", "Staff Physician", "e.lin@healthcare.org", "Elder-Care Medical Director", "Active On-Shift"],
+      ["Marcus Vance", "Facility Director", "m.vance@ajce.edu", "Campus Infrastructure Admin", "Active Off-Site"],
+      ["Sarah Jenkins", "Lead Nurse / Caregiver", "s.jenkins@care.org", "Wing Alpha Senior Staff", "Active On-Shift"],
+      ["Blesson Byju", "System Administrator", "blesson@wifisense.com", "Global Architecture", "Active Online"],
+      ["Abhinand M A", "Facility Manager", "abhinand@wifisense.com", "AJCE MCA Block", "Active Online"]
+    ];
+    const csvContent = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
+    downloadFile("active_personnel.csv", csvContent);
+    setToastMessage({ type: "success", text: "Downloaded active_personnel.csv" });
+  };
+
+  const exportCorporateAnalytics = () => {
+    const headers = ["Room Name", "Room Type", "Status", "Activity", "Confidence", "Last Updated"];
+    const rows = (occupancySummary.occupied_room_details || []).map(rm => [
+      rm.room_name,
+      rm.room_type,
+      rm.is_occupied ? "Occupied" : "Vacant",
+      rm.current_activity,
+      `${Math.round((rm.model_confidence || 0) * 100)}%`,
+      rm.last_updated || "N/A"
+    ]);
+    const csvContent = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
+    downloadFile("corporate_analytics.csv", csvContent);
+    setToastMessage({ type: "success", text: "Downloaded corporate_analytics.csv" });
+  };
+
+  const generateRepurposingReport = () => {
+    const content = [
+      "Wi-Fi Sense - Underutilized Spaces & Repurposing Analysis Report",
+      `Generated: ${new Date().toISOString()}`,
+      "-------------------------------------------------------------",
+      "Candidate Rooms for Repurposing:",
+      "1. MCA Seminar Hall: Peak Utilization 14.2%, Average Utilization 8.5%. Recommendation: Subdivide or open for shared booking.",
+      "2. Staff Room A: Peak Utilization 22.0%, Average Utilization 11.2%. Recommendation: Convert into collaborative workspace.",
+      "",
+      "Overall Campus Metrics:",
+      `Total Monitored Rooms: ${occupancySummary.total_rooms}`,
+      `Average Occupancy Rate: ${occupancySummary.occupancy_rate}%`,
+      "Target Space Efficiency Gain: +35%"
+    ].join("\n");
+    downloadFile("space_repurposing_report.txt", content, "text/plain;charset=utf-8;");
+    setToastMessage({ type: "success", text: "Downloaded space_repurposing_report.txt" });
+  };
+
+  const exportOccupancyTimeData = () => {
+    const headers = ["Time", "Occupancy Rate (%)", "Occupied Rooms", "Total Rooms"];
+    const tot = occupancySummary.total_rooms || 10;
+    const rows = [
+      ["08:00", "20", Math.round(tot * 0.2), tot],
+      ["10:00", "55", Math.round(tot * 0.55), tot],
+      ["12:00", "85", Math.round(tot * 0.85), tot],
+      ["14:00", "70", Math.round(tot * 0.7), tot],
+      ["16:00", "90", Math.round(tot * 0.9), tot],
+      ["18:00", "30", Math.round(tot * 0.3), tot]
+    ];
+    const csvContent = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
+    downloadFile("occupancy_over_time.csv", csvContent);
+    setToastMessage({ type: "success", text: "Downloaded occupancy_over_time.csv" });
   };
 
   const submitLinkRequest = async (e) => {
@@ -708,54 +934,94 @@ export default function App() {
   // ============================================================================
   if (!token) {
     return (
-      <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-body-md antialiased min-h-screen flex flex-col md:flex-row transition-all duration-300">
-        {/* Banner Panel */}
-        <div className="hidden md:flex flex-col w-[45%] bg-slate-100 dark:bg-slate-900 relative overflow-hidden p-container-padding justify-between border-r border-slate-200 dark:border-slate-800">
-          <div className="absolute inset-0 bg-wave-pattern opacity-60 dark:opacity-40 z-0"></div>
-          <div className="z-10 mt-8 ml-8">
-            <div className="flex items-center gap-stack-sm mb-4">
-              <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 animate-pulse" style={{ fontSize: "36px" }}>sensors</span>
-              <span className="font-headline-md text-headline-md text-slate-900 dark:text-slate-100 font-bold">Wi-Fi Sense</span>
+      <div className="bg-slate-50 text-slate-800 font-body-md antialiased min-h-screen flex flex-col lg:flex-row transition-all duration-300">
+        {/* 3D Wi-Fi Modem Visualizer Showcase Panel (Subtle Light Theme) */}
+        <div className="flex flex-col w-full lg:w-[55%] xl:w-[58%] bg-slate-50 relative p-3 sm:p-5 justify-between border-b lg:border-b-0 lg:border-r border-slate-200/90 min-h-[480px] lg:min-h-screen">
+          {/* Header Title Bar */}
+          <div className="flex items-center justify-between z-20 mb-3 px-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-md shadow-sky-500/20">
+                <span className="material-symbols-outlined text-white" style={{ fontSize: "24px" }}>sensors</span>
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-slate-900 tracking-tight">Wi-Fi Sense</span>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
+                    CSI 3D SENSING
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Contactless Fall & Activity Tracking via Subcarrier Distortion
+                </p>
+              </div>
             </div>
-            <p className="font-headline-sm text-headline-sm text-slate-500 dark:text-slate-300 max-w-sm mt-4">
-              Indoor Human Sensing and Fall Tracking via Channel State Information.
-            </p>
+            <div className="hidden sm:flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span className="text-[11px] font-mono text-slate-700 font-medium">RF Engine: ONLINE</span>
+            </div>
           </div>
-          <div className="z-10 mb-8 ml-8">
-            <div className="inline-flex items-center gap-2 bg-slate-200 dark:bg-slate-800 px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700">
-              <span className="material-symbols-outlined text-teal-600 dark:text-teal-400" style={{ fontSize: "16px" }}>check_circle</span>
-              <span className="font-label-caps text-label-caps text-slate-700 dark:text-slate-200">System: Seed Data Ready</span>
+
+          {/* 3D Modem & Signal Emitting Dome Canvas */}
+          <div className="flex-1 w-full h-full relative min-h-[380px] lg:min-h-[520px]">
+            <WifiModemVisualizer />
+          </div>
+
+          {/* Bottom Features Info Strip */}
+          <div className="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-200/70 z-20 text-left">
+            <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
+              <div className="text-[10px] font-mono text-slate-400 uppercase font-medium">Hardware</div>
+              <div className="text-xs font-semibold text-slate-800 mt-0.5">Dual-Band CSI Modem</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
+              <div className="text-[10px] font-mono text-slate-400 uppercase font-medium">Detection</div>
+              <div className="text-xs font-semibold text-sky-600 mt-0.5">3D Spherical Doppler</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
+              <div className="text-[10px] font-mono text-slate-400 uppercase font-medium">Privacy</div>
+              <div className="text-xs font-semibold text-emerald-600 mt-0.5">100% Zero-Camera</div>
             </div>
           </div>
         </div>
 
-        {/* Login Panel */}
-        <div className="flex-1 flex flex-col justify-center p-gutter relative bg-white dark:bg-slate-950">
-          <div className="absolute top-4 right-4 flex items-center gap-2 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800">
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Scope Selector:</span>
-            <select
-              className="bg-slate-100 dark:bg-slate-900 text-slate-850 dark:text-white text-xs font-bold focus:outline-none"
-              value={orgScope}
-              onChange={(e) => setOrgScope(e.target.value)}
+        {/* Login Panel (Clean Light Theme) */}
+        <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 lg:p-14 relative bg-white overflow-y-auto">
+          <div className="absolute top-5 right-5 flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-[11px]">
+            <span className="text-slate-400 px-1 font-semibold">Demo:</span>
+            <button
+              type="button"
+              onClick={() => { setLoginEmail("blesson@wifisense.com"); setLoginPassword("blessonpassword"); }}
+              className="px-2.5 py-1 bg-white text-slate-700 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
             >
-              <option value="all" className="bg-white dark:bg-slate-900 text-slate-850 dark:text-white">Blesson Byju (System Admin)</option>
-              <option value="ajce" className="bg-white dark:bg-slate-900 text-slate-850 dark:text-white">Abhinand M A (AJCE Corporate)</option>
-              <option value="lab" className="bg-white dark:bg-slate-900 text-slate-850 dark:text-white">Abhinanth S Pillai (Research Lab Caregiver)</option>
-            </select>
+              SysAdmin
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLoginEmail("abhinand@wifisense.com"); setLoginPassword("abhinandpassword"); }}
+              className="px-2.5 py-1 bg-white text-slate-700 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
+            >
+              Corporate
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLoginEmail("abhinanth@wifisense.com"); setLoginPassword("abhinanthpassword"); }}
+              className="px-2.5 py-1 bg-white text-slate-700 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
+            >
+              Elder-Care
+            </button>
           </div>
 
           <div className="w-full max-w-md mx-auto">
             <div className="mb-stack-lg text-center md:text-left">
-              <h1 className="font-headline-lg text-headline-lg text-slate-900 dark:text-white mb-2 font-bold">WiFi Sense Login</h1>
-              <p className="font-body-md text-body-md text-slate-500 dark:text-slate-400">
+              <h1 className="font-headline-lg text-headline-lg text-slate-900 mb-2 font-bold tracking-tight">Welcome to WiFi Sense</h1>
+              <p className="font-body-md text-body-md text-slate-500">
                 {isRegistering 
                   ? "Create credentials to start testing the CSI data pipeline." 
-                  : "Scope credentials automatically prefill based on the top-right Scope Selector."}
+                  : "Sign in with your authorized credentials to access your deployment."}
               </p>
             </div>
 
             {loginError && (
-              <div className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded p-3 mb-4 text-xs font-semibold border border-red-200 dark:border-red-900">
+              <div className="bg-red-50 text-red-600 rounded-xl p-3 mb-4 text-xs font-semibold border border-red-200 shadow-2xs">
                 {loginError}
               </div>
             )}
@@ -763,10 +1029,10 @@ export default function App() {
             {!isRegistering ? (
               <form onSubmit={handleLogin} className="space-y-stack-md">
                 <div className="text-left">
-                  <label className="block font-label-caps text-label-caps text-slate-500 dark:text-slate-400 mb-1">Email Address</label>
+                  <label className="block font-label-caps text-label-caps text-slate-500 mb-1 font-medium">Email Address</label>
                   <input
                     type="email"
-                    className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none font-body-md"
+                    className="block w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/70 text-slate-900 focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-100 transition-all font-body-md"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
@@ -774,10 +1040,10 @@ export default function App() {
                 </div>
 
                 <div className="text-left">
-                  <label className="block font-label-caps text-label-caps text-slate-500 dark:text-slate-400 mb-1">Password</label>
+                  <label className="block font-label-caps text-label-caps text-slate-500 mb-1 font-medium">Password</label>
                   <input
                     type="password"
-                    className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none"
+                    className="block w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50/70 text-slate-900 focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-100 transition-all font-body-md"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
@@ -785,10 +1051,10 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center justify-between pt-4">
-                  <button type="button" onClick={() => setIsRegistering(true)} className="text-teal-600 dark:text-teal-400 font-medium text-xs hover:underline font-semibold">
+                  <button type="button" onClick={() => setIsRegistering(true)} className="text-sky-600 font-medium text-xs hover:underline font-semibold">
                     Create new registration
                   </button>
-                  <button type="submit" className="flex items-center gap-2 justify-center py-2 px-6 border border-transparent rounded font-label-caps text-label-caps text-white bg-teal-600 hover:bg-teal-700 transition-colors font-semibold">
+                  <button type="submit" className="flex items-center gap-2 justify-center py-2.5 px-6 border border-transparent rounded-xl font-label-caps text-label-caps text-white bg-sky-600 hover:bg-sky-700 transition-colors font-semibold shadow-sm shadow-sky-600/25">
                     Sign In <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>arrow_forward</span>
                   </button>
                 </div>
@@ -1045,8 +1311,8 @@ export default function App() {
           {/* Top Scope Selector & Settings */}
           <div className="flex items-center gap-stack-md text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400">
             <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">corporate_fare</span>
-            <span>Active Deployment Scope: <span className="text-slate-950 dark:text-white">
-              {orgScope === "ajce" ? "Amal Jyothi College of Engineering" : orgScope === "lab" ? "WiFi Sense Lab" : "Global Network View"}
+            <span>Active Deployment: <span className="text-slate-950 dark:text-white">
+              {organizations[0]?.name || "Wi-Fi Sense Enterprise"}
             </span></span>
           </div>
 
@@ -1063,16 +1329,6 @@ export default function App() {
 
             {/* Actions group */}
             <div className="flex items-center gap-stack-sm border-l border-slate-200 dark:border-slate-850 pl-gutter">
-              <select
-                className="bg-slate-50 dark:bg-slate-800 text-slate-855 dark:text-white text-xs font-bold border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-full focus:outline-none"
-                value={orgScope}
-                onChange={(e) => setOrgScope(e.target.value)}
-              >
-                <option value="all" className="bg-white dark:bg-slate-800 text-slate-850 dark:text-white">Global scope view</option>
-                <option value="ajce" className="bg-white dark:bg-slate-800 text-slate-850 dark:text-white">Amal Jyothi (Corporate)</option>
-                <option value="lab" className="bg-white dark:bg-slate-800 text-slate-850 dark:text-white">WiFi Sense Lab (Elder-Care)</option>
-              </select>
-
               <button
                 onClick={() => {
                   if (devices.length > 0) {
@@ -1082,7 +1338,7 @@ export default function App() {
                     alert("Please register a sensing device first.");
                   }
                 }}
-                className="text-teal-600 dark:text-teal-400 border border-teal-600 dark:border-teal-450 px-4 py-2 rounded text-xs font-bold uppercase hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors"
+                className="text-teal-600 dark:text-teal-400 border border-teal-600 dark:border-teal-450 px-4 py-2 rounded text-xs font-bold uppercase hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors cursor-pointer"
               >
                 Simulate Event
               </button>
@@ -1105,8 +1361,82 @@ export default function App() {
                 )}
               </button>
 
-              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 ml-2 overflow-hidden border border-slate-200 dark:border-slate-800">
-                <img alt="User avatar" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu1RCn5_eg7EySwCBpXG2E5joCiEZy4lvWvSaDVhBHzvt0rhEMs_hZC9HeTPGvt-oJnrDUGlBL2Tb4tYqjlWOP_S4fxlpydOmtf5Y6hG1U2WQnQH1Nx13BotmVTUcmv7sOZtIjEegIXE6g4RZQ-r1PtXh6OM0WxPjorUBfwJig7xcbtg_lExE_t6bnvZfqHinuVSz8lXFPGqEOp_M4YwzZ5a-VISCIKS2DaDPlJ4rqTWUQEtcD5eAXMg"/>
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 ml-2 overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-teal-500 transition-all"
+                  title="Profile Menu & Photo Upload"
+                >
+                  {user?.photo_url ? (
+                    <img
+                      alt="User avatar"
+                      className="w-full h-full object-cover"
+                      src={user.photo_url.startsWith("http") ? user.photo_url : `${API_BASE}${user.photo_url}`}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-teal-50 dark:bg-teal-950/40 flex items-center justify-center text-teal-700 dark:text-teal-400 font-bold text-xs">
+                      {((user?.first_name?.[0] || "") + (user?.last_name?.[0] || "")).toUpperCase() || "WS"}
+                    </div>
+                  )}
+                </button>
+
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-4 z-50 text-left">
+                    <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800 shrink-0 flex items-center justify-center bg-teal-50 dark:bg-teal-950/40">
+                        {user?.photo_url ? (
+                          <img
+                            alt="User avatar"
+                            className="w-full h-full object-cover"
+                            src={user.photo_url.startsWith("http") ? user.photo_url : `${API_BASE}${user.photo_url}`}
+                          />
+                        ) : (
+                          <span className="text-teal-700 dark:text-teal-400 font-bold text-sm">
+                            {((user?.first_name?.[0] || "") + (user?.last_name?.[0] || "")).toUpperCase() || "WS"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                          {user?.first_name} {user?.last_name}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                          {user?.email}
+                        </div>
+                        <div className="text-[10px] text-teal-600 dark:text-teal-400 font-mono uppercase mt-0.5 font-bold">
+                          {role}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-1.5 px-3 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 hover:bg-teal-100 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">photo_camera</span>
+                        Upload Profile Photo
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          handleLogout();
+                        }}
+                        className="w-full py-1.5 px-3 border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">logout</span>
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1828,7 +2158,10 @@ export default function App() {
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col h-full shadow-sm">
                     <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
                       <h2 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Active Personnel</h2>
-                      <button className="text-teal-600 dark:text-teal-400 font-label-caps text-label-caps hover:underline flex items-center gap-1">
+                      <button 
+                        onClick={exportPersonnelCSV}
+                        className="text-teal-600 dark:text-teal-400 font-label-caps text-label-caps hover:underline flex items-center gap-1 cursor-pointer"
+                      >
                         Export CSV <span className="material-symbols-outlined text-[16px]">download</span>
                       </button>
                     </div>
@@ -2041,8 +2374,8 @@ export default function App() {
                 </div>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => setToastMessage({ type: "success", text: "Report triggered: Occupancy metrics logged." })}
-                    className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
+                    onClick={exportCorporateAnalytics}
+                    className="px-4 py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 shadow cursor-pointer"
                   >
                     Export Analytics
                   </button>
@@ -2127,8 +2460,8 @@ export default function App() {
                     </div>
                   </div>
                   <button 
-                    onClick={() => setToastMessage({ type: "success", text: "Repurposing report compiled successfully." })}
-                    className="w-full mt-4 bg-teal-600 text-white py-2 rounded text-xs font-bold uppercase hover:bg-teal-700 shadow"
+                    onClick={generateRepurposingReport}
+                    className="w-full mt-4 bg-teal-600 text-white py-2 rounded text-xs font-bold uppercase hover:bg-teal-700 shadow cursor-pointer"
                   >
                     Generate Repurposing Report
                   </button>
@@ -2463,7 +2796,12 @@ export default function App() {
                 <div className="col-span-1 md:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Occupancy Over Time</h3>
-                    <button className="text-teal-605 hover:underline text-label-caps font-label-caps font-bold">Export Data</button>
+                    <button 
+                      onClick={exportOccupancyTimeData}
+                      className="text-teal-605 hover:underline text-label-caps font-label-caps font-bold cursor-pointer"
+                    >
+                      Export Data
+                    </button>
                   </div>
                   {/* Chart representation */}
                   <div className="flex-1 w-full min-h-[300px] rounded-lg relative overflow-hidden flex items-end px-4 pb-4 gap-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850">
@@ -2954,15 +3292,9 @@ export default function App() {
                     value={simDeviceId}
                     onChange={(e) => setSimDeviceId(e.target.value)}
                   >
-                    {devices.filter(d => {
-                      const r = rooms.find(rm => rm.id === d.room_id);
-                      if (!r) return orgScope === "all";
-                      if (orgScope === "ajce") return r.name.includes("MCA") || r.name.includes("Staff") || r.name.includes("IoT");
-                      if (orgScope === "lab") return !r.name.includes("MCA") && !r.name.includes("Staff") && !r.name.includes("IoT");
-                      return true;
-                    }).map(dev => (
+                    {devices.map(dev => (
                       <option key={dev.id} value={dev.id}>
-                        {dev.firmware_version} ({rooms.find(r => r.id === dev.room_id)?.name})
+                        {dev.firmware_version} ({rooms.find(r => r.id === dev.room_id)?.name || "Room"})
                       </option>
                     ))}
                   </select>
@@ -2974,9 +3306,7 @@ export default function App() {
                     value={simActivity}
                     onChange={(e) => setSimActivity(e.target.value)}
                   >
-                    {orgScope !== "ajce" && (
-                      <option value="Fall_Detected">Fall Detected (CSI Phase Spike)</option>
-                    )}
+                    <option value="Fall_Detected">Fall Detected (CSI Phase Spike)</option>
                     <option value="Walking">Walking stance (Active)</option>
                     <option value="Sitting">Sitting stance (Active)</option>
                     <option value="Empty">Empty Room (Vacant)</option>
