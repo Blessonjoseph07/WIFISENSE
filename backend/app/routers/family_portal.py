@@ -5,8 +5,8 @@ from datetime import datetime
 import uuid
 
 from app.core.database import get_session
-from app.routers.auth import get_current_user, require_roles, get_user_scopes
-from app.models.entities import User, AccessRequest, Resident, SensingEvent, ActivityType, Alert, Room, Floor, Building
+from app.routers.auth import get_current_user, require_roles, get_user_scopes, get_user_role_and_context
+from app.models.entities import User, AccessRequest, Resident, SensingEvent, ActivityType, Alert, Room, Floor, Building, Organization
 from app.schemas.schemas import AccessRequestCreate, AccessRequestOut, AccessRequestReview
 
 router = APIRouter(prefix="/family", tags=["Family Portal"])
@@ -17,9 +17,23 @@ def submit_access_request(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
+    if not is_sysadmin and (role_name != "emergency_contact" or app_context == "CORPORATE"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only family members in elder-care organizations can submit access requests."
+        )
+
     resident = session.get(Resident, req.resident_id)
     if not resident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target resident record not found.")
+
+    rm = session.get(Room, resident.room_id)
+    flr = session.get(Floor, rm.floor_id)
+    bld = session.get(Building, flr.building_id)
+    org = session.get(Organization, bld.organization_id)
+    if not org or org.type != "ELDER_CARE":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access requests can only be made for elder-care residents.")
 
     existing = session.exec(
         select(AccessRequest).where(
@@ -47,6 +61,13 @@ def list_access_requests(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
+    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only elder-care administrators and facility managers can view access requests."
+        )
+
     scopes = get_user_scopes(current_user)
     stmt = select(AccessRequest)
     
@@ -64,6 +85,12 @@ def review_access_request(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
+    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only elder-care administrators and facility managers can review access requests."
+        )
     db_req = session.get(AccessRequest, request_id)
     if not db_req:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access request not found.")
@@ -129,6 +156,13 @@ def get_linked_resident_status(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
+    if not is_sysadmin and (role_name != "emergency_contact" or app_context == "CORPORATE"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Resident status is only accessible by authorized emergency contacts in ELDER_CARE organizations."
+        )
+
     if not current_user.resident_id:
         stmt_req = select(AccessRequest).where(AccessRequest.requesting_user_id == current_user.id).order_by(AccessRequest.created_at.desc())
         req = session.exec(stmt_req).first()

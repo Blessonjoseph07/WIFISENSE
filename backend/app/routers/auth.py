@@ -97,6 +97,45 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
 
     return user
 
+def get_user_role_and_context(user: User, session: Session):
+    # Fetch roles deterministically ordered by created_at
+    role_statement = select(UserRole).where(UserRole.user_id == user.id).order_by(UserRole.created_at)
+    user_roles = session.exec(role_statement).all()
+
+    if not user_roles:
+        return "emergency_contact", "ELDER_CARE", False
+
+    # Check if system_admin
+    for ur in user_roles:
+        if ur.role_id == 1:
+            return "system_admin", "SYSTEM", True
+
+    # Check for conflicting org types across assigned roles
+    org_types = set()
+    for ur in user_roles:
+        if ur.organization_id:
+            org = session.get(Organization, ur.organization_id)
+            if org and org.type:
+                org_types.add(org.type)
+    
+    if len(org_types) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User holds conflicting assignments across both ELDER_CARE and CORPORATE organizations."
+        )
+
+    # Pin role and application_context to the single deterministic UserRole row
+    primary_role_map = user_roles[0]
+    role_name = ROLE_NAMES.get(primary_role_map.role_id, "emergency_contact")
+
+    if primary_role_map.organization_id:
+        org = session.get(Organization, primary_role_map.organization_id)
+        app_context = org.type if org else ("CORPORATE" if role_name == "corporate_staff" else "ELDER_CARE")
+    else:
+        app_context = "CORPORATE" if role_name == "corporate_staff" else "ELDER_CARE"
+
+    return role_name, app_context, False
+
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, session: Session = Depends(get_session)):
     seed_roles_if_empty(session)
@@ -116,12 +155,8 @@ def login(login_data: UserLogin, session: Session = Depends(get_session)):
             detail="User account is deactivated."
         )
 
-    # Fetch user's role
-    role_statement = select(UserRole).where(UserRole.user_id == user.id)
-    user_role_map = session.exec(role_statement).first()
-    role_name = "emergency_contact"  # default fallback
-    if user_role_map:
-        role_name = ROLE_NAMES.get(user_role_map.role_id, "emergency_contact")
+    # Fetch user's role and application context deterministically
+    role_name, app_context, is_sysadmin = get_user_role_and_context(user, session)
 
     # Generate JWT
     token = create_access_token(subject=user.id, role=role_name)
@@ -129,7 +164,25 @@ def login(login_data: UserLogin, session: Session = Depends(get_session)):
         access_token=token,
         token_type="bearer",
         role=role_name,
+        application_context=app_context,
+        is_system_admin=is_sysadmin,
         user=UserOut.from_orm(user)
+    )
+
+@router.get("/me", response_model=Token)
+def get_auth_me(
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session)
+):
+    current_user = get_current_user(token=token, session=session)
+    role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
+    return Token(
+        access_token=token,
+        token_type="bearer",
+        role=role_name,
+        application_context=app_context,
+        is_system_admin=is_sysadmin,
+        user=UserOut.from_orm(current_user)
     )
 
 # Dependency to fetch the active authenticated user

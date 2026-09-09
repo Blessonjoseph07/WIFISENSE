@@ -267,15 +267,7 @@ def seed_database(session: Session):
     ))
     session.commit()
 
-    # 9. Seed Residents (Monitored Persons)
-    # Corporate block monitored users (4 residents)
-    res_corp = [
-        Resident(room_id=rm_mca_lab.id, first_name="Abhinand", last_name="M A", date_of_birth=datetime(1995, 5, 12)),
-        Resident(room_id=rm_staff_room.id, first_name="Prof. Tomy", last_name="Joseph", date_of_birth=datetime(1978, 11, 23)),
-        Resident(room_id=rm_iot_lab.id, first_name="Anandhu", last_name="K S", date_of_birth=datetime(1999, 1, 15)),
-        Resident(room_id=rm_mca_lab.id, first_name="Jerin", last_name="Sebastian", date_of_birth=datetime(1998, 8, 30))
-    ]
-    session.add_all(res_corp)
+    # 9. Seed Residents (Monitored Persons) - Elder Care Only
 
     # Elder Care monitored residents (14 residents across buildings and rooms)
     res_devassy = Resident(room_id=rm_101.id, first_name="Devassy", last_name="Varghese", date_of_birth=datetime(1942, 3, 10))
