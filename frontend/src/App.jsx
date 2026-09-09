@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import WifiModemVisualizer from "./WifiModemVisualizer";
+import {
+  APP_CONTEXTS,
+  isViewAllowed,
+  getDefaultView,
+  getNavItemsForUser
+} from "./navigation/navConfig";
+import CareAppShell from "./shells/CareAppShell";
+import SpaceAppShell from "./shells/SpaceAppShell";
+import SystemAdminShell from "./shells/SystemAdminShell";
+import FamilyPortalShell from "./shells/FamilyPortalShell";
 
 const API_BASE = "http://localhost:8000";
 
@@ -8,13 +18,29 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
   const [role, setRole] = useState(localStorage.getItem("role") || "");
+  const [appContext, setAppContext] = useState(localStorage.getItem("application_context") || "");
+  const [isSystemAdmin, setIsSystemAdmin] = useState(localStorage.getItem("is_system_admin") === "true");
   
   // Navigation State & Browser History Management
-  // Views: 'family', 'analytics', 'devices', 'alerts', 'occupancy', 'dashboard', 'caregiver', 'corporate', 'facilitymanager', 'orgadmin', 'sysadmin'
-  const [currentView, _setCurrentView] = useState("dashboard"); 
+  const [currentView, _setCurrentView] = useState(() => {
+    const savedRole = localStorage.getItem("role") || "";
+    const savedCtx = localStorage.getItem("application_context") || "";
+    const savedSys = localStorage.getItem("is_system_admin") === "true";
+    return savedRole ? getDefaultView(savedCtx, savedRole, savedSys) : "dashboard";
+  }); 
   const navHistoryRef = useRef([]);
 
   const setCurrentView = (newView, pushHistory = true) => {
+    if (token && role && !isViewAllowed(newView, appContext, role, isSystemAdmin)) {
+      console.warn(`[RouteGuard] Blocked unauthorized view "${newView}" for role "${role}" in context "${appContext}".`);
+      const safeDefault = getDefaultView(appContext, role, isSystemAdmin);
+      _setCurrentView(safeDefault);
+      setToastMessage({
+        type: "error",
+        text: `Access Denied: "${newView}" is not available in ${appContext === "CORPORATE" ? "WIFISENSE SPACE" : "WIFISENSE CARE"}.`
+      });
+      return;
+    }
     _setCurrentView((prev) => {
       if (prev !== newView && pushHistory) {
         navHistoryRef.current.push(prev);
@@ -321,6 +347,37 @@ export default function App() {
     };
   };
 
+  // Sync authoritative user profile & application context from /auth/me on mount
+  useEffect(() => {
+    if (token) {
+      fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+          if (data) {
+            setUser(data.user);
+            setRole(data.role);
+            setAppContext(data.application_context);
+            setIsSystemAdmin(Boolean(data.is_system_admin));
+            localStorage.setItem("user", JSON.stringify(data.user));
+            localStorage.setItem("role", data.role);
+            localStorage.setItem("application_context", data.application_context);
+            localStorage.setItem("is_system_admin", String(Boolean(data.is_system_admin)));
+          }
+        })
+        .catch(err => console.error("Sync me error:", err));
+    }
+  }, [token]);
+
+  // Keep view aligned with authorized bounds
+  useEffect(() => {
+    if (token && role && !isViewAllowed(currentView, appContext, role, isSystemAdmin)) {
+      const safeDefault = getDefaultView(appContext, role, isSystemAdmin);
+      _setCurrentView(safeDefault);
+    }
+  }, [currentView, appContext, role, isSystemAdmin, token]);
+
   // ============================================================================
   // LOAD DATA & AUTO FILTERING
   // ============================================================================
@@ -347,8 +404,8 @@ export default function App() {
         return;
       }
 
-      // If admin, fetch pending access requests
-      if (role === "system_admin" || role === "organization_admin") {
+      // If elder-care admin or system admin, fetch pending access requests
+      if ((isSystemAdmin || appContext === "ELDER_CARE") && (role === "system_admin" || role === "organization_admin")) {
         const reqRes = await fetch(`${API_BASE}/family/requests`, { headers });
         if (reqRes.ok) {
           setAccessRequests(await reqRes.json());
@@ -409,8 +466,11 @@ export default function App() {
       const devRes = await fetch(`${API_BASE}/devices`, { headers });
       if (devRes.ok) setDevices(await devRes.json());
 
-      const resRes = await fetch(`${API_BASE}/residents`, { headers });
-      if (resRes.ok) setResidents(await resRes.json());
+      // Only fetch residents for elder care or system admin (zero leak to corporate)
+      if (appContext !== "CORPORATE" && role !== "corporate_staff") {
+        const resRes = await fetch(`${API_BASE}/residents`, { headers });
+        if (resRes.ok) setResidents(await resRes.json());
+      }
 
     } catch (err) {
       console.error("Sync telemetry error: ", err);
@@ -423,7 +483,7 @@ export default function App() {
       const interval = setInterval(fetchAllData, 3000);
       return () => clearInterval(interval);
     }
-  }, [token]);
+  }, [token, appContext, role]);
 
   // ============================================================================
   // AUTHENTICATION LOGIC
@@ -445,15 +505,17 @@ export default function App() {
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("role", data.role);
+      localStorage.setItem("application_context", data.application_context);
+      localStorage.setItem("is_system_admin", String(Boolean(data.is_system_admin)));
       
       setToken(data.access_token);
       setUser(data.user);
       setRole(data.role);
-      if (data.role === "emergency_contact") {
-        setCurrentView("family");
-      } else {
-        setCurrentView("dashboard");
-      }
+      setAppContext(data.application_context);
+      setIsSystemAdmin(Boolean(data.is_system_admin));
+      
+      const safeStart = getDefaultView(data.application_context, data.role, data.is_system_admin);
+      _setCurrentView(safeStart);
       setToastMessage({ type: "success", text: `Logged in successfully as ${data.user.first_name}` });
     } catch (err) {
       setLoginError(err.message);
@@ -491,10 +553,14 @@ export default function App() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("role");
+    localStorage.removeItem("application_context");
+    localStorage.removeItem("is_system_admin");
     setToken("");
     setUser(null);
     setRole("");
-    setCurrentView("dashboard");
+    setAppContext("");
+    setIsSystemAdmin(false);
+    _setCurrentView("dashboard");
   };
 
   const handlePhotoUpload = async (e) => {
@@ -1132,10 +1198,78 @@ export default function App() {
   }
 
   // ============================================================================
-  // WORKSPACE VIEW (AUTHENTICATED)
+  // WORKSPACE VIEW (AUTHENTICATED SHELLS)
   // ============================================================================
+  const renderAppShell = (content) => {
+    const commonProps = {
+      user,
+      role,
+      appContext,
+      isSystemAdmin,
+      currentView,
+      setCurrentView,
+      alerts,
+      handleLogout,
+      triggerEmergencyProtocol,
+      organizations,
+      devices,
+      setSimDeviceId,
+      setShowSimulateDrawer,
+      darkMode,
+      setDarkMode,
+      showProfileMenu,
+      setShowProfileMenu,
+      fileInputRef,
+      handlePhotoUpload,
+      API_BASE
+    };
+
+    if (role === "emergency_contact") {
+      return (
+        <FamilyPortalShell
+          user={user}
+          role={role}
+          familyStatus={familyStatus}
+          handleLogout={handleLogout}
+          triggerEmergencyProtocol={triggerEmergencyProtocol}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          showProfileMenu={showProfileMenu}
+          setShowProfileMenu={setShowProfileMenu}
+          fileInputRef={fileInputRef}
+          handlePhotoUpload={handlePhotoUpload}
+          API_BASE={API_BASE}
+        >
+          {content}
+        </FamilyPortalShell>
+      );
+    }
+
+    if (isSystemAdmin || appContext === APP_CONTEXTS.SYSTEM || role === "system_admin") {
+      return (
+        <SystemAdminShell {...commonProps}>
+          {content}
+        </SystemAdminShell>
+      );
+    }
+
+    if (appContext === APP_CONTEXTS.SPACE) {
+      return (
+        <SpaceAppShell {...commonProps}>
+          {content}
+        </SpaceAppShell>
+      );
+    }
+
+    return (
+      <CareAppShell {...commonProps}>
+        {content}
+      </CareAppShell>
+    );
+  };
+
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex transition-all duration-300">
+    <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-all duration-300">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -1147,335 +1281,58 @@ export default function App() {
         </div>
       )}
 
-      {/* SideNavbar (Styled strictly from layout list of dashboards) */}
-      <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
-        {/* Logo / Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
-          <div className="w-9 h-9 rounded bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
-            <span className="material-symbols-outlined fill text-[20px]">sensors</span>
-          </div>
-          <div className="text-left">
-            <h1 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold leading-tight">Wi-Fi Sense</h1>
-            <p className="text-[10px] text-teal-600 font-bold uppercase tracking-wider block">AI Monitoring Active</p>
-          </div>
-        </div>
-
-        {/* Navigation items (Strictly matches the layout in user screenshot) */}
-        <div className="flex-1 overflow-y-auto py-3 px-3 flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wider">
-          
-          <button
-            onClick={() => setCurrentView("family")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "family" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">group</span>
-            Family Member Portal
-          </button>
-
-          <button
-            onClick={() => setCurrentView("analytics")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "analytics" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">analytics</span>
-            Analytics Dashboard
-          </button>
-
-          <button
-            onClick={() => setCurrentView("devices")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "devices" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">router</span>
-            Sensing Device Management
-          </button>
-
-          <button
-            onClick={() => setCurrentView("alerts")}
-            className={`flex items-center justify-between gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "alerts" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">history</span>
-              Alert Management Dashboard
-            </span>
-            {alerts.filter(a => a.status === "new").length > 0 && (
-              <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-[9px] font-bold animate-pulse">
-                {alerts.filter(a => a.status === "new").length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setCurrentView("occupancy")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "occupancy" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">meeting_room</span>
-            Room Occupancy View
-          </button>
-
-          <button
-            onClick={() => setCurrentView("dashboard")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "dashboard" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px] fill">sensors</span>
-            Monitoring Dashboard
-          </button>
-
-          <button
-            onClick={() => setCurrentView("caregiver")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "caregiver" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">medical_services</span>
-            Caregiver Dashboard
-          </button>
-
-          <button
-            onClick={() => setCurrentView("corporate")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "corporate" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">domain</span>
-            Corporate Staff Dashboard
-          </button>
-
-          <button
-            onClick={() => setCurrentView("assets")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "assets" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">account_tree</span>
-            Facility Manager Dashboard
-          </button>
-
-          <button
-            onClick={() => setCurrentView("orgadmin")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "orgadmin" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">settings_applications</span>
-            Organization Admin Dashboard
-          </button>
-
-          <button
-            onClick={() => setCurrentView("sysadmin")}
-            className={`flex items-center gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all ${
-              currentView === "sysadmin" ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200/20" : "text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-850"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
-            System Admin Dashboard
-          </button>
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 flex flex-col gap-4">
-          <button
-            onClick={triggerEmergencyProtocol}
-            className="w-full bg-red-650 text-white py-2 px-4 rounded text-xs font-bold uppercase hover:bg-red-750 transition-colors flex items-center justify-center gap-2 shadow-sm font-semibold"
-          >
-            <span className="material-symbols-outlined text-[18px]">emergency</span>
-            Emergency Protocol
-          </button>
-
-          <div className="text-left text-xs">
-            <div className="font-bold text-slate-800 dark:text-white truncate">{user?.first_name} {user?.last_name}</div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-mono tracking-wider mt-0.5">{role}</div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full border border-red-500 text-red-500 py-2 rounded text-xs font-bold uppercase hover:bg-red-50 dark:hover:bg-red-950/20 transition-all flex items-center justify-center gap-1"
-          >
-            <span className="material-symbols-outlined text-sm">logout</span> Logout
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Content Wrapper */}
-      <div className="ml-sidebar-width flex-1 flex flex-col min-h-screen">
-        {/* TopAppBar */}
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter">
-          {/* Top Scope Selector & Settings */}
-          <div className="flex items-center gap-stack-md text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400">
-            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400">corporate_fare</span>
-            <span>Active Deployment: <span className="text-slate-950 dark:text-white">
-              {organizations[0]?.name || "Wi-Fi Sense Enterprise"}
-            </span></span>
-          </div>
-
-          <div className="flex items-center gap-gutter">
-            {/* Search Input */}
-            <div className="relative hidden md:block">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
-              <input
-                className="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-body-md focus:outline-none focus:border-teal-500 w-64 text-slate-800 dark:text-white"
-                placeholder="Search rooms, telemetry..."
-                type="text"
-              />
-            </div>
-
-            {/* Actions group */}
-            <div className="flex items-center gap-stack-sm border-l border-slate-200 dark:border-slate-850 pl-gutter">
-              <button
-                onClick={() => {
-                  if (devices.length > 0) {
-                    setSimDeviceId(devices[0].id);
-                    setShowSimulateDrawer(true);
-                  } else {
-                    alert("Please register a sensing device first.");
-                  }
-                }}
-                className="text-teal-600 dark:text-teal-400 border border-teal-600 dark:border-teal-450 px-4 py-2 rounded text-xs font-bold uppercase hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors cursor-pointer"
-              >
-                Simulate Event
-              </button>
-
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-                title="Toggle Dark Mode Theme"
-              >
-                <span className="material-symbols-outlined">{darkMode ? "light_mode" : "dark_mode"}</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentView("alerts")}
-                className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors relative"
-              >
-                <span className="material-symbols-outlined">notifications</span>
-                {alerts.filter(a => a.status === "new").length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-              </button>
-
-              <div className="relative">
+      {renderAppShell(
+        <div className="space-y-6">
+          {/* Global Fall Alert Banner */}
+          {activeFallAlert && role !== "emergency_contact" && (
+            <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 rounded-xl flex items-center justify-between pulse-animation relative z-25">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-red-500 text-2xl fill">warning</span>
+                <div className="text-left font-sans">
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-red-650">POTENTIAL FALL ALERT</h3>
+                  <p className="text-sm font-semibold">{activeFallAlert.message}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 ml-2 overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-teal-500 transition-all"
-                  title="Profile Menu & Photo Upload"
+                  onClick={() => handleAcknowledge(activeFallAlert.id)}
+                  className="px-3 py-1.5 border border-red-500 text-red-600 dark:text-red-400 rounded text-xs font-bold uppercase hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
                 >
-                  {user?.photo_url ? (
-                    <img
-                      alt="User avatar"
-                      className="w-full h-full object-cover"
-                      src={user.photo_url.startsWith("http") ? user.photo_url : `${API_BASE}${user.photo_url}`}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-teal-50 dark:bg-teal-950/40 flex items-center justify-center text-teal-700 dark:text-teal-400 font-bold text-xs">
-                      {((user?.first_name?.[0] || "") + (user?.last_name?.[0] || "")).toUpperCase() || "WS"}
-                    </div>
-                  )}
+                  Acknowledge
                 </button>
-
-                {showProfileMenu && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-4 z-50 text-left">
-                    <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                      <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800 shrink-0 flex items-center justify-center bg-teal-50 dark:bg-teal-950/40">
-                        {user?.photo_url ? (
-                          <img
-                            alt="User avatar"
-                            className="w-full h-full object-cover"
-                            src={user.photo_url.startsWith("http") ? user.photo_url : `${API_BASE}${user.photo_url}`}
-                          />
-                        ) : (
-                          <span className="text-teal-700 dark:text-teal-400 font-bold text-sm">
-                            {((user?.first_name?.[0] || "") + (user?.last_name?.[0] || "")).toUpperCase() || "WS"}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-bold text-slate-900 dark:text-white truncate">
-                          {user?.first_name} {user?.last_name}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                          {user?.email}
-                        </div>
-                        <div className="text-[10px] text-teal-600 dark:text-teal-400 font-mono uppercase mt-0.5 font-bold">
-                          {role}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 space-y-2">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handlePhotoUpload}
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full py-1.5 px-3 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 hover:bg-teal-100 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">photo_camera</span>
-                        Upload Profile Photo
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          handleLogout();
-                        }}
-                        className="w-full py-1.5 px-3 border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">logout</span>
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <button
+                  onClick={() => setShowResolveModal(activeFallAlert.id)}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold uppercase hover:opacity-90 shadow cursor-pointer"
+                >
+                  Resolve
+                </button>
               </div>
             </div>
-          </div>
-        </header>
+          )}
 
-        {/* Global Fall Alert Banner */}
-        {activeFallAlert && (
-          <div className="mt-header-height bg-red-50 border-b border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 flex items-center justify-between pulse-animation relative z-25">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-red-500 text-2xl fill">warning</span>
-              <div className="text-left font-sans">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-red-650">POTENTIAL FALL ALERT</h3>
-                <p className="text-sm font-semibold">{activeFallAlert.message}</p>
+          {/* Access Denied Guard if currentView is unauthorized for user's context */}
+          {!isViewAllowed(currentView, appContext, role, isSystemAdmin) && (
+            <div className="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/40 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-sm my-12">
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mb-4 mx-auto text-red-600">
+                <span className="material-symbols-outlined text-3xl">lock</span>
               </div>
-            </div>
-            <div className="flex gap-2">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">View Not Available</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                The requested view <code className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-red-600 dark:text-red-400">{currentView}</code> is not accessible in {appContext === APP_CONTEXTS.SPACE ? "WIFISENSE SPACE" : "WIFISENSE CARE"} for role <span className="font-semibold uppercase">{role}</span>.
+              </p>
               <button
-                onClick={() => handleAcknowledge(activeFallAlert.id)}
-                className="px-3 py-1.5 border border-red-500 text-red-600 dark:text-red-400 rounded text-xs font-bold uppercase hover:bg-red-50 dark:hover:bg-red-950/40"
+                onClick={() => setCurrentView(getDefaultView(appContext, role, isSystemAdmin))}
+                className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 rounded-lg text-xs font-bold uppercase transition-colors cursor-pointer"
               >
-                Acknowledge
-              </button>
-              <button
-                onClick={() => setShowResolveModal(activeFallAlert.id)}
-                className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold uppercase hover:opacity-90 shadow"
-              >
-                Resolve
+                Return to Authorized Dashboard
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Main Canvas */}
-        <main className={`p-container-padding flex-1 ${activeFallAlert ? "pt-2" : "pt-[64px]"}`}>
+          )}
           
           {/* ============================================================================
             1. MONITORING DASHBOARD (CENTRAL MONITORING BENTO)
           ============================================================================ */}
-          {currentView === "dashboard" && (
+          {currentView === "dashboard" && isViewAllowed("dashboard", appContext, role, isSystemAdmin) && (
             <div className="space-y-6">
               
               {/* Central Monitoring Dashboard Title Row */}
@@ -1675,7 +1532,7 @@ export default function App() {
           {/* ============================================================================
             2. ROOM OCCUPANCY VIEW (DEDICATED FULL GRID SCREEN / DETAILED ROOM 204 VIEW)
           ============================================================================ */}
-          {currentView === "occupancy" && (
+          {currentView === "occupancy" && isViewAllowed("occupancy", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Breadcrumbs & Navigation */}
               <div className="flex items-center justify-between mb-4">
@@ -1828,7 +1685,7 @@ export default function App() {
           {/* ============================================================================
             3. CAREGIVER DASHBOARD
           ============================================================================ */}
-          {currentView === "caregiver" && (
+          {currentView === "caregiver" && isViewAllowed("caregiver", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Page Header */}
               <div className="mb-stack-lg flex justify-between items-end">
@@ -2013,7 +1870,7 @@ export default function App() {
           {/* ============================================================================
             4. ORG ADMIN DASHBOARD
           ============================================================================ */}
-          {currentView === "orgadmin" && (
+          {currentView === "orgadmin" && isViewAllowed("orgadmin", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               <div className="mb-stack-lg">
                 <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Organization Admin Dashboard</h2>
@@ -2129,7 +1986,7 @@ export default function App() {
           {/* ============================================================================
             5. SYSTEM ADMIN DASHBOARD (USER & ROLES AUDITING)
           ============================================================================ */}
-          {currentView === "sysadmin" && (
+          {currentView === "sysadmin" && isViewAllowed("sysadmin", appContext, role, isSystemAdmin) && (
             <div className="flex flex-col gap-gutter text-left">
               {/* Page Header */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -2364,7 +2221,7 @@ export default function App() {
           {/* ============================================================================
             OTHERS (CORPORATE, FAMILY, PHYSICAL CONFIG, DEVICE HEALTH, ALERTS, ANALYTICS)
           ============================================================================ */}
-          {currentView === "corporate" && (
+          {currentView === "corporate" && isViewAllowed("corporate", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Corporate Facility View Title Row */}
               <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -2468,7 +2325,8 @@ export default function App() {
                 </div>
               </div>
             </div>
-          )}          {currentView === "family" && (
+          )}
+          {currentView === "family" && isViewAllowed("family", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {role !== "emergency_contact" ? (
                 /* Admin Preview / Warning */
@@ -2774,7 +2632,7 @@ export default function App() {
             </div>
           )}
 
-          {currentView === "analytics" && (
+          {currentView === "analytics" && isViewAllowed("analytics", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Page Header */}
               <div className="flex justify-between items-end mb-8">
@@ -2932,7 +2790,7 @@ export default function App() {
             </div>
           )}
 
-          {currentView === "assets" && (
+          {currentView === "assets" && isViewAllowed("assets", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Facility Hierarchy view title */}
               <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3032,7 +2890,7 @@ export default function App() {
             </div>
           )}
 
-          {currentView === "devices" && (
+          {currentView === "devices" && isViewAllowed("devices", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Header */}
               <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3098,7 +2956,7 @@ export default function App() {
             </div>
           )}
 
-          {currentView === "residents" && (
+          {currentView === "residents" && isViewAllowed("residents", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Header */}
               <div className="mb-stack-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3147,7 +3005,7 @@ export default function App() {
             </div>
           )}
 
-          {currentView === "alerts" && (
+          {currentView === "alerts" && isViewAllowed("alerts", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
               {/* Page Title */}
               <div className="flex justify-between items-end mb-4">
@@ -3262,9 +3120,8 @@ export default function App() {
               </div>
             </div>
           )}
-
-        </main>
-      </div>
+        </div>
+      )}
 
       {/* ============================================================================
         SLIDE OVER DRAWER FOR SIMULATION
