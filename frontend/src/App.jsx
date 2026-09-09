@@ -1051,28 +1051,46 @@ export default function App() {
 
         {/* Login Panel (Clean Light Theme) */}
         <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 lg:p-14 relative bg-white overflow-y-auto">
-          <div className="absolute top-5 right-5 flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-[11px]">
+          <div className="absolute top-4 right-4 sm:top-5 sm:right-5 flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-[11px] flex-wrap max-w-xl justify-end shadow-xs">
             <span className="text-slate-400 px-1 font-semibold">Demo:</span>
             <button
               type="button"
               onClick={() => { setLoginEmail("blesson@wifisense.com"); setLoginPassword("blessonpassword"); }}
-              className="px-2.5 py-1 bg-white text-slate-700 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
+              className="px-2.5 py-1 bg-white text-slate-750 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
             >
               SysAdmin
             </button>
             <button
               type="button"
               onClick={() => { setLoginEmail("abhinand@wifisense.com"); setLoginPassword("abhinandpassword"); }}
-              className="px-2.5 py-1 bg-white text-slate-700 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
+              className="px-2.5 py-1 bg-white text-slate-750 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
             >
               Corporate
             </button>
             <button
               type="button"
               onClick={() => { setLoginEmail("abhinanth@wifisense.com"); setLoginPassword("abhinanthpassword"); }}
-              className="px-2.5 py-1 bg-white text-slate-700 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
+              className="px-2.5 py-1 bg-white text-slate-750 rounded-lg shadow-2xs font-semibold hover:text-sky-600 border border-slate-200/60 cursor-pointer transition-colors"
             >
-              Elder-Care
+              Caregiver
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLoginEmail("john@wifisense.com"); setLoginPassword("johnpassword"); }}
+              className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg shadow-2xs font-bold hover:text-emerald-800 border border-emerald-300/70 cursor-pointer transition-colors flex items-center gap-1"
+              title="Emergency Contact for Annamma Joseph (Verified Link)"
+            >
+              <span className="material-symbols-outlined text-[13px]">group</span>
+              Family (John)
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLoginEmail("susan@wifisense.com"); setLoginPassword("susanpassword"); }}
+              className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg shadow-2xs font-bold hover:text-amber-800 border border-amber-300/70 cursor-pointer transition-colors flex items-center gap-1"
+              title="Emergency Contact with Pending Link Request"
+            >
+              <span className="material-symbols-outlined text-[13px]">pending</span>
+              Family (Susan)
             </button>
           </div>
 
@@ -1162,13 +1180,15 @@ export default function App() {
                 <div className="text-left">
                   <label className="block font-label-caps text-label-caps text-slate-500 dark:text-slate-400 mb-1">Role Type</label>
                   <select
-                    className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none font-medium"
                     value={regRole}
                     onChange={(e) => setRegRole(e.target.value)}
                   >
-                    <option value="system_admin">System Admin</option>
+                    <option value="caregiver">Caregiver (Elder-Care Home)</option>
+                    <option value="emergency_contact">Family Member / Emergency Contact (Elder-Care)</option>
                     <option value="facility_manager">Facility Manager</option>
-                    <option value="caregiver">Caregiver</option>
+                    <option value="corporate_staff">Corporate Staff (Smart Workplace)</option>
+                    <option value="system_admin">System Admin</option>
                   </select>
                 </div>
                 <div className="text-left">
@@ -1274,7 +1294,7 @@ export default function App() {
       {/* Toast Notification */}
       {toastMessage && (
         <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 transition-all transform translate-y-0 ${
-          toastMessage.type === "error" ? "bg-red-650 text-white" : "bg-teal-600 text-white"
+          toastMessage.type === "error" ? "bg-red-600 text-white" : "bg-teal-600 text-white"
         }`}>
           <span className="material-symbols-outlined">{toastMessage.type === "error" ? "error" : "check_circle"}</span>
           <span className="text-xs font-bold">{toastMessage.text}</span>
@@ -1289,7 +1309,7 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-red-500 text-2xl fill">warning</span>
                 <div className="text-left font-sans">
-                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-red-650">POTENTIAL FALL ALERT</h3>
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-red-600">POTENTIAL FALL ALERT</h3>
                   <p className="text-sm font-semibold">{activeFallAlert.message}</p>
                 </div>
               </div>
@@ -1718,7 +1738,7 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => setShowResolveModal(activeFallAlert.id)}
-                      className="px-4 py-2 bg-red-650 text-white rounded font-body-md font-semibold hover:opacity-90 transition-opacity"
+                      className="px-4 py-2 bg-red-600 text-white rounded font-body-md font-semibold hover:opacity-90 transition-opacity"
                     >
                       Dispatch Help
                     </button>
@@ -1734,7 +1754,7 @@ export default function App() {
                   <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
                     <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
                       <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Active Incidents</h3>
-                      <span className={`px-2 py-1 rounded text-label-caps font-label-caps ${alerts.filter(a => a.status !== "resolved").length > 0 ? "bg-red-50 text-red-650 font-bold" : "bg-teal-50 text-teal-650 font-bold"}`}>
+                      <span className={`px-2 py-1 rounded text-label-caps font-label-caps ${alerts.filter(a => a.status !== "resolved").length > 0 ? "bg-red-50 text-red-600 font-bold" : "bg-teal-50 text-teal-600 font-bold"}`}>
                         {alerts.filter(a => a.status !== "resolved").length} Active
                       </span>
                     </div>
@@ -1854,7 +1874,7 @@ export default function App() {
                           <span className={`absolute left-[-9px] top-0 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 ${al.status === "resolved" ? "bg-slate-400" : "bg-red-500 animate-pulse"}`}></span>
                           <div className="flex justify-between items-start mb-1 text-xs">
                             <span className="text-slate-400 font-data-mono">{new Date(al.created_at).toLocaleTimeString()}</span>
-                            <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-full ${al.status === "resolved" ? "bg-slate-100 text-slate-650" : "bg-red-50 text-red-650"}`}>{al.status}</span>
+                            <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-full ${al.status === "resolved" ? "bg-slate-100 text-slate-600" : "bg-red-50 text-red-600"}`}>{al.status}</span>
                           </div>
                           <p className="font-bold text-slate-900 dark:text-white text-sm">{al.event_type.replace("_", " ")}</p>
                           <p className="text-xs text-slate-550">{rooms.find(r => r.id === al.room_id)?.name || "Room"}</p>
@@ -1945,7 +1965,7 @@ export default function App() {
                             <td className="p-3 font-semibold dark:text-white">{targetName}</td>
                             <td className="p-3">
                               <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
-                                req.status === "pending" ? "bg-amber-50 text-amber-650" : req.status === "approved" ? "bg-teal-50 text-teal-650" : "bg-red-50 text-red-650"
+                                req.status === "pending" ? "bg-amber-50 text-amber-600" : req.status === "approved" ? "bg-teal-50 text-teal-600" : "bg-red-50 text-red-600"
                               }`}>
                                 {req.status.toUpperCase()}
                               </span>
@@ -2558,7 +2578,7 @@ export default function App() {
                                   <div className="text-[10px] text-slate-400 mt-0.5">{new Date(a.created_at).toLocaleTimeString()}</div>
                                 </div>
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  a.status === "resolved" ? "bg-slate-100 text-slate-655" : "bg-red-50 text-red-650"
+                                  a.status === "resolved" ? "bg-slate-100 text-slate-600" : "bg-red-50 text-red-600"
                                 }`}>
                                   {a.status.toUpperCase()}
                                 </span>
@@ -2936,7 +2956,7 @@ export default function App() {
                             {dev.device_status === "ONLINE" ? (
                               <span className="bg-teal-50 dark:bg-teal-950/20 text-teal-650 px-2.5 py-0.5 rounded text-[10px] font-bold">ONLINE</span>
                             ) : (
-                              <span className="bg-red-50 dark:bg-red-950/20 text-red-650 px-2.5 py-0.5 rounded text-[10px] font-bold">OFFLINE</span>
+                              <span className="bg-red-50 dark:bg-red-950/20 text-red-600 px-2.5 py-0.5 rounded text-[10px] font-bold">OFFLINE</span>
                             )}
                           </td>
                           <td className="p-4 text-right">
@@ -2987,17 +3007,56 @@ export default function App() {
                       <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 font-bold uppercase">
                         <th className="p-4">Resident Subject</th>
                         <th className="p-4">Assigned Location</th>
-                        <th className="p-4">Resident ID</th>
+                        <th className="p-4">Family Emergency Contact</th>
+                        <th className="p-4">Link Status</th>
+                        <th className="p-4 text-right">Emergency Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {residents.map(res => (
-                        <tr key={res.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
-                          <td className="p-4 font-bold text-slate-850 dark:text-white">{res.first_name} {res.last_name}</td>
-                          <td className="p-4">{rooms.find(r => r.id === res.room_id)?.name || "No Bound Layout"}</td>
-                          <td className="p-4 font-mono text-slate-450">{res.id}</td>
-                        </tr>
-                      ))}
+                      {residents.map(res => {
+                        const isAnnamma = res.first_name.toLowerCase().includes("annamma");
+                        const isDevassy = res.first_name.toLowerCase().includes("devassy");
+                        
+                        const contactName = isAnnamma ? "John Smith (Son)" : isDevassy ? "Susan Varghese (Daughter)" : "Facility On-Call Nurse";
+                        const contactPhone = isAnnamma ? "+1 (555) 234-5678" : isDevassy ? "+1 (555) 876-5432" : "+1 (555) 019-2831";
+                        const contactEmail = isAnnamma ? "john@wifisense.com" : isDevassy ? "susan@wifisense.com" : "duty@wifisense.com";
+                        const statusBadge = isAnnamma 
+                          ? { text: "Verified Link", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" } 
+                          : isDevassy 
+                          ? { text: "Pending Review", cls: "bg-amber-50 text-amber-700 border-amber-200" } 
+                          : { text: "Standard Care", cls: "bg-slate-100 text-slate-600 border-slate-200" };
+
+                        return (
+                          <tr key={res.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
+                            <td className="p-4 font-bold text-slate-850 dark:text-white">
+                              {res.first_name} {res.last_name}
+                              <div className="text-[10px] text-slate-400 font-mono font-normal">{res.id}</div>
+                            </td>
+                            <td className="p-4">{rooms.find(r => r.id === res.room_id)?.name || "No Bound Layout"}</td>
+                            <td className="p-4">
+                              <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[15px] text-teal-600">contact_phone</span>
+                                {contactName}
+                              </div>
+                              <div className="text-slate-500 font-mono text-[11px]">{contactPhone} • {contactEmail}</div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${statusBadge.cls}`}>
+                                {statusBadge.text}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <a
+                                href={`tel:${contactPhone.replace(/\D/g, "")}`}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-lg font-bold text-[11px] hover:bg-teal-100 transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[13px]">call</span>
+                                Call Contact
+                              </a>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -3028,7 +3087,7 @@ export default function App() {
                       <span className="material-symbols-outlined text-red-500">warning</span>
                       Pending Alerts
                     </h3>
-                    <span className="bg-red-50 text-red-650 px-2.5 py-1 rounded text-label-caps font-label-caps font-bold">
+                    <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded text-label-caps font-label-caps font-bold">
                       {alerts.filter(a => a.status !== "resolved").length} Active
                     </span>
                   </div>
@@ -3057,7 +3116,7 @@ export default function App() {
                             <td className="p-4 text-data-mono font-data-mono text-slate-500">{new Date(a.created_at).toLocaleTimeString()}</td>
                             <td className="p-4">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                                a.event_type === "Fall_Detected" ? "bg-red-50 text-red-650" : "bg-amber-50 text-amber-650"
+                                a.event_type === "Fall_Detected" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
                               }`}>
                                 {a.event_type === "Fall_Detected" ? "Critical" : "High"}
                               </span>
@@ -3524,7 +3583,7 @@ export default function App() {
       {showResolveModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
-            <h3 className="font-bold text-headline-sm mb-2 text-red-650 font-semibold">Resolve Incident Alert</h3>
+            <h3 className="font-bold text-headline-sm mb-2 text-red-600 font-semibold">Resolve Incident Alert</h3>
             <p className="text-xs text-slate-455 mb-4">
               Enter resolution notes to clear the warning banner.
             </p>
@@ -3562,28 +3621,67 @@ export default function App() {
       {/* 8. Emergency Protocol Animated Modal */}
       {showEmergencyModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border-2 border-red-500 rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-2 bg-red-500 animate-pulse"></div>
-            <span className="material-symbols-outlined text-red-500 text-6xl animate-bounce mb-4 block" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
-            <h3 className="font-bold text-2xl text-red-650 mb-2 uppercase tracking-wide">Emergency Protocol Activated</h3>
-            <p className="text-slate-600 dark:text-slate-350 text-sm mb-6 max-w-sm mx-auto">
+          <div className="bg-white dark:bg-slate-900 border-2 border-red-500 rounded-2xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-2 bg-red-600 animate-pulse"></div>
+            <span className="material-symbols-outlined text-red-600 text-6xl animate-bounce mb-3 block" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+            <h3 className="font-bold text-2xl text-red-600 dark:text-red-400 mb-2 uppercase tracking-wide">Emergency Protocol Activated</h3>
+            <p className="text-slate-600 dark:text-slate-300 text-sm mb-5 max-w-sm mx-auto">
               Warning vectors broadcasted to local auxiliary responders. Dispatching caregivers to monitored facilities.
             </p>
+
+            {/* Registered Family Emergency Contacts Section */}
+            <div className="bg-red-50/60 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl p-4 mb-6 text-left">
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="font-bold text-red-900 dark:text-red-200 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-red-600">contact_phone</span>
+                  Family Emergency Contacts on Call
+                </span>
+                <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                  SMS / Call Queued
+                </span>
+              </div>
+              <div className="space-y-2 text-xs divide-y divide-red-200/60 dark:divide-red-900/40">
+                <div className="flex justify-between items-center pt-1.5">
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-white">John Smith <span className="text-slate-500 font-normal">(Son of Annamma Joseph)</span></div>
+                    <div className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">+1 (555) 234-5678 • john@wifisense.com</div>
+                  </div>
+                  <a href="tel:5552345678" className="px-2.5 py-1 bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 rounded-lg font-bold text-[11px] hover:bg-red-50 flex items-center gap-1 shadow-xs">
+                    <span className="material-symbols-outlined text-[13px]">call</span>
+                    Call
+                  </a>
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-white">Susan Varghese <span className="text-slate-500 font-normal">(Daughter of Devassy Varghese)</span></div>
+                    <div className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">+1 (555) 876-5432 • susan@wifisense.com</div>
+                  </div>
+                  <a href="tel:5558765432" className="px-2.5 py-1 bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 rounded-lg font-bold text-[11px] hover:bg-red-50 flex items-center gap-1 shadow-xs">
+                    <span className="material-symbols-outlined text-[13px]">call</span>
+                    Call
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons with high-contrast text */}
             <div className="flex justify-center gap-4">
               <button
                 type="button"
                 onClick={() => setShowEmergencyModal(false)}
-                className="px-6 py-2 border-2 border-slate-300 dark:border-slate-700 rounded-full text-sm font-bold uppercase dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-6 py-2.5 border-2 border-slate-300 dark:border-slate-700 rounded-full text-sm font-bold uppercase text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Stand Down
               </button>
               <button 
+                type="button"
                 onClick={() => {
                   setShowEmergencyModal(false);
-                  setToastMessage({ type: "success", text: "Auxiliary backup broadcasted." });
+                  setToastMessage({ type: "success", text: "Auxiliary backup & family contacts dispatched." });
                 }}
-                className="px-6 py-2 bg-red-650 text-white rounded-full text-sm font-bold uppercase hover:bg-red-750 transition-colors shadow-lg"
+                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-full text-sm font-bold uppercase transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
               >
+                <span className="material-symbols-outlined text-[18px]">emergency</span>
                 Confirm Dispatch
               </button>
             </div>
