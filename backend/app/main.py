@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 from app.core.database import init_db, engine
 from app.core.seed import seed_database
-from app.routers import auth, crud, sensing, alerts, analytics, family_portal
+import os
+from fastapi.staticfiles import StaticFiles
+from app.routers import auth, crud, sensing, alerts, analytics, family_portal, users
 
 app = FastAPI(
     title="Wi-Fi Sense Focus API",
@@ -20,6 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static Uploads directory
+UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 # Include Routers
 app.include_router(auth.router)
 app.include_router(crud.router)
@@ -27,6 +34,7 @@ app.include_router(sensing.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
 app.include_router(family_portal.router)
+app.include_router(users.router)
 
 @app.on_event("startup")
 def on_startup():

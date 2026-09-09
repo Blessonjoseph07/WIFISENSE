@@ -26,6 +26,7 @@ class UserOut(BaseModel):
     first_name: str
     last_name: str
     is_active: bool
+    photo_url: Optional[str] = None
     resident_id: Optional[str] = None
     created_at: datetime
 
@@ -163,6 +164,19 @@ class ResidentOut(BaseModel):
     class Config:
         from_attributes = True
 
+class HealthConditionOut(BaseModel):
+    id: str
+    resident_id: str
+    condition_name: str
+    notes: Optional[str]
+    diagnosed_date: Optional[datetime]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # ============================================================================
 # 3. SENSING PIPELINE SCHEMAS
 # ============================================================================
@@ -191,7 +205,7 @@ class SensingEventOut(BaseModel):
 
 class AlertOut(BaseModel):
     id: str
-    alert_configuration_id: Optional[str]
+    alert_configuration_id: Optional[str] = None
     room_id: str
     event_type: str
     severity: str
