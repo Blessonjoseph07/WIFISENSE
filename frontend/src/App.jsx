@@ -11,7 +11,7 @@ import SpaceAppShell from "./shells/SpaceAppShell";
 import SystemAdminShell from "./shells/SystemAdminShell";
 import FamilyPortalShell from "./shells/FamilyPortalShell";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function App() {
   // Authentication State
@@ -136,7 +136,6 @@ export default function App() {
   const [regPassword, setRegPassword] = useState("");
   const [regFirst, setRegFirst] = useState("");
   const [regLast, setRegLast] = useState("");
-  const [regRole, setRegRole] = useState("caregiver");
   const [isRegistering, setIsRegistering] = useState(false);
 
   // Asset Creation Inputs
@@ -551,8 +550,7 @@ export default function App() {
           email: regEmail,
           password: regPassword,
           first_name: regFirst,
-          last_name: regLast,
-          role: regRole
+          last_name: regLast
         })
       });
       if (!res.ok) {
@@ -1228,28 +1226,18 @@ export default function App() {
                   </div>
                 </div>
                 <div className="text-left">
-                  <label className="block font-label-caps text-label-caps text-slate-500 dark:text-slate-400 mb-1">Role Type</label>
-                  <select
-                    className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none font-medium"
-                    value={regRole}
-                    onChange={(e) => setRegRole(e.target.value)}
-                  >
-                    <option value="caregiver">Caregiver (Elder-Care Home)</option>
-                    <option value="emergency_contact">Family Member / Emergency Contact (Elder-Care)</option>
-                    <option value="facility_manager">Facility Manager</option>
-                    <option value="corporate_staff">Corporate Staff (Smart Workplace)</option>
-                    <option value="system_admin">System Admin</option>
-                  </select>
-                </div>
-                <div className="text-left">
                   <label className="block font-label-caps text-label-caps text-slate-500 dark:text-slate-400 mb-1">Password</label>
                   <input
                     type="password"
                     className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
+                    minLength={8}
                     required
                   />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Minimum 8 characters. New accounts start with family / emergency-contact access; an administrator assigns staff roles.
+                  </p>
                 </div>
                 <div className="flex items-center justify-between pt-4">
                   <button type="button" onClick={() => setIsRegistering(false)} className="text-slate-500 dark:text-slate-400 font-medium text-xs hover:underline">
