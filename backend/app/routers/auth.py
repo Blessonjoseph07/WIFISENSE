@@ -3,8 +3,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 from app.core.database import get_session
 from app.core.security import hash_password, verify_password, create_access_token, decode_access_token
-from app.models.entities import User, UserRole, Role, Organization, Building, Room
-from app.schemas.schemas import UserRegister, UserLogin, Token, UserOut
+from app.models.entities import User, UserRole, Role, Organization, Building, Floor, Room
+from app.schemas.schemas import UserRegister, UserLogin, Token, UserOut, RoleAssignment
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -18,6 +18,8 @@ ROLE_MAPPING = {
     "corporate_staff": 5,
     "emergency_contact": 6
 }
+
+DEFAULT_REGISTRATION_ROLE = "emergency_contact"
 
 ROLE_NAMES = {
     1: "system_admin",
@@ -38,9 +40,10 @@ def seed_roles_if_empty(session: Session):
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserRegister, session: Session = Depends(get_session)):
+    """Self-service registration. Always creates an unprivileged account;
+    privileged roles and scopes are granted by an administrator via /auth/assign-role."""
     seed_roles_if_empty(session)
-    
-    # Check if user already exists
+
     statement = select(User).where(User.email == user_data.email)
     existing_user = session.exec(statement).first()
     if existing_user:
@@ -49,28 +52,6 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
             detail="A user with this email address already exists."
         )
 
-    # Validate role
-    if user_data.role not in ROLE_MAPPING:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role. Supported roles: {list(ROLE_MAPPING.keys())}"
-        )
-
-    # Validate parent scopes if provided
-    if user_data.organization_id:
-        org = session.get(Organization, user_data.organization_id)
-        if not org:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
-    if user_data.building_id:
-        bld = session.get(Building, user_data.building_id)
-        if not bld:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Building not found")
-    if user_data.room_id:
-        rm = session.get(Room, user_data.room_id)
-        if not rm:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
-
-    # Hash password and create user
     hashed_pwd = hash_password(user_data.password)
     user = User(
         email=user_data.email,
@@ -83,13 +64,9 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(user)
 
-    # Create UserRole mapping
     user_role = UserRole(
         user_id=user.id,
-        role_id=ROLE_MAPPING[user_data.role],
-        organization_id=user_data.organization_id,
-        building_id=user_data.building_id,
-        room_id=user_data.room_id
+        role_id=ROLE_MAPPING[DEFAULT_REGISTRATION_ROLE]
     )
     session.add(user_role)
     session.commit()
@@ -207,18 +184,21 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User no longer exists."
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated."
+        )
     return user
 
-# Helper to verify role limits
+# Helper to verify role limits. The role is resolved from the database on every
+# request so revoked or changed assignments take effect immediately.
 def require_roles(allowed_roles: list):
-    def dependency(token: str = Depends(oauth2_scheme)):
-        payload = decode_access_token(token)
-        if not payload:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials."
-            )
-        role = payload.get("role")
+    def dependency(
+        current_user: User = Depends(get_current_user),
+        session: Session = Depends(get_session)
+    ):
+        role, _app_context, _is_sysadmin = get_user_role_and_context(current_user, session)
         if role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -245,3 +225,72 @@ def get_user_scopes(user: User):
         if role.room_id:
             scopes["room_ids"].add(role.room_id)
     return scopes
+
+@router.post("/assign-role", response_model=UserOut, dependencies=[Depends(require_roles(["system_admin"]))])
+def assign_role(
+    assignment: RoleAssignment,
+    session: Session = Depends(get_session)
+):
+    seed_roles_if_empty(session)
+
+    if assignment.role not in ROLE_MAPPING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role. Supported roles: {list(ROLE_MAPPING.keys())}"
+        )
+
+    target_user = session.get(User, assignment.user_id)
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Scopes must form a single chain: a room inside the building inside the organization,
+    # otherwise the independent downstream scope checks would span tenants.
+    if assignment.organization_id and not session.get(Organization, assignment.organization_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+
+    building = None
+    if assignment.building_id:
+        building = session.get(Building, assignment.building_id)
+        if not building:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Building not found")
+        if not assignment.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="organization_id is required when a building scope is assigned."
+            )
+        if building.organization_id != assignment.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Building does not belong to the given organization."
+            )
+
+    if assignment.room_id:
+        room = session.get(Room, assignment.room_id)
+        if not room:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+        if not building:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="building_id is required when a room scope is assigned."
+            )
+        floor = session.get(Floor, room.floor_id)
+        if not floor or floor.building_id != building.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Room does not belong to the given building."
+            )
+
+    existing_roles = session.exec(select(UserRole).where(UserRole.user_id == target_user.id)).all()
+    for existing in existing_roles:
+        session.delete(existing)
+
+    session.add(UserRole(
+        user_id=target_user.id,
+        role_id=ROLE_MAPPING[assignment.role],
+        organization_id=assignment.organization_id,
+        building_id=assignment.building_id,
+        room_id=assignment.room_id
+    ))
+    session.commit()
+    session.refresh(target_user)
+    return target_user

@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
+from app.core.config import settings
 from app.core.database import init_db, engine
 from app.core.seed import seed_database
-import os
-from fastapi.staticfiles import StaticFiles
+from app.core.bootstrap import bootstrap_system_admin
 from app.routers import auth, crud, sensing, alerts, analytics, family_portal, users
 
 app = FastAPI(
@@ -16,16 +16,11 @@ app = FastAPI(
 # CORS Configuration for Frontend Integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In development, allow all origins
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Static Uploads directory
-UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Include Routers
 app.include_router(auth.router)
@@ -35,12 +30,15 @@ app.include_router(alerts.router)
 app.include_router(analytics.router)
 app.include_router(family_portal.router)
 app.include_router(users.router)
+app.include_router(users.uploads_router)
 
 @app.on_event("startup")
 def on_startup():
     init_db()
     with Session(engine) as session:
-        seed_database(session)
+        if settings.SEED_DEMO_DATA:
+            seed_database(session)
+        bootstrap_system_admin(session)
 
 @app.get("/")
 def read_root():
