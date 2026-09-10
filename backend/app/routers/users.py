@@ -3,6 +3,7 @@ import time
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
+from PIL import Image, UnidentifiedImageError
 from sqlmodel import Session
 from app.core.config import settings
 from app.core.database import get_session
@@ -24,6 +25,8 @@ IMAGE_SIGNATURES = [
     (b"GIF89a", ".gif", "image/gif"),
 ]
 CHUNK_SIZE = 64 * 1024
+PILLOW_FORMATS = {".jpg": "JPEG", ".png": "PNG", ".gif": "GIF", ".webp": "WEBP"}
+MAX_IMAGE_PIXELS = 40_000_000
 EXTENSION_MEDIA_TYPES = {
     ".jpg": "image/jpeg",
     ".png": "image/png",
@@ -83,6 +86,27 @@ def upload_profile_photo(
     except HTTPException:
         os.remove(target_path)
         raise
+
+    try:
+        with Image.open(target_path) as image:
+            if image.format != PILLOW_FORMATS[extension]:
+                raise UnidentifiedImageError(image.format or "unknown")
+            width, height = image.size
+            if width * height > MAX_IMAGE_PIXELS:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"Image must contain fewer than {MAX_IMAGE_PIXELS} pixels."
+                )
+            image.verify()
+    except HTTPException:
+        os.remove(target_path)
+        raise
+    except Exception:
+        os.remove(target_path)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File is not a valid image."
+        )
 
     current_user.photo_url = f"/uploads/{safe_filename}"
     session.add(current_user)
