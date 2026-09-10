@@ -60,7 +60,15 @@ def upload_profile_photo(
     safe_filename = f"user_{current_user.id}_{int(time.time())}_{uuid.uuid4().hex[:8]}{extension}"
     target_path = os.path.join(UPLOAD_DIR, safe_filename)
 
+    too_large = HTTPException(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        detail=f"Image must be smaller than {settings.MAX_UPLOAD_BYTES} bytes."
+    )
+
     written = len(header)
+    if written > settings.MAX_UPLOAD_BYTES:
+        raise too_large
+
     try:
         with open(target_path, "wb") as buffer:
             buffer.write(header)
@@ -70,10 +78,7 @@ def upload_profile_photo(
                     break
                 written += len(chunk)
                 if written > settings.MAX_UPLOAD_BYTES:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=f"Image must be smaller than {settings.MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
-                    )
+                    raise too_large
                 buffer.write(chunk)
     except HTTPException:
         os.remove(target_path)

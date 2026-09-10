@@ -4,6 +4,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.core.database import init_db, engine
 from app.core.seed import seed_database
+from app.core.bootstrap import bootstrap_system_admin
 from app.routers import auth, crud, sensing, alerts, analytics, family_portal, users
 
 app = FastAPI(
@@ -34,9 +35,10 @@ app.include_router(users.uploads_router)
 @app.on_event("startup")
 def on_startup():
     init_db()
-    if settings.SEED_DEMO_DATA:
-        with Session(engine) as session:
+    with Session(engine) as session:
+        if settings.SEED_DEMO_DATA:
             seed_database(session)
+        bootstrap_system_admin(session)
 
 @app.get("/")
 def read_root():
