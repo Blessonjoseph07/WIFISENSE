@@ -8,9 +8,12 @@ from datetime import datetime
 
 class UserRegister(BaseModel):
     email: EmailStr
-    password: str
-    first_name: str
-    last_name: str
+    password: str = Field(..., min_length=8, max_length=128)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+
+class RoleAssignment(BaseModel):
+    user_id: str
     role: str = Field(..., description="Role must be one of: system_admin, organization_admin, facility_manager, caregiver, corporate_staff, emergency_contact")
     organization_id: Optional[str] = None
     building_id: Optional[str] = None
