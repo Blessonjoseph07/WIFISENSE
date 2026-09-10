@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 from app.core.database import get_session
 from app.core.security import hash_password, verify_password, create_access_token, decode_access_token
-from app.models.entities import User, UserRole, Role, Organization, Building, Room
+from app.models.entities import User, UserRole, Role, Organization, Building, Floor, Room
 from app.schemas.schemas import UserRegister, UserLogin, Token, UserOut, RoleAssignment
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -243,12 +243,42 @@ def assign_role(
     if not target_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+    # Scopes must form a single chain: a room inside the building inside the organization,
+    # otherwise the independent downstream scope checks would span tenants.
     if assignment.organization_id and not session.get(Organization, assignment.organization_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
-    if assignment.building_id and not session.get(Building, assignment.building_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Building not found")
-    if assignment.room_id and not session.get(Room, assignment.room_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+
+    building = None
+    if assignment.building_id:
+        building = session.get(Building, assignment.building_id)
+        if not building:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Building not found")
+        if not assignment.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="organization_id is required when a building scope is assigned."
+            )
+        if building.organization_id != assignment.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Building does not belong to the given organization."
+            )
+
+    if assignment.room_id:
+        room = session.get(Room, assignment.room_id)
+        if not room:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+        if not building:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="building_id is required when a room scope is assigned."
+            )
+        floor = session.get(Floor, room.floor_id)
+        if not floor or floor.building_id != building.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Room does not belong to the given building."
+            )
 
     existing_roles = session.exec(select(UserRole).where(UserRole.user_id == target_user.id)).all()
     for existing in existing_roles:

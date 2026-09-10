@@ -62,6 +62,7 @@ Backend settings come from the environment (see `backend/.env.example`):
 | `ALLOWED_ORIGINS` | no | `http://localhost:5173` | Comma-separated CORS origins. |
 | `SEED_DEMO_DATA` | no | `0` | Set to `1` to seed demo data on startup. |
 | `MAX_UPLOAD_BYTES` | no | `5242880` | Profile photo size limit. |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | no | – | Creates the first system administrator on startup. |
 
 The frontend reads `VITE_API_BASE` (see `frontend/.env.example`), defaulting to `http://localhost:8000`.
 
@@ -71,6 +72,10 @@ The frontend reads `VITE_API_BASE` (see `frontend/.env.example`), defaulting to 
 
 Self-registration via `POST /auth/register` always creates an unprivileged `emergency_contact`
 account. A system administrator grants staff roles and scopes through `POST /auth/assign-role`.
+
+A fresh install has no administrator. Start the backend once with `BOOTSTRAP_ADMIN_EMAIL` and
+`BOOTSTRAP_ADMIN_PASSWORD` set to create one — the bootstrap is skipped as soon as any system
+administrator exists. Unset both variables afterwards.
 
 For local development only, start the backend with `SEED_DEMO_DATA=1` to create sample
 facilities, devices, residents and demo logins (their passwords are in `backend/app/core/seed.py`).
