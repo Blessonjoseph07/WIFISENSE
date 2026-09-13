@@ -235,7 +235,7 @@ export default function CorporateSplash({ user, onContinue }) {
                 {/* 3 Top Stat Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   
-                  {/* Card 1: Total Property */}
+                  {/* Card 1: Monitored Spaces */}
                   <div className="bg-white rounded-2xl p-3.5 border border-[#E6EAE3] shadow-sm flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -244,20 +244,20 @@ export default function CorporateSplash({ user, onContinue }) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                           </svg>
                         </div>
-                        <span className="text-xs font-semibold text-[#4F6555]">Total Property</span>
+                        <span className="text-xs font-semibold text-[#4F6555]">Monitored Spaces</span>
                       </div>
                       <span className="text-[#A4B5A8] text-xs">•••</span>
                     </div>
                     <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-2xl font-black text-[#152B1D]">1,500</span>
+                      <span className="text-2xl font-black text-[#152B1D]">48 Rooms</span>
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                        ↗ 20%
+                        ↗ 94%
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#7A8E80] mt-1">Last month total 1,050</span>
+                    <span className="text-[10px] text-[#7A8E80] mt-1">Active Wi-Fi CSI sensor coverage</span>
                   </div>
 
-                  {/* Card 2: Number of Presences */}
+                  {/* Card 2: Occupied Spaces */}
                   <div className="bg-white rounded-2xl p-3.5 border border-[#E6EAE3] shadow-sm flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -266,20 +266,20 @@ export default function CorporateSplash({ user, onContinue }) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                           </svg>
                         </div>
-                        <span className="text-xs font-semibold text-[#4F6555]">Active Presence</span>
+                        <span className="text-xs font-semibold text-[#4F6555]">Active Occupancy</span>
                       </div>
                       <span className="text-[#A4B5A8] text-xs">•••</span>
                     </div>
                     <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-2xl font-black text-[#152B1D]">320</span>
-                      <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-                        ↘ 20%
+                      <span className="text-2xl font-black text-[#152B1D]">32 Rooms</span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                        67%
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#7A8E80] mt-1">Last month total 950</span>
+                    <span className="text-[10px] text-[#7A8E80] mt-1">16 vacant spaces available</span>
                   </div>
 
-                  {/* Card 3: Total Efficiency */}
+                  {/* Card 3: Energy Conservation */}
                   <div className="bg-white rounded-2xl p-3.5 border border-[#E6EAE3] shadow-sm flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -288,28 +288,28 @@ export default function CorporateSplash({ user, onContinue }) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
-                        <span className="text-xs font-semibold text-[#4F6555]">Total Sales</span>
+                        <span className="text-xs font-semibold text-[#4F6555]">Energy Recovery</span>
                       </div>
                       <span className="text-[#A4B5A8] text-xs">•••</span>
                     </div>
                     <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-2xl font-black text-[#152B1D]">$150k</span>
+                      <span className="text-2xl font-black text-[#152B1D]">35% Gain</span>
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                        ↗ 20%
+                        ↗ 15%
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#7A8E80] mt-1">Last month total 1,500</span>
+                    <span className="text-[10px] text-[#7A8E80] mt-1">Idle HVAC & lighting mitigation</span>
                   </div>
                 </div>
 
                 {/* Middle Row: Bar Chart & Donut Chart */}
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-3.5">
                   
-                  {/* Left: Report Sales / Bar Chart (3 cols) */}
+                  {/* Left: Occupancy Trends / Bar Chart (3 cols) */}
                   <div className="lg:col-span-3 bg-white rounded-2xl p-4 border border-[#E6EAE3] shadow-sm flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h3 className="text-sm font-bold text-[#182F21]">Report Sales</h3>
+                        <h3 className="text-sm font-bold text-[#182F21]">Campus Occupancy Traffic</h3>
                       </div>
                       <div className="flex items-center gap-1 text-[11px] font-medium text-[#465F4F] bg-[#F2F4F0] px-2.5 py-1 rounded-lg border border-[#E0E5DC] cursor-pointer">
                         <span>Weekday</span>
@@ -324,7 +324,7 @@ export default function CorporateSplash({ user, onContinue }) {
                       <div className="absolute top-0 left-[55%] -translate-x-1/2 bg-[#1B3525] text-white px-2.5 py-1 rounded-lg shadow-lg text-[9px] font-semibold flex flex-col items-center z-10">
                         <div className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                          <span>$4,096.00</span>
+                          <span>88% Peak Load</span>
                         </div>
                         <span className="text-[8px] text-[#A2BEA9]">Thu, 12 Jul</span>
                         <div className="w-1.5 h-1.5 bg-[#1B3525] transform rotate-45 -mb-1 mt-0.5"></div>
@@ -371,10 +371,10 @@ export default function CorporateSplash({ user, onContinue }) {
                     </div>
                   </div>
 
-                  {/* Right: Cost Breakdown / Donut Chart (2 cols) */}
+                  {/* Right: Spatial Allocation / Donut Chart (2 cols) */}
                   <div className="lg:col-span-2 bg-white rounded-2xl p-4 border border-[#E6EAE3] shadow-sm flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-bold text-[#182F21]">Cost Breakdown</h3>
+                      <h3 className="text-sm font-bold text-[#182F21]">Spatial Allocation</h3>
                       <button className="text-[10px] font-semibold text-[#54705D] hover:underline">See Details</button>
                     </div>
 
@@ -382,17 +382,17 @@ export default function CorporateSplash({ user, onContinue }) {
                       {/* SVG Donut Chart */}
                       <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                          {/* Segment 1: Green */}
+                          {/* Segment 1: Meeting Suites */}
                           <circle cx="18" cy="18" r="14" fill="none" stroke="#90BA9A" strokeWidth="4.5" strokeDasharray="40 60" strokeDashoffset="0" />
-                          {/* Segment 2: Tan/Sand */}
+                          {/* Segment 2: Research Labs */}
                           <circle cx="18" cy="18" r="14" fill="none" stroke="#D1BE9E" strokeWidth="4.5" strokeDasharray="25 75" strokeDashoffset="-40" />
-                          {/* Segment 3: Lavender/Slate */}
+                          {/* Segment 3: Classrooms */}
                           <circle cx="18" cy="18" r="14" fill="none" stroke="#B8C4D6" strokeWidth="4.5" strokeDasharray="20 80" strokeDashoffset="-65" />
-                          {/* Segment 4: Sage/Beige */}
+                          {/* Segment 4: Offices */}
                           <circle cx="18" cy="18" r="14" fill="none" stroke="#E2DAC9" strokeWidth="4.5" strokeDasharray="15 85" strokeDashoffset="-85" />
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-xs font-bold text-[#16291E]">$ 4,750</span>
+                          <span className="text-xs font-bold text-[#16291E]">48 Rooms</span>
                         </div>
                       </div>
 
@@ -400,118 +400,118 @@ export default function CorporateSplash({ user, onContinue }) {
                       <div className="flex flex-col gap-1.5 text-[10px]">
                         <div className="flex items-center gap-1.5 text-[#42584A]">
                           <span className="w-2 h-2 rounded-full bg-[#90BA9A]"></span>
-                          <span>Maintenance</span>
+                          <span>Meeting Suites</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[#42584A]">
                           <span className="w-2 h-2 rounded-full bg-[#D1BE9E]"></span>
-                          <span>Repair</span>
+                          <span>Research Labs</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[#42584A]">
                           <span className="w-2 h-2 rounded-full bg-[#B8C4D6]"></span>
-                          <span>Taxes</span>
+                          <span>Classrooms</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[#42584A]">
                           <span className="w-2 h-2 rounded-full bg-[#E2DAC9]"></span>
-                          <span>Saving</span>
+                          <span>Offices</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Bottom Row: Last Transactions & Maintenance Request */}
+                {/* Bottom Row: Active Telemetry & Node Diagnostics */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
                   
-                  {/* Card 1: Last Transactions */}
+                  {/* Card 1: Active Space Telemetry */}
                   <div className="bg-white rounded-2xl p-3.5 border border-[#E6EAE3] shadow-sm">
                     <div className="flex items-center justify-between mb-2.5">
-                      <h4 className="text-xs font-bold text-[#182F21]">Last Transactions</h4>
-                      <button className="text-[10px] font-semibold text-[#54705D] hover:underline">See All</button>
+                      <h4 className="text-xs font-bold text-[#182F21]">Active Space Telemetry</h4>
+                      <span className="text-[10px] font-semibold text-[#54705D]">Real-Time CSI</span>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-[#EBECE7] flex items-center justify-center text-xs">🏢</div>
+                          <div className="w-8 h-8 rounded-lg bg-[#EBF3EA] text-[#1E3B27] flex items-center justify-center text-xs font-bold">🏢</div>
                           <div>
-                            <div className="text-[11px] font-semibold text-[#182F21] leading-tight">123 Maple Avenue Springfield</div>
-                            <div className="text-[9px] text-[#7A8E80]">12 Sep 2026, 9:29</div>
+                            <div className="text-[11px] font-semibold text-[#182F21] leading-tight">MCA Seminar Hall</div>
+                            <div className="text-[9px] text-[#7A8E80]">Occupied • 42 occupants • Conf 98%</div>
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-[#162C1E]">$30K</span>
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Active</span>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-[#EBECE7] flex items-center justify-center text-xs">🏡</div>
+                          <div className="w-8 h-8 rounded-lg bg-[#EBF3EA] text-[#1E3B27] flex items-center justify-center text-xs font-bold">💻</div>
                           <div>
-                            <div className="text-[11px] font-semibold text-[#182F21] leading-tight">Booking 987 Villa Street</div>
-                            <div className="text-[9px] text-[#7A8E80]">10 Sep 2026, 9:29</div>
+                            <div className="text-[11px] font-semibold text-[#182F21] leading-tight">Computer Lab 3 (MCA Block)</div>
+                            <div className="text-[9px] text-[#7A8E80]">Occupied • 28 occupants • Conf 96%</div>
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-[#162C1E]">$10K</span>
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Active</span>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-[#EBECE7] flex items-center justify-center text-xs">🏘️</div>
+                          <div className="w-8 h-8 rounded-lg bg-[#F2F4F0] text-slate-500 flex items-center justify-center text-xs font-bold">🚪</div>
                           <div>
-                            <div className="text-[11px] font-semibold text-[#182F21] leading-tight">Apartment Booking On Garden Street</div>
-                            <div className="text-[9px] text-[#7A8E80]">08 Sep 2026, 9:29</div>
+                            <div className="text-[11px] font-semibold text-[#182F21] leading-tight">Conference Suite Alpha</div>
+                            <div className="text-[9px] text-[#7A8E80]">Vacant • Standby Mode • Energy Saved</div>
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-[#162C1E]">$20K</span>
+                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Vacant</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card 2: Maintenance Request */}
+                  {/* Card 2: Sensing Node Diagnostics */}
                   <div className="bg-white rounded-2xl p-3.5 border border-[#E6EAE3] shadow-sm">
                     <div className="flex items-center justify-between mb-2.5">
-                      <h4 className="text-xs font-bold text-[#182F21]">Maintenance Request</h4>
-                      <button className="text-[10px] font-semibold text-[#54705D] hover:underline">See All</button>
+                      <h4 className="text-xs font-bold text-[#182F21]">Sensing Node Diagnostics</h4>
+                      <span className="text-[10px] font-semibold text-emerald-700">100% Online</span>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[10px]">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-[#EBF3EA] text-[#294B34] flex items-center justify-center text-xs">🔧</div>
+                          <div className="w-7 h-7 rounded-lg bg-[#EBF3EA] text-[#294B34] flex items-center justify-center text-xs font-bold">📡</div>
                           <div>
-                            <div className="font-semibold text-[#182F21] leading-tight">Plumbing | 721 Meadowview</div>
-                            <div className="text-[9px] text-[#7A8E80]">Broken Garbage</div>
+                            <div className="font-semibold text-[#182F21] leading-tight">NODE-ESP32-101 | Seminar Hall</div>
+                            <div className="text-[9px] text-[#7A8E80]">64 Subcarriers • SNR 34 dB</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-[#B2927C] text-white flex items-center justify-center text-[8px] font-bold">JJ</div>
-                          <span className="text-[9px] font-medium text-[#465E4E]">Jacob Jones</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span className="text-[9px] font-mono font-bold text-emerald-700">ONLINE</span>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between text-[10px]">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-[#EBF3EA] text-[#294B34] flex items-center justify-center text-xs">⚡</div>
+                          <div className="w-7 h-7 rounded-lg bg-[#EBF3EA] text-[#294B34] flex items-center justify-center text-xs font-bold">📡</div>
                           <div>
-                            <div className="font-semibold text-[#182F21] leading-tight">Electrical | 721 Meadowview</div>
-                            <div className="text-[9px] text-[#7A8E80]">No Heat Bathroom</div>
+                            <div className="font-semibold text-[#182F21] leading-tight">NODE-ESP32-102 | Comp Lab 3</div>
+                            <div className="text-[9px] text-[#7A8E80]">64 Subcarriers • SNR 32 dB</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-[#6B8C9E] text-white flex items-center justify-center text-[8px] font-bold">AF</div>
-                          <span className="text-[9px] font-medium text-[#465E4E]">Albert Flores</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span className="text-[9px] font-mono font-bold text-emerald-700">ONLINE</span>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between text-[10px]">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-[#EBF3EA] text-[#294B34] flex items-center justify-center text-xs">❄️</div>
+                          <div className="w-7 h-7 rounded-lg bg-[#EBF3EA] text-[#294B34] flex items-center justify-center text-xs font-bold">📡</div>
                           <div>
-                            <div className="font-semibold text-[#182F21] leading-tight">HVAC | 721 Meadowview</div>
-                            <div className="text-[9px] text-[#7A8E80]">Non Functional Fan</div>
+                            <div className="font-semibold text-[#182F21] leading-tight">NODE-ESP32-204 | Conf Suite A</div>
+                            <div className="text-[9px] text-[#7A8E80]">64 Subcarriers • Standby</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-[#8E79A8] text-white flex items-center justify-center text-[8px] font-bold">RF</div>
-                          <span className="text-[9px] font-medium text-[#465E4E]">Robert Fox</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span className="text-[9px] font-mono font-bold text-emerald-700">ONLINE</span>
                         </div>
                       </div>
                     </div>

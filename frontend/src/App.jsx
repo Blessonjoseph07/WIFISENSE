@@ -14,6 +14,7 @@ import LandingSplash from "./shells/LandingSplash";
 import ElderCareSplash from "./shells/ElderCareSplash";
 import CorporateSplash from "./shells/CorporateSplash";
 import LoadingScreen from "./components/LoadingScreen";
+import SubcarrierWaveformStream from "./components/SubcarrierWaveformStream";
 
 const API_BASE = "http://localhost:8000";
 
@@ -111,8 +112,6 @@ export default function App() {
     occupied_room_details: []
   });
 
-  // Live Simulated Subcarrier Bars array (diagnostics)
-  const [subcarriers, setSubcarriers] = useState(Array.from({ length: 40 }, () => 20));
 
   // Modal Open States
   const [showSimulateDrawer, setShowSimulateDrawer] = useState(false);
@@ -359,24 +358,6 @@ export default function App() {
     }
   }, [toastMessage]);
 
-  // Animate diagnostics subcarrier stream bars based on current telemetry state
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSubcarriers(prev => prev.map(val => {
-        let noise = Math.random() * 15;
-        if (activeTelemetryActivity === "Walking") noise = Math.random() * 45;
-        if (activeTelemetryActivity === "Fall_Detected") noise = Math.random() * 75;
-        if (activeTelemetryActivity === "Empty") noise = Math.random() * 3;
-        
-        let base = 20;
-        if (activeTelemetryActivity === "Sitting") base = 12;
-        if (activeTelemetryActivity === "Fall_Detected") base = 10;
-        
-        return Math.min(100, Math.max(5, base + noise));
-      }));
-    }, 150);
-    return () => clearInterval(interval);
-  }, [activeTelemetryActivity]);
 
   const getHeaders = () => {
     return {
@@ -1643,22 +1624,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Subcarriers Waveform Bars visualization */}
-                    <div>
-                      <div className="text-label-caps font-label-caps text-slate-400 mb-2 flex justify-between">
-                        <span>Amplitude Stream</span>
-                        <span className="font-data-mono text-[10px] text-teal-600 dark:text-teal-400 font-bold">LIVE</span>
-                      </div>
-                      <div className="h-32 bg-slate-50 dark:bg-slate-950 rounded border border-slate-200 dark:border-slate-800 relative overflow-hidden flex items-end p-1 gap-0.5">
-                        {subcarriers.map((h, i) => (
-                          <div 
-                            key={i} 
-                            className="flex-1 bg-teal-600 dark:bg-teal-400 opacity-60 rounded-t transition-all duration-150" 
-                            style={{ height: `${h}%` }}
-                          ></div>
-                        ))}
-                      </div>
-                    </div>
+                    {/* Subcarriers Waveform Bars visualization (Isolated local re-render) */}
+                    <SubcarrierWaveformStream activeActivity={activeTelemetryActivity} />
                   </div>
 
                   {/* Environmental Context Card */}
@@ -2459,7 +2426,10 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-body-md font-body-md">
-                          {alerts.filter(a => a.status !== "resolved").map(a => (
+                          {alerts.filter(a => a.status !== "resolved").map(a => {
+                            const assignedResident = residents.find(r => r.room_id === a.room_id);
+                            const residentConditions = assignedResident ? (healthRecords[assignedResident.id]?.conditions || []) : [];
+                            return (
                             <tr key={a.id} className="bg-red-50/20 dark:bg-red-950/10">
                               <td className="px-5 py-4">
                                 <div className="flex items-center gap-2">
@@ -2468,29 +2438,32 @@ export default function App() {
                                 </div>
                               </td>
                               <td className="px-5 py-4 font-data-mono text-data-mono">{rooms.find(r => r.id === a.room_id)?.name || "Room"}</td>
-                              <td className="px-5 py-4 font-semibold text-slate-900 dark:text-white">
-                                {residents.filter(r => r.room_id === a.room_id).map(r => `${r.first_name} ${r.last_name}`).join(", ") || "Mary Smith"}
+                              <td className="px-5 py-4">
+                                <div className="font-semibold text-slate-900 dark:text-white">
+                                  {assignedResident ? `${assignedResident.first_name} ${assignedResident.last_name}` : "Unassigned"}
+                                </div>
+                                {residentConditions.filter(c => c.is_active).length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {residentConditions.filter(c => c.is_active).map(c => (
+                                      <span key={c.condition_name} className="inline-flex items-center gap-1 bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200">
+                                        <span className="material-symbols-outlined text-[10px]">medical_information</span>
+                                        {c.condition_name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </td>
                               <td className="px-5 py-4">{a.event_type.replace("_", " ")}</td>
                               <td className="px-5 py-4 text-slate-500 font-data-mono text-data-mono">{new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                              
-                                <td className="px-5 py-4">
-                                  {healthRecords[r.id]?.conditions?.filter(c => c.is_active).map(c => (
-                                    <span key={c.condition_name} className="inline-flex items-center gap-1 bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full mr-1">
-                                      <span className="material-symbols-outlined text-[10px]">medical_information</span>
-                                      {c.condition_name}
-                                    </span>
-                                  ))}
-                                </td>
-                                <td className="px-5 py-4 text-right">
-
+                              <td className="px-5 py-4 text-right">
                                 {a.status === "new" && (
-                                  <button onClick={() => handleAcknowledge(a.id)} className="text-teal-650 hover:underline mr-3 font-semibold">Acknowledge</button>
+                                  <button onClick={() => handleAcknowledge(a.id)} className="text-teal-650 hover:underline mr-3 font-semibold cursor-pointer">Acknowledge</button>
                                 )}
-                                <button onClick={() => setShowResolveModal(a.id)} className="px-3 py-1 bg-teal-600 text-white rounded hover:opacity-90 transition-opacity">Resolve</button>
+                                <button onClick={() => setShowResolveModal(a.id)} className="px-3 py-1 bg-teal-600 text-white rounded hover:opacity-90 transition-opacity cursor-pointer font-semibold text-xs">Resolve</button>
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                           {alerts.filter(a => a.status !== "resolved").length === 0 && (
                             <tr>
                               <td colSpan="6" className="p-8 text-center text-slate-400 italic">No pending health incidents. All clear.</td>
@@ -4691,51 +4664,76 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {activePersonnel.map((person) => (
-                            <tr key={person.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                        {alerts.filter(a => a.status !== "resolved").map((alert) => {
+                          const room = rooms.find(r => r.id === alert.room_id);
+                          const isCritical = alert.severity === "CRITICAL" || alert.event_type === "Fall_Detected";
+                          return (
+                            <tr key={alert.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors">
                               <td className="p-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">
-                                    {(person.first_name?.[0] || "") + (person.last_name?.[0] || "")}
-                                  </div>
-                                  <div>
-                                    <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">
-                                      {person.first_name} {person.last_name}
-                                    </div>
-                                    <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: {person.id.slice(0,8)}</div>
-                                  </div>
+                                <div className="font-semibold text-slate-900 dark:text-white">
+                                  {room?.name || "Room Location"}
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-mono">
+                                  ID: {alert.id.slice(0, 8)}
                                 </div>
                               </td>
                               <td className="p-4">
-                                <div className="flex flex-col gap-1">
-                                  <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
-                                    <span className="material-symbols-outlined text-[14px]">shield_person</span> {person.role_name}
-                                  </span>
-                                  <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">{person.scope_description}</span>
-                                </div>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {alert.event_type.replace(/_/g, " ")}
+                                </span>
+                                <div className="text-[11px] text-slate-500 line-clamp-1 max-w-xs">{alert.message}</div>
+                              </td>
+                              <td className="p-4 text-slate-500 font-data-mono text-data-mono">
+                                {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </td>
                               <td className="p-4">
-                                <div className="flex flex-wrap gap-1">
-                                  {person.permissions.map((perm, idx) => (
-                                    <span key={idx} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">{perm}</span>
-                                  ))}
-                                </div>
-                              </td>
-                              <td className="p-4 text-right">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold ${
-                                  person.is_active ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450' : 'bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-450'
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  isCritical 
+                                    ? "bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900" 
+                                    : "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900"
                                 }`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${person.is_active ? 'bg-teal-500 animate-pulse' : 'bg-red-500'}`}></span> {person.is_active ? 'Active' : 'Inactive'}
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isCritical ? "bg-red-500 animate-ping" : "bg-amber-500"}`}></span>
+                                  {alert.severity}
                                 </span>
                               </td>
+                              <td className="p-4">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  alert.status === "new"
+                                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
+                                    : "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+                                }`}>
+                                  {alert.status}
+                                </span>
+                              </td>
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {alert.status === "new" && (
+                                    <button
+                                      onClick={() => handleAcknowledge(alert.id)}
+                                      className="text-teal-650 dark:text-teal-400 hover:underline font-semibold cursor-pointer text-xs"
+                                    >
+                                      Acknowledge
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => setShowResolveModal(alert.id)}
+                                    className="px-2.5 py-1 bg-teal-600 text-white rounded text-xs font-semibold hover:bg-teal-700 transition-colors cursor-pointer"
+                                  >
+                                    Resolve
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
-                          ))}
-                          {activePersonnel.length === 0 && (
-                            <tr>
-                              <td colSpan="4" className="p-4 text-center text-slate-500">No personnel found.</td>
-                            </tr>
-                          )}
-                        </tbody>
+                          );
+                        })}
+                        {alerts.filter(a => a.status !== "resolved").length === 0 && (
+                          <tr>
+                            <td colSpan="6" className="p-8 text-center text-slate-400 italic">
+                              No active environmental or fall alerts. All areas nominal.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
                     </table>
                   </div>
                 </div>
