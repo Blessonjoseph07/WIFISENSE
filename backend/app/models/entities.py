@@ -48,6 +48,7 @@ class Room(SQLModel, table=True):
     floor_id: str = Field(foreign_key="floors.id", nullable=False)
     name: str = Field(nullable=False)
     room_type: str = Field(nullable=False)
+    classification: Optional[str] = Field(default=None)
     capacity: int = Field(default=1)
     dimensions_metadata: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)

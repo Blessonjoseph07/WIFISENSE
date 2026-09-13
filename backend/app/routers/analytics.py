@@ -51,14 +51,32 @@ def get_occupancy_summary(
         else:
             vacant_rooms += 1
 
+        meta = r.dimensions_metadata or {}
+        classification = getattr(r, "classification", None) or meta.get("classification") or r.room_type
+        expected_state = meta.get("expected_state", "Occupied" if is_occupied else "Vacant")
+        schedule = meta.get("schedule", [])
+        energy_state = meta.get("energy_state", {})
+
+        discrepancy = "NORMAL"
+        if expected_state == "Vacant" and is_occupied:
+            discrepancy = "UNEXPECTED_OCCUPANCY"
+        elif expected_state == "Occupied" and not is_occupied:
+            discrepancy = "UNEXPECTED_VACANCY"
+
         occupied_room_details.append({
             "room_id": r.id,
             "room_name": r.name,
             "room_type": r.room_type,
+            "classification": classification,
+            "capacity": r.capacity or 1,
             "is_occupied": is_occupied,
             "current_activity": activity,
             "model_confidence": confidence,
-            "last_updated": last_update
+            "last_updated": last_update,
+            "expected_state": expected_state,
+            "discrepancy": discrepancy,
+            "schedule": schedule,
+            "energy_state": energy_state
         })
 
     rate = (occupied_rooms / total_rooms * 100) if total_rooms > 0 else 0.0

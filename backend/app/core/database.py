@@ -16,6 +16,11 @@ def init_db():
             conn.commit()
         except Exception:
             pass
+        try:
+            conn.execute(text("ALTER TABLE rooms ADD COLUMN classification VARCHAR"))
+            conn.commit()
+        except Exception:
+            pass
 
 def get_session():
     # Set expire_on_commit=False globally as per project requirements

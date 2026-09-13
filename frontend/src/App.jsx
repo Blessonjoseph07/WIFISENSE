@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import WifiModemVisualizer from "./WifiModemVisualizer";
 import {
   APP_CONTEXTS,
@@ -10,12 +10,25 @@ import CareAppShell from "./shells/CareAppShell";
 import SpaceAppShell from "./shells/SpaceAppShell";
 import SystemAdminShell from "./shells/SystemAdminShell";
 import FamilyPortalShell from "./shells/FamilyPortalShell";
+import LandingSplash from "./shells/LandingSplash";
+import ElderCareSplash from "./shells/ElderCareSplash";
+import CorporateSplash from "./shells/CorporateSplash";
+import LoadingScreen from "./components/LoadingScreen";
 
 const API_BASE = "http://localhost:8000";
 
 export default function App() {
+  // Loading & Pre-Entry Screen State
+  const [isLoading, setIsLoading] = useState(true);
+  const handleLoadingComplete = useCallback(() => {
+    setIsLoading(false);
+  }, []);
+
   // Authentication State
   const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [showSplash, setShowSplash] = useState(!localStorage.getItem("token"));
+  const [hasSeenElderSplash, setHasSeenElderSplash] = useState(false);
+  const [hasSeenCorporateSplash, setHasSeenCorporateSplash] = useState(false);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
   const [role, setRole] = useState(localStorage.getItem("role") || "");
   const [appContext, setAppContext] = useState(localStorage.getItem("application_context") || "");
@@ -62,6 +75,8 @@ export default function App() {
   const [rooms, setRooms] = useState([]);
   const [devices, setDevices] = useState([]);
   const [residents, setResidents] = useState([]);
+  const [activePersonnel, setActivePersonnel] = useState([]);
+  const [healthRecords, setHealthRecords] = useState({});
   const [alerts, setAlerts] = useState([]);
   
   // Family Portal states
@@ -116,6 +131,14 @@ export default function App() {
   const [nodeFilter, setNodeFilter] = useState("ALL"); // "ALL", "CORPORATE", "ELDER_CARE", "TRACER"
   const [facilityFilter, setFacilityFilter] = useState("ALL"); // "ALL", "CORPORATE", "ELDER_CARE"
   const [occupancyRoomIndex, setOccupancyRoomIndex] = useState(0);
+  const [selectedOccupancyRoomId, setSelectedOccupancyRoomId] = useState(null);
+  const [occupancyStatusFilter, setOccupancyStatusFilter] = useState("ALL");
+  const [occupancyClassFilter, setOccupancyClassFilter] = useState("ALL");
+  const [occupancySearchQuery, setOccupancySearchQuery] = useState("");
+
+  // Analytics Classified View states
+  const [analyticsClassificationFilter, setAnalyticsClassificationFilter] = useState("ALL");
+  const [analyticsTimeRange, setAnalyticsTimeRange] = useState("30D");
 
   const [faultReports, setFaultReports] = useState([]);
   const [showReportFaultModal, setShowReportFaultModal] = useState(false);
@@ -484,10 +507,33 @@ export default function App() {
       const faultRes = await fetch(`${API_BASE}/devices/fault-tracer`, { headers });
       if (faultRes.ok) setFaultReports(await faultRes.json());
 
+      if (isSystemAdmin || appContext === "SYSTEM" || role === "system_admin") {
+        const persRes = await fetch(`${API_BASE}/users/personnel`, { headers });
+        if (persRes.ok) {
+          setActivePersonnel(await persRes.json());
+        }
+      }
+
+
       // Only fetch residents for elder care or system admin (zero leak to corporate)
       if (appContext !== "CORPORATE" && role !== "corporate_staff") {
         const resRes = await fetch(`${API_BASE}/residents`, { headers });
-        if (resRes.ok) setResidents(await resRes.json());
+        if (resRes.ok) {
+          const fetchedResidents = await resRes.json();
+          setResidents(fetchedResidents);
+          
+          // Fetch health records
+          const records = {};
+          for (const res of fetchedResidents) {
+            try {
+              const hRes = await fetch(`${API_BASE}/residents/${res.id}/health`, { headers });
+              if (hRes.ok) {
+                records[res.id] = await hRes.json();
+              }
+            } catch(e) {}
+          }
+          setHealthRecords(records);
+        }
       }
 
     } catch (err) {
@@ -531,6 +577,8 @@ export default function App() {
       setRole(data.role);
       setAppContext(data.application_context);
       setIsSystemAdmin(Boolean(data.is_system_admin));
+      setHasSeenElderSplash(false);
+      setHasSeenCorporateSplash(false);
       
       const safeStart = getDefaultView(data.application_context, data.role, data.is_system_admin);
       _setCurrentView(safeStart);
@@ -578,6 +626,8 @@ export default function App() {
     setRole("");
     setAppContext("");
     setIsSystemAdmin(false);
+    setHasSeenElderSplash(false);
+    setHasSeenCorporateSplash(false);
     _setCurrentView("dashboard");
   };
 
@@ -1092,8 +1142,18 @@ export default function App() {
   // OUT OF BOX VIEW (LOGIN)
   // ============================================================================
   if (!token) {
+    if (showSplash) {
+      return (
+        <div className="relative">
+          <LandingSplash onGetStarted={() => setShowSplash(false)} />
+          {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
+        </div>
+      );
+    }
     return (
-      <div className="bg-slate-50 text-slate-800 font-body-md antialiased min-h-screen flex flex-col lg:flex-row transition-all duration-300">
+      <div className="relative">
+        {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
+        <div className="bg-slate-50 text-slate-800 font-body-md antialiased min-h-screen flex flex-col lg:flex-row transition-all duration-300">
         {/* 3D Wi-Fi Modem Visualizer Showcase Panel (Subtle Light Theme) */}
         <div className="flex flex-col w-full lg:w-[55%] xl:w-[58%] bg-slate-50 relative p-3 sm:p-5 justify-between border-b lg:border-b-0 lg:border-r border-slate-200/90 min-h-[480px] lg:min-h-screen">
           {/* Header Title Bar */}
@@ -1238,7 +1298,7 @@ export default function App() {
                     <option value="emergency_contact">Family Member / Emergency Contact (Elder-Care)</option>
                     <option value="facility_manager">Facility Manager</option>
                     <option value="corporate_staff">Corporate Staff (Smart Workplace)</option>
-                    <option value="system_admin">System Admin</option>
+                    <option value="organization_admin">Organization Administrator</option>
                   </select>
                 </div>
                 <div className="text-left">
@@ -1263,6 +1323,7 @@ export default function App() {
             )}
           </div>
         </div>
+      </div>
       </div>
     );
   }
@@ -1338,8 +1399,24 @@ export default function App() {
     );
   };
 
+  const themeClass = appContext === "CORPORATE" ? "theme-corporate" : "theme-elder-care";
+
+  if (appContext === "ELDER_CARE" && !hasSeenElderSplash) {
+    return <ElderCareSplash onContinue={() => setHasSeenElderSplash(true)} />;
+  }
+
+  if (appContext === "CORPORATE" && !hasSeenCorporateSplash) {
+    return (
+      <CorporateSplash 
+        user={user} 
+        onContinue={() => setHasSeenCorporateSplash(true)} 
+      />
+    );
+  }
+
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-all duration-300">
+    <div className={`bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex transition-all duration-300 ${themeClass} relative`}>
+      {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -1451,9 +1528,16 @@ export default function App() {
                               }`}
                             >
                               <td className="p-4">
-                                <div className="font-headline-sm text-slate-900 dark:text-white font-semibold">{rm.room_name}</div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400">
-                                  {residents.filter(res => res.room_id === rm.room_id).map(r => `${r.first_name} ${r.last_name}`).join(", ") || "Unassigned"}
+                                <div className="font-headline-sm text-slate-900 dark:text-white font-semibold flex items-center gap-2">
+                                  <span>{rm.room_name}</span>
+                                  {rm.classification && (
+                                    <span className="text-[10px] font-semibold px-2 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                      {rm.classification}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                  {residents.filter(res => res.room_id === rm.room_id).map(r => `${r.first_name} ${r.last_name}`).join(", ") || (appContext === "CORPORATE" ? (rm.classification || rm.room_type) : "Common Facility")}
                                 </div>
                               </td>
                               <td className="p-4">
@@ -1603,204 +1687,706 @@ export default function App() {
             2. ROOM OCCUPANCY VIEW (DEDICATED FULL GRID SCREEN / DETAILED ROOM 204 VIEW)
           ============================================================================ */}
           {currentView === "occupancy" && isViewAllowed("occupancy", appContext, role, isSystemAdmin) && (() => {
-            const filteredOccupancyRooms = rooms.filter(rm => {
-              if (facilityFilter === "ALL") return true;
+            const isCare = appContext === "ELDER_CARE" || appContext === "CARE";
+            const isSpace = appContext === "CORPORATE" || appContext === "SPACE";
+
+            // Strict context filtering: separate CARE vs SPACE rooms
+            const contextRooms = rooms.filter(rm => {
               const flr = floors.find(f => f.id === rm.floor_id);
-              if (!flr) return false;
-              const bld = buildings.find(b => b.id === flr.building_id);
-              if (!bld) return false;
-              const org = organizations.find(o => o.id === bld.organization_id);
-              if (!org) return false;
-              return org.organization_type === facilityFilter;
+              const bld = buildings.find(b => b.id === flr?.building_id);
+              const org = organizations.find(o => o.id === bld?.organization_id);
+              
+              if (isSystemAdmin && facilityFilter !== "ALL") {
+                return org?.type === facilityFilter;
+              }
+              if (isCare) {
+                return org?.type === "ELDER_CARE";
+              }
+              if (isSpace) {
+                return org?.type === "CORPORATE";
+              }
+              return true;
             });
-            const safeRooms = filteredOccupancyRooms.length > 0 ? filteredOccupancyRooms : [{name: "No rooms available", room_type: "N/A", floor_id: null}];
-            const activeRoomIndex = occupancyRoomIndex % safeRooms.length;
-            const activeRm = safeRooms[activeRoomIndex];
-            const activeFlr = floors.find(f => f.id === activeRm.floor_id) || {floor_number: "Unknown"};
-            const activeBld = buildings.find(b => b.id === activeFlr.building_id) || {name: "Unknown Building"};
+
+            // Extract available classifications for filter pills
+            const availableClassifications = Array.from(new Set(
+              contextRooms.map(rm => rm.classification || rm.room_type).filter(Boolean)
+            )).sort();
+
+            // Filter rooms by search, classification, and status
+            const filteredRooms = contextRooms.filter(rm => {
+              const detail = (occupancySummary.occupied_room_details || []).find(d => d.room_id === rm.id) || {};
+              const isOccupied = detail.is_occupied ?? false;
+              const classification = rm.classification || detail.classification || rm.room_type;
+              const assignedRes = residents.filter(res => res.room_id === rm.id);
+              const residentNames = assignedRes.map(r => `${r.first_name} ${r.last_name}`).join(" ").toLowerCase();
+
+              // Search query
+              if (occupancySearchQuery.trim()) {
+                const q = occupancySearchQuery.toLowerCase();
+                const matchesName = rm.name.toLowerCase().includes(q);
+                const matchesRes = residentNames.includes(q);
+                const matchesClass = classification.toLowerCase().includes(q);
+                if (!matchesName && !matchesRes && !matchesClass) return false;
+              }
+
+              // Classification filter
+              if (occupancyClassFilter !== "ALL" && classification !== occupancyClassFilter) {
+                return false;
+              }
+
+              // Status filter
+              if (occupancyStatusFilter === "OCCUPIED" && !isOccupied) return false;
+              if (occupancyStatusFilter === "VACANT" && isOccupied) return false;
+              if (occupancyStatusFilter === "DISCREPANCY") {
+                const hasDiscrepancy = detail.discrepancy && detail.discrepancy !== "NORMAL";
+                const hasAlert = alerts.some(a => a.room_id === rm.id && a.status !== "resolved");
+                const hasEnergyAlert = detail.energy_state && detail.energy_state.alert_worthy;
+                if (!hasDiscrepancy && !hasAlert && !hasEnergyAlert) return false;
+              }
+
+              return true;
+            });
+
+            // Active inspected room
+            const safeRooms = filteredRooms.length > 0 ? filteredRooms : contextRooms;
+            const currentSelectedId = selectedOccupancyRoomId || (safeRooms[0] ? safeRooms[0].id : null);
+            const activeRm = safeRooms.find(r => r.id === currentSelectedId) || safeRooms[0] || {
+              id: "none",
+              name: "No rooms available",
+              room_type: "N/A",
+              classification: "N/A",
+              capacity: 1
+            };
+
+            const activeFlr = floors.find(f => f.id === activeRm.floor_id) || { floor_number: 1 };
+            const activeBld = buildings.find(b => b.id === activeFlr.building_id) || { name: isCare ? "St. Peter's Care Wing" : "MCA Academic Block" };
+            const activeDetail = (occupancySummary.occupied_room_details || []).find(d => d.room_id === activeRm.id) || {};
+            const activeIsOccupied = activeDetail.is_occupied ?? false;
+            const activeActivity = activeDetail.current_activity || (activeIsOccupied ? "Presence" : "Empty");
+            const activeConfidence = Math.round((activeDetail.model_confidence || 0.95) * 100);
+            const activeClassification = activeRm.classification || activeDetail.classification || activeRm.room_type;
+            const activeExpected = activeDetail.expected_state || activeRm.dimensions_metadata?.expected_state || (activeIsOccupied ? "Occupied" : "Vacant");
+            const activeDiscrepancy = activeDetail.discrepancy || "NORMAL";
+            const activeSchedule = activeDetail.schedule || activeRm.dimensions_metadata?.schedule || [];
+            const activeEnergy = activeDetail.energy_state || activeRm.dimensions_metadata?.energy_state || {};
+            const activeSecurity = activeRm.dimensions_metadata?.security_policy || {};
+
+            // Assigned residents for active room (CARE context)
+            const activeResidents = residents.filter(res => res.room_id === activeRm.id);
+            const activeDevice = devices.find(d => d.room_id === activeRm.id) || {
+              name: `NODE-CSI-${activeRm.name.replace(/\s+/g, "").substring(0, 8).toUpperCase()}`,
+              mac_address: "B4:E6:2D:AA:1F:90",
+              status: "ONLINE"
+            };
+            const activeRoomAlerts = alerts.filter(a => a.room_id === activeRm.id && a.status !== "resolved");
+
+            // Classification badge color helper
+            const getClassificationBadgeStyle = (classification) => {
+              switch (classification) {
+                case "Resident Bedroom":
+                  return "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:text-teal-300 dark:border-teal-800";
+                case "Bathroom":
+                  return "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800";
+                case "Physiotherapy":
+                case "Nursing Area":
+                case "Staff Area":
+                  return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-800";
+                case "Dining Area":
+                case "Recreation":
+                case "Seminar/Common Hall":
+                  return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800";
+                case "Conference Room":
+                case "Meeting Room":
+                  return "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800";
+                case "Computer Lab":
+                case "Research Lab":
+                  return "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:border-cyan-800";
+                case "Classroom":
+                case "Seminar Hall":
+                  return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800";
+                default:
+                  return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+              }
+            };
+
+            const getActivityIcon = (act) => {
+              switch (act) {
+                case "Resting": return "bed";
+                case "Sitting": return "airline_seat_recline_normal";
+                case "Walking": return "directions_walk";
+                case "Fall_Detected": return "warning";
+                case "Presence": return "person";
+                default: return "sensor_door";
+              }
+            };
 
             return (
               <div className="space-y-6 text-left">
-                {/* Organization Filter Tabs (for System Admin) */}
-                {isSystemAdmin && (
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg self-start inline-flex mb-2">
-                    <button 
-                      onClick={() => { setFacilityFilter("ALL"); setOccupancyRoomIndex(0); }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${facilityFilter === "ALL" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                    >
-                      All Facilities
-                    </button>
-                    <button 
-                      onClick={() => { setFacilityFilter("CORPORATE"); setOccupancyRoomIndex(0); }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "CORPORATE" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">corporate_fare</span>
-                      Corporate Workplace (AJCE)
-                    </button>
-                    <button 
-                      onClick={() => { setFacilityFilter("ELDER_CARE"); setOccupancyRoomIndex(0); }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center gap-1 ${facilityFilter === "ELDER_CARE" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">health_and_safety</span>
-                      Old Age Care Home (St. Peter's)
-                    </button>
-                  </div>
-                )}
-
-                {/* Breadcrumbs & Navigation */}
-                <div className="flex items-center justify-between mb-4">
-                  <nav className="flex text-body-md font-body-md text-slate-500 dark:text-slate-400">
-                    <ol className="inline-flex items-center space-x-1 md:space-x-3">
-                      <li className="inline-flex items-center">
-                        <a className="inline-flex items-center hover:text-teal-650 transition-colors cursor-pointer">
-                          {activeBld.name}
-                        </a>
-                      </li>
-                      <li>
-                        <div className="flex items-center">
-                          <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
-                          <a className="hover:text-teal-650 transition-colors ml-1 md:ml-2 cursor-pointer">Floor {activeFlr.floor_number}</a>
-                        </div>
-                      </li>
-                      <li aria-current="page">
-                        <div className="flex items-center">
-                          <span className="material-symbols-outlined text-slate-400 mx-1" style={{ fontSize: "16px" }}>chevron_right</span>
-                          <span className="text-slate-800 dark:text-white font-semibold ml-1 md:ml-2">{activeRm.name}</span>
-                        </div>
-                      </li>
-                    </ol>
-                  </nav>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setOccupancyRoomIndex(Math.max(0, activeRoomIndex - 1))}
-                      className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-30"
-                      disabled={activeRoomIndex === 0}
-                    >
-                      <span className="material-symbols-outlined">chevron_left</span>
-                    </button>
-                    <button 
-                      onClick={() => setOccupancyRoomIndex(Math.min(safeRooms.length - 1, activeRoomIndex + 1))}
-                      className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-30"
-                      disabled={activeRoomIndex === safeRooms.length - 1}
-                    >
-                      <span className="material-symbols-outlined">chevron_right</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bento Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-                  {/* Current Status Card (Large) */}
-                  <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 relative overflow-hidden shadow-sm">
-                    <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(45deg, #0b1c30 0, #0b1c30 1px, transparent 1px, transparent 10px)" }}></div>
-                    <div className="flex justify-between items-start mb-6 relative z-10">
-                      <div>
-                        <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold mb-1">{activeRm.name}</h1>
-                        <p className="text-body-md font-body-md text-slate-500 dark:text-slate-400">{activeRm.room_type || "General Space"} - {activeBld.name}</p>
-                      </div>
-                    <div className="bg-slate-950 dark:bg-slate-800 text-white px-4 py-2 rounded-full flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full bg-teal-400 ${activeTelemetryActivity !== "Empty" ? "animate-pulse" : ""}`}></span>
-                      <span className="text-label-caps font-label-caps font-bold tracking-wider uppercase">
-                        {activeTelemetryActivity !== "Empty" ? "OCCUPIED" : "VACANT"}
+                {/* Page Header */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-250 dark:border-slate-800">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">
+                        Room Occupancy & Spatial Intelligence
+                      </h2>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
+                        isCare 
+                          ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+                          : "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800"
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${isCare ? "bg-rose-500" : "bg-teal-500"} animate-pulse`}></span>
+                        {isCare ? "CARE FACILITY MONITOR" : "SPACE INTELLIGENCE"}
                       </span>
                     </div>
+                    <p className="text-body-md text-slate-500 dark:text-slate-400 mt-1">
+                      {isCare 
+                        ? "Real-time resident living quarters occupancy, posture telemetry, and fall-risk sensing."
+                        : "Real-time workplace room occupancy, schedule discrepancy tracking, and energy telemetry."}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-5 flex flex-col justify-center">
-                      <span className="text-label-caps font-label-caps text-slate-400 mb-2">DETECTED ACTIVITY</span>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                          <span className="material-symbols-outlined" style={{ fontSize: "28px" }}>
-                            {activeTelemetryActivity === "Walking" ? "directions_walk" : activeTelemetryActivity === "Sitting" ? "bed" : "airline_seat_recline_normal"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold block">{activeTelemetryActivity.replace("_", " ")}</span>
-                          <span className="text-data-mono font-data-mono text-teal-650 dark:text-teal-400 font-bold">High Confidence (94%)</span>
-                        </div>
-                      </div>
+
+                  {/* Summary Metric Badges */}
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Monitored Rooms</span>
+                      <span className="font-bold text-slate-900 dark:text-white font-mono text-sm">{contextRooms.length}</span>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg p-5 flex flex-col justify-center">
-                      <span className="text-label-caps font-label-caps text-slate-400 mb-2">CURRENT DURATION</span>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center text-amber-600">
-                          <span className="material-symbols-outlined" style={{ fontSize: "28px" }}>timer</span>
-                        </div>
-                        <div>
-                          <span className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold block">
-                            {activeTelemetryActivity !== "Empty" ? "15 mins" : "0 mins"}
-                          </span>
-                          <span className="text-data-mono font-data-mono text-slate-500">Started 10:42 AM</span>
-                        </div>
-                      </div>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Live Occupied</span>
+                      <span className="font-bold text-teal-600 dark:text-teal-400 font-mono text-sm">
+                        {contextRooms.filter(r => (occupancySummary.occupied_room_details || []).some(d => d.room_id === r.id && d.is_occupied)).length}
+                      </span>
                     </div>
-                  </div>
-                  <div className="mt-6 flex justify-between items-center text-body-sm font-body-md text-slate-500 border-t border-slate-200 dark:border-slate-800 pt-4">
-                    <span>Signal Strength: Excellent (-45 dBm)</span>
-                    <span>Last Updated: Just now</span>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Standby / Vacant</span>
+                      <span className="font-bold text-slate-500 font-mono text-sm">
+                        {contextRooms.filter(r => !(occupancySummary.occupied_room_details || []).some(d => d.room_id === r.id && d.is_occupied)).length}
+                      </span>
+                    </div>
+                    {isSystemAdmin && (
+                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                        <button 
+                          onClick={() => setFacilityFilter("ALL")}
+                          className={`px-2.5 py-1 text-xs font-bold rounded ${facilityFilter === "ALL" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500"}`}
+                        >
+                          All
+                        </button>
+                        <button 
+                          onClick={() => setFacilityFilter("CORPORATE")}
+                          className={`px-2.5 py-1 text-xs font-bold rounded ${facilityFilter === "CORPORATE" ? "bg-teal-600 text-white shadow-sm" : "text-slate-500"}`}
+                        >
+                          Corporate
+                        </button>
+                        <button 
+                          onClick={() => setFacilityFilter("ELDER_CARE")}
+                          className={`px-2.5 py-1 text-xs font-bold rounded ${facilityFilter === "ELDER_CARE" ? "bg-rose-600 text-white shadow-sm" : "text-slate-500"}`}
+                        >
+                          Elder Care
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Occupancy Statistics (Side Panel) */}
-                <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col gap-6 shadow-sm">
-                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white border-b border-slate-250 dark:border-slate-800 pb-2 font-bold">Occupancy Statistics</h3>
-                  <div className="space-y-4 flex-1">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-550 dark:text-slate-400">Daily Average</span>
-                      <span className="font-data-mono text-slate-905 dark:text-white font-semibold">4.2 hours</span>
+                {/* Search & Filter Bar */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    {/* Search Input */}
+                    <div className="relative flex-1">
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[18px]">search</span>
+                      <input 
+                        type="text"
+                        placeholder={isCare ? "Search rooms, residents (e.g. Mary Joseph, Bathroom)..." : "Search conference rooms, labs, classrooms..."}
+                        value={occupancySearchQuery}
+                        onChange={(e) => setOccupancySearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
+                      />
                     </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-teal-650 h-full rounded-full" style={{ width: "35%" }}></div>
+
+                    {/* Status Tabs */}
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg text-xs font-bold">
+                      {[
+                        { id: "ALL", label: "All Rooms" },
+                        { id: "OCCUPIED", label: "Occupied" },
+                        { id: "VACANT", label: "Vacant" },
+                        { id: "DISCREPANCY", label: "Attention Needed" }
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setOccupancyStatusFilter(tab.id)}
+                          className={`px-3 py-1.5 rounded transition-all ${
+                            occupancyStatusFilter === tab.id
+                              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex justify-between items-center mt-4 text-sm">
-                      <span className="text-slate-550 dark:text-slate-400">Peak Time</span>
-                      <span className="font-data-mono text-slate-905 dark:text-white font-semibold">14:00 - 15:30</span>
-                    </div>
-                    <div className="flex justify-between items-center mt-4 text-sm">
-                      <span className="text-slate-550 dark:text-slate-400">Total Events (24h)</span>
-                      <span className="font-data-mono text-slate-905 dark:text-white font-semibold">12</span>
-                    </div>
-                    <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
-                      <span className="text-label-caps font-label-caps text-slate-405 block mb-1">LAST KNOWN VACANCY</span>
-                      <span className="text-body-md font-body-md text-slate-800 dark:text-slate-205 block mb-1">Today, 09:15 AM - 10:42 AM</span>
-                      <span className="text-data-mono font-data-mono text-teal-650 dark:text-teal-400 block font-bold">Duration: 1h 27m</span>
-                    </div>
+                  </div>
+
+                  {/* Classification Filter Pills */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px] text-teal-600">tune</span>
+                      Categories:
+                    </span>
+                    <button
+                      onClick={() => setOccupancyClassFilter("ALL")}
+                      className={`px-2.5 py-1 rounded text-xs font-bold border transition-all ${
+                        occupancyClassFilter === "ALL"
+                          ? "bg-teal-600 text-white border-teal-600 shadow-sm"
+                          : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                      }`}
+                    >
+                      All Categories ({contextRooms.length})
+                    </button>
+                    {availableClassifications.map(cls => {
+                      const count = contextRooms.filter(r => (r.classification || r.room_type) === cls).length;
+                      const isSelected = occupancyClassFilter === cls;
+                      return (
+                        <button
+                          key={cls}
+                          onClick={() => setOccupancyClassFilter(cls)}
+                          className={`px-2.5 py-1 rounded text-xs font-bold border transition-all ${
+                            isSelected
+                              ? "bg-teal-600 text-white border-teal-600 shadow-sm"
+                              : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-teal-500"
+                          }`}
+                        >
+                          {cls} <span className="opacity-70">({count})</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Historical Occupancy Timeline (Full Width) */}
-                <div className="lg:col-span-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Historical Occupancy (Last 24 Hours)</h3>
-                    <div className="flex items-center gap-4 text-label-caps font-label-caps text-slate-455">
-                      <div className="flex items-center gap-1"><span className="w-3 h-3 bg-teal-600 rounded-sm"></span> Occupied</div>
-                      <div className="flex items-center gap-1"><span className="w-3 h-3 bg-slate-100 dark:bg-slate-800 rounded-sm border border-slate-200 dark:border-slate-700"></span> Vacant</div>
+                {/* Master-Detail Layout: Rooms Directory (Left) & Deep Inspector (Right) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Left Column (5 Cols): Interactive Room Directory Grid */}
+                  <div className="lg:col-span-5 space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Select Room to Inspect ({filteredRooms.length})
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        Active: <strong className="text-teal-605">{activeRm.name}</strong>
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[680px] overflow-y-auto pr-1">
+                      {filteredRooms.map((rm) => {
+                        const detail = (occupancySummary.occupied_room_details || []).find(d => d.room_id === rm.id) || {};
+                        const isOcc = detail.is_occupied ?? false;
+                        const activity = detail.current_activity || (isOcc ? "Presence" : "Empty");
+                        const cls = rm.classification || detail.classification || rm.room_type;
+                        const isSelected = rm.id === activeRm.id;
+                        const assigned = residents.filter(r => r.room_id === rm.id);
+                        const hasAlert = alerts.some(a => a.room_id === rm.id && a.status !== "resolved");
+                        const hasDiscrepancy = detail.discrepancy && detail.discrepancy !== "NORMAL";
+                        const hasEnergyAlert = detail.energy_state && detail.energy_state.alert_worthy;
+
+                        return (
+                          <div
+                            key={rm.id}
+                            onClick={() => setSelectedOccupancyRoomId(rm.id)}
+                            className={`p-3.5 rounded-xl border transition-all cursor-pointer text-left ${
+                              isSelected
+                                ? "bg-teal-50/40 dark:bg-teal-950/30 border-teal-500 ring-2 ring-teal-500/20 shadow-sm"
+                                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center border shadow-xs ${
+                                  isOcc 
+                                    ? "bg-teal-50 text-teal-600 border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800"
+                                    : "bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+                                }`}>
+                                  <span className="material-symbols-outlined text-[20px]">
+                                    {getActivityIcon(activity)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                                    {rm.name}
+                                    {hasAlert && (
+                                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" title="Active Alert"></span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                    <span>Capacity: {rm.capacity}</span>
+                                    <span>•</span>
+                                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${getClassificationBadgeStyle(cls)}`}>
+                                      {cls}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Live Stance Badge */}
+                              <div className="flex flex-col items-end">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  isOcc 
+                                    ? "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
+                                    : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isOcc ? "bg-teal-500 animate-pulse" : "bg-slate-400"}`}></span>
+                                  {isOcc ? "OCCUPIED" : "VACANT"}
+                                </span>
+                                <span className={`text-[10px] font-semibold mt-1 ${
+                                  activity === "Fall_Detected" ? "text-rose-600 font-bold" :
+                                  isOcc ? "text-teal-605" : "text-slate-400"
+                                }`}>
+                                  {activity.replace("_", " ")}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Context-Specific Mini Information */}
+                            <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                              {isCare ? (
+                                <div className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-[14px] text-slate-400">person</span>
+                                  {assigned.length > 0 ? (
+                                    <span>Resident: <strong>{assigned.map(a => `${a.first_name} ${a.last_name}`).join(", ")}</strong></span>
+                                  ) : (
+                                    <span className="text-slate-400 italic">Communal / General Care Zone</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate max-w-[240px]">
+                                  <span className="material-symbols-outlined text-[14px] text-slate-400">event</span>
+                                  <span>Schedule: <strong>{detail.expected_state || "Standard"}</strong></span>
+                                </div>
+                              )}
+
+                              {hasDiscrepancy ? (
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                                  Unexpected
+                                </span>
+                              ) : hasEnergyAlert ? (
+                                <span className="text-[10px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-950/40 px-1.5 py-0.5 rounded border border-sky-200 dark:border-sky-800">
+                                  AC Idle
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">Nominal</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {filteredRooms.length === 0 && (
+                        <div className="p-8 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 text-xs">
+                          No rooms matched the selected filter or search criteria.
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {/* Gantt Chart Container */}
-                  <div className="relative pt-4 pb-8">
-                    <div className="absolute top-0 left-0 w-full flex justify-between text-data-mono font-data-mono text-slate-400 text-xs px-2">
-                      <span>12 PM</span>
-                      <span>4 PM</span>
-                      <span>8 PM</span>
-                      <span>12 AM</span>
-                      <span>4 AM</span>
-                      <span>8 AM</span>
-                      <span>Now</span>
+
+                  {/* Right Column (7 Cols): Comprehensive Live Spatial Inspector */}
+                  <div className="lg:col-span-7 space-y-5">
+                    
+                    {/* Main Room Card */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm relative overflow-hidden">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getClassificationBadgeStyle(activeClassification)}`}>
+                              {activeClassification}
+                            </span>
+                            <span className="text-xs text-slate-400 font-mono">
+                              Floor {activeFlr.floor_number} • Capacity: {activeRm.capacity}
+                            </span>
+                          </div>
+                          <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">
+                            {activeRm.name}
+                          </h1>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[14px]">apartment</span>
+                            {activeBld.name}
+                          </p>
+                        </div>
+
+                        {/* Stance Banner */}
+                        <div className="flex flex-col items-end">
+                          <div className={`px-4 py-1.5 rounded-full flex items-center gap-2 text-xs font-bold border ${
+                            activeIsOccupied
+                              ? "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 shadow-sm"
+                              : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                          }`}>
+                            <span className={`w-2 h-2 rounded-full ${activeIsOccupied ? "bg-teal-500 animate-pulse" : "bg-slate-400"}`}></span>
+                            <span className="uppercase tracking-wider">
+                              {activeIsOccupied ? "OCCUPIED" : "VACANT"}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-400 mt-1">
+                            CSI Confidence: <strong className="text-teal-605">{activeConfidence}%</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Primary Telemetry Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+                        {/* Detected Activity */}
+                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-300 flex items-center justify-center border border-teal-200 dark:border-teal-800">
+                            <span className="material-symbols-outlined text-[26px]">
+                              {getActivityIcon(activeActivity)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                              Current Posture / Stance
+                            </span>
+                            <span className="text-headline-sm font-headline-sm font-bold text-slate-900 dark:text-white block">
+                              {activeActivity.replace("_", " ")}
+                            </span>
+                            <span className="text-[11px] text-teal-605 font-medium">
+                              Wi-Fi Sensing Verified
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Scheduled / Expected Comparison */}
+                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-3.5">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
+                            activeDiscrepancy === "UNEXPECTED_OCCUPANCY"
+                              ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                              : "bg-sky-50 text-sky-600 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800"
+                          }`}>
+                            <span className="material-symbols-outlined text-[26px]">
+                              {activeDiscrepancy === "UNEXPECTED_OCCUPANCY" ? "event_busy" : "event_available"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                              Scheduled Expectation
+                            </span>
+                            <span className="text-headline-sm font-headline-sm font-bold text-slate-900 dark:text-white block">
+                              {activeExpected}
+                            </span>
+                            <span className={`text-[11px] font-bold ${
+                              activeDiscrepancy === "UNEXPECTED_OCCUPANCY" ? "text-amber-600" : "text-slate-400"
+                            }`}>
+                              {activeDiscrepancy === "UNEXPECTED_OCCUPANCY" ? "Unexpected Occupancy" : "Schedule Compliant"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sensor Node & Privacy Guarantee */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[16px] text-teal-605">router</span>
+                          <span>Sensor: <strong className="text-slate-700 dark:text-slate-300 font-mono">{activeDevice.name}</strong> ({activeDevice.mac_address})</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                          <span className="material-symbols-outlined text-[15px]">verified_user</span>
+                          <span>100% Privacy Protected • Zero Optical Cameras</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="h-8 bg-slate-100 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 mt-6 relative overflow-hidden flex">
-                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "15%" }}></div>
-                      <div className="h-full bg-transparent border-r border-slate-200 dark:border-slate-800" style={{ width: "10%" }}></div>
-                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "8%" }}></div>
-                      <div className="h-full bg-transparent border-r border-slate-200 dark:border-slate-800" style={{ width: "40%" }}></div>
-                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "12%" }}></div>
-                      <div className="h-full bg-transparent border-r border-slate-200 dark:border-slate-800" style={{ width: "10%" }}></div>
-                      <div className="h-full bg-teal-600 border-r border-slate-100 dark:border-slate-950 relative group" style={{ width: "5%" }}></div>
-                    </div>
+
+                    {/* CONTEXT SPECIFIC DEEP CARD */}
+                    {isCare ? (
+                      /* CARE SPECIFIC: Resident Profile & Health Context */
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-rose-600">health_and_safety</span>
+                            <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
+                              Assigned Resident & Clinical Safety Information
+                            </h3>
+                          </div>
+                          <span className="text-xs text-slate-400">
+                            {activeResidents.length} Monitored Resident{activeResidents.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+
+                        {activeResidents.length > 0 ? (
+                          <div className="space-y-4">
+                            {activeResidents.map(res => {
+                              const health = healthRecords[res.id] || [];
+                              const resAlert = alerts.filter(a => a.resident_id === res.id && a.status !== "resolved");
+
+                              return (
+                                <div key={res.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-3">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div>
+                                      <h4 className="text-headline-sm font-headline-sm font-bold text-slate-900 dark:text-white">
+                                        {res.first_name} {res.last_name}
+                                      </h4>
+                                      <p className="text-xs text-slate-500 font-mono">
+                                        DOB: {new Date(res.date_of_birth).toLocaleDateString()} • Living Unit: {activeRm.name}
+                                      </p>
+                                    </div>
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                                      Active Monitored Profile
+                                    </span>
+                                  </div>
+
+                                  {/* Health Conditions */}
+                                  <div className="border-t border-slate-200/80 dark:border-slate-800/80 pt-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                                      Diagnosed Health & Fall-Risk Profile
+                                    </span>
+                                    {health.length > 0 ? (
+                                      health.map(h => (
+                                        <div key={h.id} className="text-xs bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                                            {h.condition_name}
+                                          </div>
+                                          <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-1">
+                                            {h.notes}
+                                          </p>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="text-xs text-slate-400 italic">No chronic medical restrictions documented. Regular vital checkups.</p>
+                                    )}
+                                  </div>
+
+                                  {/* Stance evaluation */}
+                                  <div className="flex items-center justify-between text-xs pt-1">
+                                    <span className="text-slate-500">Continuous Stance Tripwire:</span>
+                                    <span className={`font-bold ${
+                                      activeActivity === "Fall_Detected" ? "text-rose-600 animate-pulse" : "text-emerald-605"
+                                    }`}>
+                                      {activeActivity === "Fall_Detected" ? "🚨 ABNORMAL COLLAPSE FLAGGED" : "✓ Nominal Posture (No Sudden Drop)"}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+                            This room is currently a communal, nursing, or clinical care space without dedicated resident residential assignments.
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* SPACE SPECIFIC: Schedule Compliance & Smart Energy Efficiency */
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-teal-600">calendar_month</span>
+                            <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">
+                              Corporate Schedule & Energy Automation
+                            </h3>
+                          </div>
+                          <span className="text-xs font-mono text-slate-400">
+                            Status: <strong className={activeDiscrepancy === "UNEXPECTED_OCCUPANCY" ? "text-amber-600" : "text-teal-605"}>
+                              {activeDiscrepancy === "UNEXPECTED_OCCUPANCY" ? "Unexpected Occupancy Detected" : "Schedule Matched"}
+                            </strong>
+                          </span>
+                        </div>
+
+                        {/* Schedule Timeline Table */}
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                            Today's Configured Schedule Blocks
+                          </span>
+                          {activeSchedule.length > 0 ? (
+                            <div className="space-y-2">
+                              {activeSchedule.map((s, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs">
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="font-mono font-bold text-teal-605 text-[11px] bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                                      {s.time_range}
+                                    </span>
+                                    <span className="font-bold text-slate-900 dark:text-white">
+                                      {s.title}
+                                    </span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    s.status === "Class" || s.status === "Occupied"
+                                      ? "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"
+                                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                  }`}>
+                                    {s.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 italic">No scheduled calendar bookings for this space today.</p>
+                          )}
+                        </div>
+
+                        {/* Smart Energy Optimization Card */}
+                        <div className="mt-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-amber-500">energy_savings_leaf</span>
+                              <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
+                                HVAC & Energy Automation Condition
+                              </span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                              activeEnergy.ac_status === "ON" ? "bg-sky-50 text-sky-700 border border-sky-200" : "bg-slate-100 text-slate-600"
+                            }`}>
+                              AC: {activeEnergy.ac_status || "STANDBY"}
+                            </span>
+                          </div>
+                          {activeEnergy.efficiency_recommendation ? (
+                            <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800/60 text-xs">
+                              <p className="text-amber-800 dark:text-amber-300 font-medium">
+                                ⚠️ {activeEnergy.efficiency_recommendation}
+                              </p>
+                              <span className="text-[10px] text-slate-400 mt-1 block">
+                                Automation recommendation • Zero energy waste policy
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Climate control setpoint: {activeEnergy.hvac_setpoint_c ? `${activeEnergy.hvac_setpoint_c}°C` : "22.0°C"} • Operational power load nominal.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Active Room Alerts & Quick Intervention */}
+                    {activeRoomAlerts.length > 0 && (
+                      <div className="bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-xl p-5 shadow-sm space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400">
+                            <span className="material-symbols-outlined">notification_important</span>
+                            <h4 className="font-bold text-sm uppercase tracking-wider">Active Alert for {activeRm.name}</h4>
+                          </div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white">
+                            {activeRoomAlerts[0].severity}
+                          </span>
+                        </div>
+                        <p className="text-xs text-rose-900 dark:text-rose-200 font-medium">
+                          {activeRoomAlerts[0].message}
+                        </p>
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => handleAcknowledge(activeRoomAlerts[0].id)}
+                            className="px-3 py-1.5 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 rounded-lg text-xs font-bold hover:bg-rose-50"
+                          >
+                            Acknowledge Alert
+                          </button>
+                          <button
+                            onClick={() => setShowResolveModal(activeRoomAlerts[0].id)}
+                            className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 shadow-sm"
+                          >
+                            Resolve Alert
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
             );
           })()}
 
@@ -1887,7 +2473,17 @@ export default function App() {
                               </td>
                               <td className="px-5 py-4">{a.event_type.replace("_", " ")}</td>
                               <td className="px-5 py-4 text-slate-500 font-data-mono text-data-mono">{new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                              <td className="px-5 py-4 text-right">
+                              
+                                <td className="px-5 py-4">
+                                  {healthRecords[r.id]?.conditions?.filter(c => c.is_active).map(c => (
+                                    <span key={c.condition_name} className="inline-flex items-center gap-1 bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full mr-1">
+                                      <span className="material-symbols-outlined text-[10px]">medical_information</span>
+                                      {c.condition_name}
+                                    </span>
+                                  ))}
+                                </td>
+                                <td className="px-5 py-4 text-right">
+
                                 {a.status === "new" && (
                                   <button onClick={() => handleAcknowledge(a.id)} className="text-teal-650 hover:underline mr-3 font-semibold">Acknowledge</button>
                                 )}
@@ -1933,26 +2529,44 @@ export default function App() {
                                 </div>
                                 <div>
                                   <h4 className="font-bold text-slate-900 dark:text-white">{res.first_name} {res.last_name}</h4>
-                                  <p className="text-body-md font-data-mono text-slate-500">{rm?.name || "Room"}</p>
+                                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                    <span>{rm?.name || "Unassigned"}</span>
+                                    {rm?.classification && (
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
+                                        {rm.classification}
+                                      </span>
+                                    )}
+                                  </p>
                                 </div>
                               </div>
                               <span className={`material-symbols-outlined ${isFall ? "text-red-500 fill animate-bounce" : "text-teal-650"}`} title="Assigned Subject">
                                 {isFall ? "emergency_home" : "home"}
                               </span>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-950 rounded-lg p-3 mt-2 flex justify-between items-center text-xs">
-                              <div>
-                                <p className="text-[10px] font-bold text-slate-405 uppercase">ACTIVITY STATUS</p>
-                                <p className="font-semibold text-slate-850 dark:text-white flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-[16px]">person</span> 
-                                  {occupancySummary.occupied_room_details.find(d => d.room_id === res.room_id)?.current_activity.replace("_", " ") || "Resting"}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[10px] font-bold text-slate-405 uppercase">LAST TIMEOUT</p>
-                                <p className="font-data-mono text-data-mono text-slate-850 dark:text-white">Live</p>
-                              </div>
-                            </div>
+                            {(() => {
+                              const detail = occupancySummary.occupied_room_details.find(d => d.room_id === res.room_id);
+                              const currAct = detail?.current_activity || "Resting";
+                              const lastUp = detail?.last_updated;
+                              return (
+                                <div className="bg-slate-50 dark:bg-slate-950 rounded-lg p-3 mt-2 flex justify-between items-center text-xs">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">ACTIVITY STATUS</p>
+                                    <p className="font-semibold text-slate-800 dark:text-white flex items-center gap-1 mt-0.5">
+                                      <span className="material-symbols-outlined text-[16px] text-teal-600">
+                                        {currAct === "Walking" ? "directions_walk" : currAct === "Sitting" ? "airline_seat_recline_normal" : currAct === "Fall_Detected" ? "warning" : "bed"}
+                                      </span> 
+                                      {currAct.replace("_", " ")}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">LAST DETECTED</p>
+                                    <p className="font-data-mono text-slate-800 dark:text-white text-[11px] mt-0.5">
+                                      {lastUp ? new Date(lastUp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "Standby"}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}
@@ -2155,137 +2769,55 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {/* Dr. Evelyn Lin (Static/Seeded) */}
-                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">EL</div>
-                                <div>
-                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Dr. Evelyn Lin</div>
-                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: 948-AX-01</div>
+                          {activePersonnel.map((person) => (
+                            <tr key={person.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">
+                                    {(person.first_name?.[0] || "") + (person.last_name?.[0] || "")}
+                                  </div>
+                                  <div>
+                                    <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">
+                                      {person.first_name} {person.last_name}
+                                    </div>
+                                    <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: {person.id.slice(0,8)}</div>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-col gap-1">
-                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
-                                  <span className="material-symbols-outlined text-[14px]">shield_person</span> Admin
-                                </span>
-                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">St. Jude - Ward A, B, C</span>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-wrap gap-1">
-                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">SysConfig</span>
-                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">AlertRes</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right">
-                              <span className="inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/20 text-teal-600 dark:text-teal-400 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span> Active
-                              </span>
-                            </td>
-                          </tr>
-
-                          {/* Dynamic Active Registered Users */}
-                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">BJ</div>
-                                <div>
-                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Blesson Joseph Byju</div>
-                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: System-Admin</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
+                                    <span className="material-symbols-outlined text-[14px]">shield_person</span> {person.role_name}
+                                  </span>
+                                  <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">{person.scope_description}</span>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-col gap-1">
-                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
-                                  <span className="material-symbols-outlined text-[14px]">shield_person</span> system_admin
-                                </span>
-                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">Global Deployment Scope</span>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-wrap gap-1">
-                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">SysConfig</span>
-                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">AlertRes</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right">
-                              <span className="inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> Active
-                              </span>
-                            </td>
-                          </tr>
-
-                          {/* Abhinand M A */}
-                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">AM</div>
-                                <div>
-                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Abhinand M A</div>
-                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: Facility-Manager</div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {person.permissions.map((perm, idx) => (
+                                    <span key={idx} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">{perm}</span>
+                                  ))}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-col gap-1">
-                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-750 rounded px-2 py-0.5 w-max">
-                                  <span className="material-symbols-outlined text-[14px]">supervisor_account</span> facility_manager
+                              </td>
+                              <td className="p-4 text-right">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold ${
+                                  person.is_active ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450' : 'bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-450'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${person.is_active ? 'bg-teal-500 animate-pulse' : 'bg-red-500'}`}></span> {person.is_active ? 'Active' : 'Inactive'}
                                 </span>
-                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">Amal Jyothi College</span>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-wrap gap-1">
-                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">AlertRes</span>
-                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">Analytics</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right">
-                              <span className="inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/20 text-teal-655 dark:text-teal-450 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> Active
-                              </span>
-                            </td>
-                          </tr>
-
-                          {/* Abhinanth S Pillai */}
-                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">AP</div>
-                                <div>
-                                  <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">Abhinanth S Pillai</div>
-                                  <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: Caregiver-Lab</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-col gap-1">
-                                <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-750 rounded px-2 py-0.5 w-max bg-slate-50 dark:bg-slate-800">
-                                  <span className="material-symbols-outlined text-[14px]">badge</span> caregiver
-                                </span>
-                                <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">WiFi Sense Research Lab</span>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-wrap gap-1">
-                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">ViewOnly</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right">
-                              <span className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full font-label-caps text-label-caps">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Offline
-                              </span>
-                            </td>
-                          </tr>
+                              </td>
+                            </tr>
+                          ))}
+                          {activePersonnel.length === 0 && (
+                            <tr>
+                              <td colSpan="4" className="p-4 text-center text-slate-500">No personnel found.</td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     </div>
                     <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between text-xs">
-                      <span className="text-slate-550 dark:text-slate-400">Showing 4 of 4 active accounts</span>
+                      <span className="text-slate-550 dark:text-slate-400">Showing {activePersonnel.length} of {activePersonnel.length} active accounts</span>
                     </div>
                   </div>
                 </div>
@@ -2293,46 +2825,68 @@ export default function App() {
                 {/* Right Column: Role Permissions Grid */}
                 <div className="xl:col-span-1 flex flex-col gap-4">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col h-full">
-                    <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-                      <h2 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Role Matrix</h2>
-                      <p className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs mt-1">System-wide access levels.</p>
+                    <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
+                      <div>
+                        <h2 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Role Matrix</h2>
+                        <p className="font-body-md text-slate-500 dark:text-slate-400 text-xs mt-0.5">RBAC privilege matrix across system capabilities.</p>
+                      </div>
+                      <span className="material-symbols-outlined text-teal-600 text-[20px]">admin_panel_settings</span>
                     </div>
-                    <div className="p-0 flex-1">
+                    <div className="p-0 flex-1 overflow-x-auto">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 font-bold uppercase text-[10px] text-slate-450">
-                            <th className="p-3 font-semibold">Capability</th>
-                            <th className="p-3 text-center font-semibold">Admin</th>
-                            <th className="p-3 text-center font-semibold">Manager</th>
-                            <th className="p-3 text-center font-semibold">Caregiver</th>
+                          <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 font-bold uppercase text-[10px] text-slate-400">
+                            <th className="py-3 px-3.5 font-semibold">Capability</th>
+                            <th className="py-3 px-2 text-center font-semibold">Admin</th>
+                            <th className="py-3 px-2 text-center font-semibold">Manager</th>
+                            <th className="py-3 px-2 text-center font-semibold">Staff</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          <tr>
-                            <td className="p-3 font-body-md text-body-md text-slate-800 dark:text-slate-200">Live Monitoring</td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 font-body-md text-body-md text-slate-800 dark:text-slate-200">Alert Resolution</td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-slate-300 dark:text-slate-700 text-[18px]">remove</span></td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 font-body-md text-body-md text-slate-800 dark:text-slate-200">Device Config</td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span></td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-slate-300 dark:text-slate-700 text-[18px]">remove</span></td>
-                            <td className="p-3 text-center"><span className="material-symbols-outlined text-slate-300 dark:text-slate-700 text-[18px]">remove</span></td>
-                          </tr>
+                          {[
+                            { cap: "Real-time CSI Telemetry", admin: true, mgr: true, staff: true },
+                            { cap: "Fall & Safety Alert Triage", admin: true, mgr: true, staff: true },
+                            { cap: "Facility & Room Hierarchy", admin: true, mgr: true, staff: false },
+                            { cap: "Hardware Node Provisioning", admin: true, mgr: true, staff: false },
+                            { cap: "RBAC & User Assignments", admin: true, mgr: false, staff: false },
+                            { cap: "Family Access Moderation", admin: true, mgr: true, staff: false },
+                            { cap: "Cross-Tenant System Config", admin: true, mgr: false, staff: false }
+                          ].map((row, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-2.5 px-3.5 font-medium text-slate-800 dark:text-slate-200 text-xs">
+                                {row.cap}
+                              </td>
+                              <td className="py-2.5 px-2 text-center">
+                                {row.admin ? (
+                                  <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span>
+                                ) : (
+                                  <span className="text-slate-300 dark:text-slate-700 font-mono">—</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2 text-center">
+                                {row.mgr ? (
+                                  <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span>
+                                ) : (
+                                  <span className="text-slate-300 dark:text-slate-700 font-mono">—</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2 text-center">
+                                {row.staff ? (
+                                  <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[18px]">check_circle</span>
+                                ) : (
+                                  <span className="text-slate-300 dark:text-slate-700 font-mono">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-center">
-                      <button className="text-teal-600 dark:text-teal-400 font-label-caps text-label-caps hover:underline flex items-center gap-1">
-                        Edit Policy <span className="material-symbols-outlined text-[16px]">edit</span>
-                      </button>
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                      <span>Standard Institutional Policy</span>
+                      <span className="text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">lock</span> Enforced
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2393,57 +2947,143 @@ export default function App() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-450 uppercase font-semibold">
-                          <th className="p-4">Room Name</th>
+                        <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase font-semibold">
+                          <th className="p-4">Room & Classification</th>
                           <th className="p-4">Capacity</th>
-                          <th className="p-4">Status</th>
-                          <th className="p-4">Current Stance</th>
+                          <th className="p-4">Expected State</th>
+                          <th className="p-4">Wi-Fi Sensing</th>
+                          <th className="p-4 text-right">Operational Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {rooms.filter(r => r.name.includes("MCA") || r.name.includes("Staff") || r.name.includes("IoT") || r.name.includes("Seminar")).map(r => {
-                          const occ = occupancySummary.occupied_room_details.find(d => d.room_id === r.id);
+                        {occupancySummary.occupied_room_details.map((rm) => {
+                          const isUnexpected = rm.discrepancy === "UNEXPECTED_OCCUPANCY";
+                          const hasEnergyAdvisory = rm.energy_state && rm.energy_state.ac_status === "ON" && !rm.is_occupied;
                           return (
-                            <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
-                              <td className="p-4 font-bold text-slate-900 dark:text-white">{r.name}</td>
-                              <td className="p-4">{r.capacity} pax</td>
+                            <tr key={rm.room_id} className={`hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors ${
+                              isUnexpected ? "bg-amber-50/30 dark:bg-amber-950/20 border-l-4 border-l-amber-500" : ""
+                            }`}>
                               <td className="p-4">
-                                {occ?.is_occupied ? (
-                                  <span className="bg-teal-50 dark:bg-teal-950/20 text-teal-650 px-2 py-0.5 rounded text-[10px] font-bold">OCCUPIED</span>
-                                ) : (
-                                  <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded text-[10px] font-bold">VACANT</span>
-                                )}
+                                <div className="font-headline-sm text-[13px] leading-tight text-slate-900 dark:text-white font-bold">
+                                  {rm.room_name}
+                                </div>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    {rm.classification || rm.room_type}
+                                  </span>
+                                  {rm.last_updated && (
+                                    <span className="text-[9px] text-slate-400 font-mono">
+                                      Updated {new Date(rm.last_updated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
-                              <td className="p-4 font-mono text-slate-500">
-                                {occ?.is_occupied ? occ.current_activity : "No movement"}
+                              <td className="p-4 text-slate-700 dark:text-slate-300 font-medium">
+                                {rm.capacity || 1} seats
+                              </td>
+                              <td className="p-4">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold ${
+                                  rm.expected_state === "Occupied" 
+                                    ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60" 
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${rm.expected_state === "Occupied" ? "bg-blue-500" : "bg-slate-400"}`}></span>
+                                  {rm.expected_state || (rm.is_occupied ? "Occupied" : "Vacant")}
+                                </span>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-medium">
+                                  <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">
+                                    {rm.current_activity === "Walking" ? "directions_walk" : rm.current_activity === "Sitting" ? "airline_seat_recline_normal" : rm.current_activity === "Presence" ? "sensors" : "door_open"}
+                                  </span>
+                                  <span>{rm.current_activity?.replace("_", " ") || "Empty"}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-right">
+                                {isUnexpected ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
+                                    <span className="material-symbols-outlined text-[14px]">warning</span> Unexpected Occupancy
+                                  </span>
+                                ) : hasEnergyAdvisory ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                                    <span className="material-symbols-outlined text-[14px]">power_off</span> AC ON (Vacant)
+                                  </span>
+                                ) : rm.is_occupied ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> In Use
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Standby
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           );
                         })}
+                        {occupancySummary.occupied_room_details.length === 0 && (
+                          <tr>
+                            <td colSpan="5" className="p-6 text-center text-slate-500">No corporate rooms discovered.</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                {/* Underutilized spaces list */}
-                <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold mb-4">Underutilized Spaces</h3>
-                  <div className="space-y-3">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded">
-                      <div className="font-bold text-xs text-slate-900 dark:text-white">MCA Seminar Hall</div>
-                      <div className="text-[10px] text-slate-500 mt-1">Average Utilization: 8.5%</div>
+                {/* Underutilized spaces & Energy Efficiency recommendations */}
+                <div className="xl:col-span-4 flex flex-col gap-4">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-amber-500 text-lg">bolt</span> Smart Energy Efficiency
+                      </h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        AI Recommended
+                      </span>
                     </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded">
-                      <div className="font-bold text-xs text-slate-900 dark:text-white">Staff Room A</div>
-                      <div className="text-[10px] text-slate-500 mt-1">Average Utilization: 11.2%</div>
+                    <div className="space-y-3 text-xs">
+                      <div className="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-lg">
+                        <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center justify-between">
+                          <span>Board Meeting Room B</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200/60 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-mono">AC ON</span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 dark:text-amber-300/80 mt-1 leading-relaxed">
+                          Room has remained vacant for 2.5 hours while AC is ON. Consider turning off AC to improve energy efficiency.
+                        </p>
+                      </div>
+
+                      <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-lg">
+                        <div className="font-bold text-blue-900 dark:text-blue-200 flex items-center justify-between">
+                          <span>Smart Classroom 102</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-200/60 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 font-mono">HVAC ACTIVE</span>
+                        </div>
+                        <p className="text-[11px] text-blue-800 dark:text-blue-300/80 mt-1 leading-relaxed">
+                          Room vacant for 1.8 hours with HVAC running. Auto-standby recommended.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={generateRepurposingReport}
-                    className="w-full mt-4 bg-teal-600 text-white py-2 rounded text-xs font-bold uppercase hover:bg-teal-700 shadow cursor-pointer"
-                  >
-                    Generate Repurposing Report
-                  </button>
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold mb-3">Underutilized Spaces</h3>
+                    <div className="space-y-2.5">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">MCA Seminar Hall</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">Average Utilization: 8.5% (Classification: Seminar Hall)</div>
+                      </div>
+                      <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">Faculty Staff Room A</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">Average Utilization: 11.2% (Classification: Office)</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={generateRepurposingReport}
+                      className="w-full mt-4 bg-teal-600 text-white py-2 rounded-lg text-xs font-bold uppercase hover:bg-teal-700 shadow-sm cursor-pointer"
+                    >
+                      Generate Repurposing Report
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2754,163 +3394,717 @@ export default function App() {
             </div>
           )}
 
-          {currentView === "analytics" && isViewAllowed("analytics", appContext, role, isSystemAdmin) && (
-            <div className="space-y-6 text-left">
-              {/* Page Header */}
-              <div className="flex justify-between items-end mb-8">
-                <div>
-                  <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">Analytics Overview</h2>
-                  <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 mt-1">Deep dive into spatial utilization and response metrics.</p>
-                </div>
-                <div className="flex gap-stack-md text-label-caps font-label-caps text-slate-500 dark:text-slate-400">
-                  <span className="bg-slate-100 dark:bg-slate-900 py-1.5 px-3 rounded-full flex items-center gap-1 border border-slate-200 dark:border-slate-800">
-                    <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-                    Last 30 Days
-                  </span>
-                </div>
-              </div>
+          {currentView === "analytics" && isViewAllowed("analytics", appContext, role, isSystemAdmin) && (() => {
+            const isCareAnalytics = appContext === "ELDER_CARE" || appContext === "CARE";
+            const allAnalyticsRooms = occupancySummary.occupied_room_details || [];
+            
+            // Extract unique classifications from rooms scoped to current tenant
+            const availableClassifications = Array.from(new Set(
+              allAnalyticsRooms.map(rm => rm.classification).filter(Boolean)
+            )).sort();
 
-              {/* Bento Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter">
-                {/* Occupancy Over Time (Multi-line chart representation) */}
-                <div className="col-span-1 md:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Occupancy Over Time</h3>
-                    <button 
-                      onClick={exportOccupancyTimeData}
-                      className="text-teal-605 hover:underline text-label-caps font-label-caps font-bold cursor-pointer"
+            // Filter rooms based on active classification filter
+            const filteredRooms = analyticsClassificationFilter === "ALL"
+              ? allAnalyticsRooms
+              : allAnalyticsRooms.filter(rm => rm.classification === analyticsClassificationFilter);
+
+            // Calculate Activity breakdown for the filtered rooms
+            const activityCounts = {};
+            filteredRooms.forEach(rm => {
+              const act = rm.is_occupied ? (rm.current_activity || "Presence") : "Empty";
+              activityCounts[act] = (activityCounts[act] || 0) + 1;
+            });
+            const totalFiltered = filteredRooms.length || 1;
+
+            // Context-specific classifications grouping for KPI cards
+            const careCategories = [
+              {
+                id: "Resident Bedroom",
+                title: "Resident Bedrooms",
+                icon: "bed",
+                color: "teal",
+                matcher: c => c === "Resident Bedroom" || c === "Resident Room",
+                desc: "Assigned living quarters & rest zones"
+              },
+              {
+                id: "Bathroom",
+                title: "Bathrooms (Fall Risk)",
+                icon: "bathtub",
+                color: "rose",
+                matcher: c => c === "Bathroom",
+                desc: "High-risk slip & sudden collapse tripwires"
+              },
+              {
+                id: "Communal",
+                title: "Communal & Dining Halls",
+                icon: "groups",
+                color: "sky",
+                matcher: c => ["Dining Area", "Recreation", "Seminar/Common Hall"].includes(c),
+                desc: "Social engagement & dining halls"
+              },
+              {
+                id: "Clinical",
+                title: "Clinical & Rehab Stations",
+                icon: "medical_services",
+                color: "purple",
+                matcher: c => ["Physiotherapy", "Nursing Area", "Staff Area"].includes(c),
+                desc: "Rehabilitation, nursing desk & triage"
+              }
+            ];
+
+            const spaceCategories = [
+              {
+                id: "Conference",
+                title: "Conference & Meeting",
+                icon: "meeting_room",
+                color: "teal",
+                matcher: c => ["Conference Room", "Meeting Room", "Seminar Hall"].includes(c),
+                desc: "Executive collaboration & meeting suites"
+              },
+              {
+                id: "Labs",
+                title: "Computer & Research Labs",
+                icon: "biotech",
+                color: "sky",
+                matcher: c => ["Computer Lab", "Research Lab"].includes(c),
+                desc: "Workstations & high-performance clusters"
+              },
+              {
+                id: "Classrooms",
+                title: "Academic Classrooms",
+                icon: "school",
+                color: "indigo",
+                matcher: c => c === "Classroom",
+                desc: "Instructional halls & lecture theaters"
+              },
+              {
+                id: "Offices",
+                title: "Offices & Support Areas",
+                icon: "work",
+                color: "amber",
+                matcher: c => ["Office", "Common Area", "Cafeteria", "Server Room"].includes(c),
+                desc: "Staff cabins, server rooms & common areas"
+              }
+            ];
+
+            const currentCategories = isCareAnalytics ? careCategories : spaceCategories;
+
+            // Underutilized / attention spaces from actual rooms (vacant or discrepancy)
+            const attentionRooms = allAnalyticsRooms.filter(rm => 
+              !rm.is_occupied || rm.discrepancy !== "NORMAL" || (rm.energy_state && rm.energy_state.alert_worthy)
+            ).slice(0, 3);
+
+            // Classification badge color helper
+            const getClassificationBadgeStyle = (classification) => {
+              switch (classification) {
+                case "Resident Bedroom":
+                  return "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:text-teal-300 dark:border-teal-800";
+                case "Bathroom":
+                  return "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800";
+                case "Physiotherapy":
+                case "Nursing Area":
+                case "Staff Area":
+                  return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-800";
+                case "Dining Area":
+                case "Recreation":
+                case "Seminar/Common Hall":
+                  return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800";
+                case "Conference Room":
+                case "Meeting Room":
+                  return "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800";
+                case "Computer Lab":
+                case "Research Lab":
+                  return "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:border-cyan-800";
+                case "Classroom":
+                case "Seminar Hall":
+                  return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800";
+                default:
+                  return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+              }
+            };
+
+            return (
+              <div className="space-y-6 text-left">
+                {/* Page Header */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-250 dark:border-slate-800">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">
+                        Analytics Overview
+                      </h2>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
+                        isCareAnalytics 
+                          ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+                          : "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800"
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${isCareAnalytics ? "bg-rose-500" : "bg-teal-500"} animate-pulse`}></span>
+                        {isCareAnalytics ? "CARE CLASSIFICATION" : "SPACE CLASSIFICATION"}
+                      </span>
+                    </div>
+                    <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 mt-1">
+                      {isCareAnalytics 
+                        ? "Classified spatial telemetry, resident stance distribution, and safety response metrics across elder-care zones."
+                        : "Classified spatial utilization, scheduled occupancy compliance, and energy optimization analytics across campus facilities."}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-slate-100 dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-800 flex text-xs font-bold">
+                      {["TODAY", "7D", "30D"].map((range) => (
+                        <button
+                          key={range}
+                          onClick={() => setAnalyticsTimeRange(range)}
+                          className={`px-3 py-1 rounded transition-colors ${
+                            analyticsTimeRange === range
+                              ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-sm"
+                              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                          }`}
+                        >
+                          {range === "TODAY" ? "Today" : range === "7D" ? "Last 7 Days" : "Last 30 Days"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Classification Filter Bar */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px] text-teal-600">category</span>
+                      Filter by Room Classification
+                    </span>
+                    <span className="text-xs text-slate-500 font-mono">
+                      Showing {filteredRooms.length} of {allAnalyticsRooms.length} rooms
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setAnalyticsClassificationFilter("ALL")}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all ${
+                        analyticsClassificationFilter === "ALL"
+                          ? "bg-teal-600 text-white border-teal-600 shadow-sm"
+                          : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-teal-500"
+                      }`}
                     >
-                      Export Data
+                      <span className="material-symbols-outlined text-[15px]">apps</span>
+                      All Classifications
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                        analyticsClassificationFilter === "ALL" ? "bg-teal-700 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      }`}>
+                        {allAnalyticsRooms.length}
+                      </span>
                     </button>
-                  </div>
-                  {/* Chart representation */}
-                  <div className="flex-1 w-full min-h-[300px] rounded-lg relative overflow-hidden flex items-end px-4 pb-4 gap-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850">
-                    <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                      <path d="M0,80 Q10,70 20,60 T40,50 T60,30 T80,40 T100,20 L100,100 L0,100 Z" fill="rgba(13, 148, 136, 0.1)"></path>
-                      <path d="M0,80 Q10,70 20,60 T40,50 T60,30 T80,40 T100,20" fill="none" stroke="#0d9488" strokeWidth="1.5"></path>
-                    </svg>
-                    <div className="absolute bottom-2 left-4 text-[10px] font-mono text-slate-400">08:00</div>
-                    <div className="absolute bottom-2 right-4 text-[10px] font-mono text-slate-400">18:00</div>
-                    <div className="absolute top-4 left-2 text-[10px] font-mono text-slate-400">100%</div>
-                    <div className="absolute top-4 right-4 flex gap-4 bg-white dark:bg-slate-900 p-2 rounded text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-800">
-                      <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-teal-600 rounded-full"></div>Zone A</div>
-                      <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-sky-500 rounded-full"></div>Zone B</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Historical Activity Mix (Pie chart representation) */}
-                <div className="col-span-1 md:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
-                  <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold mb-6">Activity Mix</h3>
-                  <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                    <div className="relative w-40 h-40 rounded-full border-[16px] border-slate-100 dark:border-slate-800 flex items-center justify-center" style={{ borderTopColor: "#0d9488", borderRightColor: "#0284c7" }}>
-                      <div className="absolute flex flex-col items-center justify-center">
-                        <span className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold">65%</span>
-                        <span className="text-[10px] font-bold text-slate-450 uppercase">Sitting Stance</span>
-                      </div>
-                    </div>
-                    <div className="w-full space-y-3 mt-4 text-xs font-semibold text-slate-650">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-teal-600 rounded-sm"></div>Sitting</div>
-                        <span className="font-mono">65%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-sky-500 rounded-sm"></div>Walking</div>
-                        <span className="font-mono">25%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-slate-350 rounded-sm"></div>Standing</div>
-                        <span className="font-mono">10%</span>
-                      </div>
-                    </div>
+                    {availableClassifications.map((cls) => {
+                      const count = allAnalyticsRooms.filter(r => r.classification === cls).length;
+                      const occupiedCount = allAnalyticsRooms.filter(r => r.classification === cls && r.is_occupied).length;
+                      const isSelected = analyticsClassificationFilter === cls;
+                      return (
+                        <button
+                          key={cls}
+                          onClick={() => setAnalyticsClassificationFilter(cls)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition-all ${
+                            isSelected
+                              ? "bg-teal-600 text-white border-teal-600 shadow-sm"
+                              : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-teal-500"
+                          }`}
+                        >
+                          <span>{cls}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                            isSelected ? "bg-teal-700 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                          }`}>
+                            {occupiedCount}/{count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Underutilized Space Identification */}
-                <div className="col-span-1 md:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm text-xs">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Underutilized Spaces (&lt;10%)</h3>
-                    <span className="material-symbols-outlined text-slate-455">map</span>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-white dark:bg-slate-900 flex items-center justify-center text-teal-650 dark:text-teal-400 border border-slate-100 dark:border-slate-850">
-                          <span className="material-symbols-outlined">meeting_room</span>
+                {/* Classification Category KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {currentCategories.map((cat) => {
+                    const catRooms = allAnalyticsRooms.filter(r => cat.matcher(r.classification));
+                    const totalCat = catRooms.length;
+                    const occCat = catRooms.filter(r => r.is_occupied).length;
+                    const pctCat = totalCat > 0 ? Math.round((occCat / totalCat) * 100) : 0;
+                    const hasAnomalies = catRooms.some(r => r.discrepancy !== "NORMAL" || r.current_activity === "Fall_Detected");
+                    
+                    return (
+                      <div 
+                        key={cat.id} 
+                        onClick={() => {
+                          const matching = availableClassifications.find(c => cat.matcher(c));
+                          if (matching) {
+                            setAnalyticsClassificationFilter(analyticsClassificationFilter === matching ? "ALL" : matching);
+                          }
+                        }}
+                        className={`bg-white dark:bg-slate-900 border rounded-xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer text-left ${
+                          hasAnomalies && isCareAnalytics && cat.id === "Bathroom"
+                            ? "border-rose-300 dark:border-rose-800/80 bg-rose-50/20"
+                            : "border-slate-200 dark:border-slate-800"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                              cat.color === "teal" ? "bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-300" :
+                              cat.color === "rose" ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300" :
+                              cat.color === "sky" ? "bg-sky-50 text-sky-600 dark:bg-sky-950/50 dark:text-sky-300" :
+                              "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300"
+                            }`}>
+                              <span className="material-symbols-outlined text-[20px]">{cat.icon}</span>
+                            </div>
+                            <h4 className="font-bold text-slate-900 dark:text-white text-sm">{cat.title}</h4>
+                          </div>
+                          <span className="text-xs font-mono font-bold text-slate-400">
+                            {occCat}/{totalCat}
+                          </span>
                         </div>
-                        <div>
-                          <div className="font-bold text-slate-905 dark:text-white text-sm">Conference Rm 4B</div>
-                          <div className="text-[10px] text-slate-455">North Wing</div>
+                        <div className="flex items-baseline justify-between mt-2">
+                          <div className="text-headline-md font-headline-md font-bold text-slate-900 dark:text-white">
+                            {pctCat}%
+                            <span className="text-xs font-normal text-slate-400 ml-1.5">utilization</span>
+                          </div>
+                          {hasAnomalies ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300">
+                              Attention
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-300">
+                              Nominal
+                            </span>
+                          )}
                         </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 line-clamp-1">
+                          {cat.desc}
+                        </p>
                       </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-red-500 font-mono font-bold text-sm">4.2%</span>
-                        <span className="text-[9px] font-bold text-slate-455">Avg Util</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-white dark:bg-slate-900 flex items-center justify-center text-teal-650 dark:text-teal-400 border border-slate-100 dark:border-slate-850">
-                          <span className="material-symbols-outlined">chair</span>
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-905 dark:text-white text-sm">Breakout Area C</div>
-                          <div className="text-[10px] text-slate-455">East Corridor</div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-red-505 font-mono font-bold text-sm">7.8%</span>
-                        <span className="text-[9px] font-bold text-slate-455">Avg Util</span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
 
-                {/* Average Response Time */}
-                <div className="col-span-1 md:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">Avg Alert Response Time</h3>
-                    <div className="flex items-center gap-1 text-teal-650 dark:text-teal-400 text-xs font-bold uppercase">
-                      <span className="material-symbols-outlined text-[16px]">trending_down</span>
-                      -12% vs last month
+                {/* Bento Grid Layout: Multi-line Occupancy Chart + Classified Activity Mix */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Occupancy Over Time Chart */}
+                  <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+                      <div>
+                        <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">
+                          Classified Occupancy Over Time
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {isCareAnalytics
+                            ? "Temporal distribution across resident living, communal, and care areas"
+                            : "Scheduled vs actual utilization trends across labs, conference suites, and classrooms"}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={exportOccupancyTimeData}
+                        className="text-teal-605 hover:underline text-xs font-bold flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">download</span>
+                        Export Data
+                      </button>
+                    </div>
+
+                    {/* Chart visual representation */}
+                    <div className="flex-1 w-full min-h-[280px] rounded-lg relative overflow-hidden flex items-end px-4 pb-4 gap-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        <defs>
+                          <linearGradient id="careGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#0d9488" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#0d9488" stopOpacity="0.0" />
+                          </linearGradient>
+                          <linearGradient id="careGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        {/* Primary Series */}
+                        <path d="M0,75 Q15,65 30,50 T60,35 T85,45 T100,25 L100,100 L0,100 Z" fill="url(#careGrad1)"></path>
+                        <path d="M0,75 Q15,65 30,50 T60,35 T85,45 T100,25" fill="none" stroke="#0d9488" strokeWidth="2"></path>
+                        
+                        {/* Secondary Series */}
+                        <path d="M0,90 Q20,85 40,40 T70,30 T90,60 T100,50 L100,100 L0,100 Z" fill="url(#careGrad2)"></path>
+                        <path d="M0,90 Q20,85 40,40 T70,30 T90,60 T100,50" fill="none" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="3,3"></path>
+
+                        {/* Tertiary Series */}
+                        <path d="M0,95 Q25,90 50,70 T75,65 T100,80" fill="none" stroke="#f59e0b" strokeWidth="1.5"></path>
+                      </svg>
+                      <div className="absolute bottom-2 left-4 text-[10px] font-mono text-slate-400">08:00 AM</div>
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-mono text-slate-400">01:00 PM</div>
+                      <div className="absolute bottom-2 right-4 text-[10px] font-mono text-slate-400">06:00 PM</div>
+                      <div className="absolute top-4 left-2 text-[10px] font-mono text-slate-400">100%</div>
+                      
+                      {/* Classification Legend */}
+                      <div className="absolute top-4 right-4 flex flex-wrap gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-2 rounded-lg text-[10px] font-bold tracking-wider border border-slate-200 dark:border-slate-800 shadow-sm">
+                        {isCareAnalytics ? (
+                          <>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-teal-600 rounded-full"></div>Resident Bedrooms</div>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-sky-500 rounded-full"></div>Communal & Dining</div>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-amber-500 rounded-full"></div>Bathrooms & Rehab</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-teal-600 rounded-full"></div>Labs & Workstations</div>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-sky-500 rounded-full"></div>Conference Suites</div>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-amber-500 rounded-full"></div>Classrooms</div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-end gap-4 h-[160px] w-full px-4 border-b border-slate-100 dark:border-slate-850 pb-4">
-                    {/* Simulated bars */}
-                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
-                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[80%]"></div>
-                      <span className="text-[9px] font-bold text-slate-400">Mon</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
-                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[60%]"></div>
-                      <span className="text-[9px] font-bold text-slate-400">Tue</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
-                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[90%]"></div>
-                      <span className="text-[9px] font-bold text-slate-400">Wed</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
-                      <div className="w-full bg-teal-600 rounded-t h-[40%]"></div>
-                      <span className="text-[9px] font-bold text-teal-605">Thu</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-end items-center gap-2 group">
-                      <div className="w-full bg-slate-100 dark:bg-slate-850 group-hover:bg-teal-200 transition-colors rounded-t h-[50%]"></div>
-                      <span className="text-[9px] font-bold text-slate-400">Fri</span>
-                    </div>
-                  </div>
-                  <div className="mt-6 flex justify-between items-center text-xs">
+
+                  {/* Classified Activity Mix */}
+                  <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
                     <div>
-                      <div className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold">3.4 min</div>
-                      <div className="text-slate-455 text-[10px]">Weekly Average</div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">
+                          {isCareAnalytics ? "Resident Stance Mix" : "Space Activity Mix"}
+                        </h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                          {analyticsClassificationFilter === "ALL" ? "All Zones" : analyticsClassificationFilter}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mb-6">
+                        {isCareAnalytics
+                          ? "Real-time posture classification derived from Wi-Fi CSI sensing"
+                          : "Classified telemetry activity across monitored facility spaces"}
+                      </p>
+
+                      {/* Donut Ring Visual */}
+                      <div className="flex flex-col items-center justify-center my-2">
+                        <div className="relative w-36 h-36 rounded-full border-[14px] border-slate-100 dark:border-slate-800 flex items-center justify-center shadow-inner"
+                          style={{
+                            borderTopColor: "#0d9488",
+                            borderRightColor: "#0284c7",
+                            borderBottomColor: isCareAnalytics ? "#8b5cf6" : "#64748b",
+                            borderLeftColor: isCareAnalytics ? "#f43f5e" : "#f59e0b"
+                          }}
+                        >
+                          <div className="absolute flex flex-col items-center justify-center text-center">
+                            <span className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold">
+                              {Math.round(((activityCounts["Resting"] || activityCounts["Sitting"] || 0) / totalFiltered) * 100)}%
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                              {isCareAnalytics ? "Rest / Sit" : "Seated"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <button onClick={() => setCurrentView("alerts")} className="border border-teal-650 text-teal-650 px-4 py-2 rounded text-label-caps font-label-caps hover:bg-teal-50 font-bold uppercase transition-colors">
-                      View Logs
-                    </button>
+
+                    {/* Breakdown List */}
+                    <div className="space-y-2.5 mt-4 text-xs font-semibold">
+                      {isCareAnalytics ? (
+                        <>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-teal-600 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Resting in Bed</span>
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {activityCounts["Resting"] || 0} ({Math.round(((activityCounts["Resting"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-sky-500 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Seated Stance</span>
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {activityCounts["Sitting"] || 0} ({Math.round(((activityCounts["Sitting"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-purple-500 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Active Walking</span>
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {activityCounts["Walking"] || 0} ({Math.round(((activityCounts["Walking"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-rose-500 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Fall / Anomaly Tripwire</span>
+                            </div>
+                            <span className="font-mono font-bold text-rose-600">
+                              {activityCounts["Fall_Detected"] || 0} ({Math.round(((activityCounts["Fall_Detected"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-teal-600 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Active Workstation Presence</span>
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {activityCounts["Presence"] || 0} ({Math.round(((activityCounts["Presence"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-sky-500 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Walking & Transit</span>
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {activityCounts["Walking"] || 0} ({Math.round(((activityCounts["Walking"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-indigo-500 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Seated Meeting / Session</span>
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {activityCounts["Sitting"] || 0} ({Math.round(((activityCounts["Sitting"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-slate-400 rounded-sm"></div>
+                              <span className="text-slate-700 dark:text-slate-300">Vacant / Standby</span>
+                            </div>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {activityCounts["Empty"] || 0} ({Math.round(((activityCounts["Empty"] || 0) / totalFiltered) * 100)}%)
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Underutilized / Attention Spaces + Average Alert Response Time */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Underutilized Spaces (STRICTLY CONTEXT SEPARATED) */}
+                  <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">
+                          {isCareAnalytics ? "Low Activity / Extended Quiet Spaces" : "Underutilized Corporate Spaces (<15%)"}
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {isCareAnalytics
+                            ? "Communal and clinical rooms with extended absence of resident motion"
+                            : "Facilities with low scheduled throughput or optimization potential"}
+                        </p>
+                      </div>
+                      <span className="material-symbols-outlined text-slate-400">map</span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {attentionRooms.length > 0 ? (
+                        attentionRooms.map((rm) => (
+                          <div 
+                            key={rm.room_id}
+                            className="flex items-center justify-between p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 hover:bg-white dark:hover:bg-slate-900 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-slate-200 dark:border-slate-800 shadow-sm">
+                                <span className="material-symbols-outlined">
+                                  {rm.classification === "Bathroom" ? "bathtub" :
+                                   rm.classification === "Resident Bedroom" ? "bed" :
+                                   rm.classification === "Conference Room" ? "meeting_room" :
+                                   rm.classification === "Computer Lab" ? "computer" :
+                                   rm.classification === "Research Lab" ? "biotech" :
+                                   rm.classification === "Classroom" ? "school" : "apartment"}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                                  {rm.room_name}
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getClassificationBadgeStyle(rm.classification)}`}>
+                                    {rm.classification}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-400 mt-0.5">
+                                  Capacity: {rm.capacity} • {rm.discrepancy !== "NORMAL" ? rm.discrepancy.replace("_", " ") : "Normal Standby"}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className={`font-mono font-bold text-sm ${rm.is_occupied ? "text-amber-500" : "text-slate-400"}`}>
+                                {rm.is_occupied ? rm.current_activity : "Vacant"}
+                              </span>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                Status
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-6 text-center text-slate-400 text-xs italic">
+                          All rooms operating at optimal capacity.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Avg Alert Response Time */}
+                  <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">
+                            Avg Alert Response Time
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {isCareAnalytics
+                              ? "Caregiver acknowledgment & on-site arrival latency for fall/inactivity alerts"
+                              : "Security and maintenance dispatch response latency"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 text-teal-600 dark:text-teal-400 text-xs font-bold uppercase">
+                          <span className="material-symbols-outlined text-[16px]">trending_down</span>
+                          {isCareAnalytics ? "-28% vs baseline" : "-12% vs last month"}
+                        </div>
+                      </div>
+
+                      {/* Bar graph representation */}
+                      <div className="flex items-end gap-3 h-[140px] w-full px-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        {[
+                          { day: "Mon", height: "70%", val: "2.1m" },
+                          { day: "Tue", height: "55%", val: "1.8m" },
+                          { day: "Wed", height: "85%", val: "2.5m" },
+                          { day: "Thu", height: "40%", val: "1.4m", active: true },
+                          { day: "Fri", height: "60%", val: "1.9m" },
+                          { day: "Sat", height: "45%", val: "1.5m" },
+                          { day: "Sun", height: "35%", val: "1.2m" }
+                        ].map((b) => (
+                          <div key={b.day} className="flex-1 flex flex-col justify-end items-center gap-1.5 group">
+                            <div 
+                              className={`w-full rounded-t transition-all ${
+                                b.active ? "bg-teal-600 shadow-sm" : "bg-slate-100 dark:bg-slate-800 group-hover:bg-teal-200"
+                              }`}
+                              style={{ height: b.height }}
+                            ></div>
+                            <span className={`text-[9px] font-bold ${b.active ? "text-teal-600" : "text-slate-400"}`}>
+                              {b.day}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 flex justify-between items-center text-xs">
+                      <div>
+                        <div className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold">
+                          {isCareAnalytics ? "1.4 min" : "3.4 min"}
+                        </div>
+                        <div className="text-slate-400 text-[10px]">
+                          {isCareAnalytics ? "Caregiver Response Target: < 2 min" : "Facility SLA Target: < 5 min"}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setCurrentView("alerts")} 
+                        className="border border-teal-600 text-teal-600 dark:text-teal-400 px-4 py-2 rounded-lg text-xs hover:bg-teal-50 dark:hover:bg-teal-950/30 font-bold uppercase transition-colors"
+                      >
+                        {isCareAnalytics ? "View Care Alerts" : "View Alert Logs"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Classified Room Spatial Telemetry Table */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                      <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">
+                        Spatial Telemetry Classified by Category
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Detailed sensor derivation and schedule comparison for {filteredRooms.length} rooms
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-400 font-mono">
+                      Category Filter: <strong className="text-teal-600">{analyticsClassificationFilter}</strong>
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider font-bold">
+                          <th className="py-3 px-3">Room Name</th>
+                          <th className="py-3 px-3">Classification</th>
+                          <th className="py-3 px-3">Expected State</th>
+                          <th className="py-3 px-3">Live CSI Sensing</th>
+                          <th className="py-3 px-3">Activity Stance</th>
+                          <th className="py-3 px-3">Operational Condition</th>
+                          <th className="py-3 px-3 text-right">Confidence</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {filteredRooms.map((rm) => (
+                          <tr key={rm.room_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
+                              {rm.room_name}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getClassificationBadgeStyle(rm.classification)}`}>
+                                {rm.classification}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-slate-500 dark:text-slate-400">
+                              {rm.expected_state}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${
+                                rm.is_occupied 
+                                  ? "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"
+                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${rm.is_occupied ? "bg-teal-500 animate-pulse" : "bg-slate-400"}`}></span>
+                                {rm.is_occupied ? "OCCUPIED" : "VACANT"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`font-semibold ${
+                                rm.current_activity === "Fall_Detected" ? "text-rose-600 font-bold" :
+                                rm.current_activity === "Resting" ? "text-teal-600" :
+                                rm.current_activity === "Sitting" ? "text-sky-600" :
+                                rm.current_activity === "Walking" ? "text-indigo-600" :
+                                "text-slate-500"
+                              }`}>
+                                {rm.current_activity.replace("_", " ")}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              {rm.discrepancy === "UNEXPECTED_OCCUPANCY" ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300">
+                                  Unexpected Occupancy
+                                </span>
+                              ) : rm.energy_state && rm.energy_state.alert_worthy ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300">
+                                  AC ON (Idle)
+                                </span>
+                              ) : rm.current_activity === "Fall_Detected" ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300">
+                                  Fall Risk Watch
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">
+                                  Nominal
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                              {Math.round((rm.model_confidence || 0.95) * 100)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {currentView === "assets" && isViewAllowed("assets", appContext, role, isSystemAdmin) && (
             <div className="space-y-6 text-left">
@@ -3226,96 +4420,50 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {displayedDevices.map(dev => {
-                            const isCorp = dev.organization_type === "CORPORATE" || (!dev.firmware_version?.includes("EC") && (dev.organization_name?.includes("Amal") || dev.firmware_version?.includes("101") || dev.firmware_version?.includes("102") || dev.firmware_version?.includes("103")));
-                            const orgLabel = isCorp ? "Amal Jyothi College of Engineering" : "St. Peter's Elder Care Home";
-                            const orgBadgeType = isCorp ? "CORPORATE" : "OLD AGE CARE";
-                            const assignedRoom = rooms.find(r => r.id === dev.room_id)?.name || dev.room_name || "Unbound / Hub Node";
-                            const hasActiveFault = faultReports.some(r => r.device_id === dev.id && r.status !== "REPLACED_RESOLVED");
-
-                            return (
-                              <tr key={dev.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40 transition-colors">
-                                <td className="p-4">
-                                  <div className="font-mono font-bold text-slate-900 dark:text-white text-xs">{dev.mac_address}</div>
-                                  <div className="mt-1 flex items-center gap-1">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase">Token:</span>
-                                    <code className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono font-bold">
-                                      {dev.hardware_token || "TK-ESP32-GEN01"}
-                                    </code>
+                          {activePersonnel.map((person) => (
+                            <tr key={person.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">
+                                    {(person.first_name?.[0] || "") + (person.last_name?.[0] || "")}
                                   </div>
-                                </td>
-                                <td className="p-4">
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    {isCorp ? (
-                                      <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
-                                        <span className="material-symbols-outlined text-[12px]">domain</span>
-                                        {orgBadgeType}
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
-                                        <span className="material-symbols-outlined text-[12px]">health_and_safety</span>
-                                        {orgBadgeType}
-                                      </span>
-                                    )}
+                                  <div>
+                                    <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">
+                                      {person.first_name} {person.last_name}
+                                    </div>
+                                    <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: {person.id.slice(0,8)}</div>
                                   </div>
-                                  <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">{orgLabel}</div>
-                                </td>
-                                <td className="p-4">
-                                  <div className="font-bold text-slate-900 dark:text-white">{assignedRoom}</div>
-                                  <div className="text-[10px] text-slate-400">{dev.building_name || (isCorp ? "Academic Block" : "Elder Care Wing")}</div>
-                                </td>
-                                <td className="p-4 text-slate-500 font-mono text-[11px]">
-                                  {dev.firmware_version || "ESP32-CSI-v1.4"}
-                                </td>
-                                <td className="p-4">
-                                  {hasActiveFault ? (
-                                    <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 px-2.5 py-1 rounded text-[10px] font-black inline-flex items-center gap-1 animate-pulse">
-                                      <span className="material-symbols-outlined text-[12px]">warning</span>
-                                      FAULT REPORTED
-                                    </span>
-                                  ) : dev.device_status === "ONLINE" ? (
-                                    <span className="bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-0.5 rounded text-[10px] font-bold">
-                                      ONLINE
-                                    </span>
-                                  ) : (
-                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded text-[10px] font-bold">
-                                      OFFLINE
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="p-4 text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <button 
-                                      onClick={() => handleToggleDevice(dev.id)}
-                                      className="px-2.5 py-1 border border-slate-200 dark:border-slate-700 rounded text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                                      title="Toggle node operational power"
-                                    >
-                                      Power
-                                    </button>
-                                    <button 
-                                      onClick={() => handleResetDeviceToken(dev.id)}
-                                      className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
-                                      title="Reset & regenerate hardware pairing token"
-                                    >
-                                      <span className="material-symbols-outlined text-[13px]">lock_reset</span>
-                                      Reset Token
-                                    </button>
-                                    <button 
-                                      onClick={() => {
-                                        setSelectedFaultDevice(dev);
-                                        setShowReportFaultModal(true);
-                                      }}
-                                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                                      title="Report faulty CSI, hardware damage or electronic problem"
-                                    >
-                                      <span className="material-symbols-outlined text-[13px]">report</span>
-                                      Report Fault
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
+                                    <span className="material-symbols-outlined text-[14px]">shield_person</span> {person.role_name}
+                                  </span>
+                                  <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">{person.scope_description}</span>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {person.permissions.map((perm, idx) => (
+                                    <span key={idx} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">{perm}</span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="p-4 text-right">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold ${
+                                  person.is_active ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450' : 'bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-450'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${person.is_active ? 'bg-teal-500 animate-pulse' : 'bg-red-500'}`}></span> {person.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {activePersonnel.length === 0 && (
+                            <tr>
+                              <td colSpan="4" className="p-4 text-center text-slate-500">No personnel found.</td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -3361,84 +4509,51 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {faultReports.map(rep => {
-                              const isCorp = rep.organization_type === "CORPORATE";
-                              return (
-                                <tr key={rep.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40 transition-colors">
-                                  <td className="p-4">
-                                    <div className="font-mono font-bold text-amber-600 dark:text-amber-400 text-xs flex items-center gap-1">
-                                      <span className="material-symbols-outlined text-[14px]">confirmation_number</span>
-                                      {rep.tracer_token}
+                          {activePersonnel.map((person) => (
+                            <tr key={person.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">
+                                    {(person.first_name?.[0] || "") + (person.last_name?.[0] || "")}
+                                  </div>
+                                  <div>
+                                    <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">
+                                      {person.first_name} {person.last_name}
                                     </div>
-                                    <div className="text-[10px] text-slate-400 mt-0.5">
-                                      {new Date(rep.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                  </td>
-                                  <td className="p-4">
-                                    <div className="font-mono font-semibold text-slate-900 dark:text-white">{rep.mac_address}</div>
-                                    <div className="text-[11px] text-slate-500 font-semibold">{rep.room_name}</div>
-                                  </td>
-                                  <td className="p-4">
-                                    {isCorp ? (
-                                      <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
-                                        🏢 CORPORATE
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded text-[9px] font-black uppercase">
-                                        🏥 OLD AGE HOME
-                                      </span>
-                                    )}
-                                    <div className="text-[10px] text-slate-500 mt-0.5 font-bold truncate max-w-xs">{rep.organization_name}</div>
-                                  </td>
-                                  <td className="p-4 max-w-xs">
-                                    <div className="font-bold text-slate-900 dark:text-white text-xs">
-                                      {rep.issue_type === "FAULTY_CSI_VALUES" ? "Erratic / Faulty CSI Values" :
-                                       rep.issue_type === "PHYSICAL_DAMAGE" ? "Physical Hardware Damage" :
-                                       rep.issue_type === "ELECTRONIC_FAILURE" ? "Electronic / Power Failure" : "Connectivity / Wi-Fi Drop"}
-                                    </div>
-                                    <div className="text-[11px] text-slate-500 truncate mt-0.5" title={rep.description}>{rep.description}</div>
-                                    {rep.service_notes && (
-                                      <div className="text-[10px] text-teal-650 dark:text-teal-400 font-semibold mt-1 bg-teal-50 dark:bg-teal-950/30 p-1 rounded">
-                                        Desk Note: {rep.service_notes}
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="p-4">
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                      rep.severity === "CRITICAL" ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300" :
-                                      rep.severity === "HIGH" ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" :
-                                      "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
-                                    }`}>
-                                      {rep.severity}
-                                    </span>
-                                  </td>
-                                  <td className="p-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                      rep.status === "REPORTED" ? "bg-amber-50 text-amber-700 border border-amber-300" :
-                                      rep.status === "UNDER_INSPECTION" ? "bg-blue-50 text-blue-700 border border-blue-300" :
-                                      rep.status === "DISPATCHED_SERVICE" ? "bg-purple-50 text-purple-700 border border-purple-300" :
-                                      "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                                    }`}>
-                                      {rep.status}
-                                    </span>
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    {isSystemAdmin || role === "system_admin" ? (
-                                      <button
-                                        onClick={() => setSelectedInspectTicket(rep)}
-                                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded text-xs font-bold uppercase transition-colors shadow-2xs cursor-pointer flex items-center gap-1 ml-auto"
-                                      >
-                                        <span className="material-symbols-outlined text-[14px]">handyman</span>
-                                        Service Node
-                                      </button>
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400 italic">Global Admin Desk Action</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
+                                    <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: {person.id.slice(0,8)}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
+                                    <span className="material-symbols-outlined text-[14px]">shield_person</span> {person.role_name}
+                                  </span>
+                                  <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">{person.scope_description}</span>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {person.permissions.map((perm, idx) => (
+                                    <span key={idx} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">{perm}</span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="p-4 text-right">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold ${
+                                  person.is_active ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450' : 'bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-450'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${person.is_active ? 'bg-teal-500 animate-pulse' : 'bg-red-500'}`}></span> {person.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {activePersonnel.length === 0 && (
+                            <tr>
+                              <td colSpan="4" className="p-4 text-center text-slate-500">No personnel found.</td>
+                            </tr>
+                          )}
+                        </tbody>
                         </table>
                       </div>
                     )}
@@ -3485,51 +4600,51 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {residents.map(res => {
-                        const isAnnamma = res.first_name.toLowerCase().includes("annamma");
-                        const isDevassy = res.first_name.toLowerCase().includes("devassy");
-                        
-                        const contactName = isAnnamma ? "John Smith (Son)" : isDevassy ? "Susan Varghese (Daughter)" : "Facility On-Call Nurse";
-                        const contactPhone = isAnnamma ? "+1 (555) 234-5678" : isDevassy ? "+1 (555) 876-5432" : "+1 (555) 019-2831";
-                        const contactEmail = isAnnamma ? "john@wifisense.com" : isDevassy ? "susan@wifisense.com" : "duty@wifisense.com";
-                        const statusBadge = isAnnamma 
-                          ? { text: "Verified Link", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" } 
-                          : isDevassy 
-                          ? { text: "Pending Review", cls: "bg-amber-50 text-amber-700 border-amber-200" } 
-                          : { text: "Standard Care", cls: "bg-slate-100 text-slate-600 border-slate-200" };
-
-                        return (
-                          <tr key={res.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/40">
-                            <td className="p-4 font-bold text-slate-850 dark:text-white">
-                              {res.first_name} {res.last_name}
-                              <div className="text-[10px] text-slate-400 font-mono font-normal">{res.id}</div>
-                            </td>
-                            <td className="p-4">{rooms.find(r => r.id === res.room_id)?.name || "No Bound Layout"}</td>
-                            <td className="p-4">
-                              <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[15px] text-teal-600">contact_phone</span>
-                                {contactName}
-                              </div>
-                              <div className="text-slate-500 font-mono text-[11px]">{contactPhone} • {contactEmail}</div>
-                            </td>
-                            <td className="p-4">
-                              <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold border ${statusBadge.cls}`}>
-                                {statusBadge.text}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right">
-                              <a
-                                href={`tel:${contactPhone.replace(/\D/g, "")}`}
-                                className="inline-flex items-center gap-1 px-3 py-1 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-lg font-bold text-[11px] hover:bg-teal-100 transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[13px]">call</span>
-                                Call Contact
-                              </a>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
+                          {activePersonnel.map((person) => (
+                            <tr key={person.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">
+                                    {(person.first_name?.[0] || "") + (person.last_name?.[0] || "")}
+                                  </div>
+                                  <div>
+                                    <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">
+                                      {person.first_name} {person.last_name}
+                                    </div>
+                                    <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: {person.id.slice(0,8)}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
+                                    <span className="material-symbols-outlined text-[14px]">shield_person</span> {person.role_name}
+                                  </span>
+                                  <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">{person.scope_description}</span>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {person.permissions.map((perm, idx) => (
+                                    <span key={idx} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">{perm}</span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="p-4 text-right">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold ${
+                                  person.is_active ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450' : 'bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-450'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${person.is_active ? 'bg-teal-500 animate-pulse' : 'bg-red-500'}`}></span> {person.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {activePersonnel.length === 0 && (
+                            <tr>
+                              <td colSpan="4" className="p-4 text-center text-slate-500">No personnel found.</td>
+                            </tr>
+                          )}
+                        </tbody>
                   </table>
                 </div>
               </div>
@@ -3576,48 +4691,51 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {alerts.filter(a => a.status !== "resolved").map(a => (
-                          <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
-                            <td className="p-4">
-                              <div className="text-body-md font-body-md text-slate-900 dark:text-white font-bold">{rooms.find(r => r.id === a.room_id)?.name || "Room"}</div>
-                              <div className="text-label-caps font-label-caps text-slate-500">
-                                {residents.filter(r => r.room_id === a.room_id).map(r => `${r.first_name} ${r.last_name}`).join(", ") || "Subject"}
-                              </div>
-                            </td>
-                            <td className="p-4 text-body-md font-body-md text-slate-805 dark:text-slate-200">{a.event_type.replace("_", " ")}</td>
-                            <td className="p-4 text-data-mono font-data-mono text-slate-500">{new Date(a.created_at).toLocaleTimeString()}</td>
-                            <td className="p-4">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                                a.event_type === "Fall_Detected" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
-                              }`}>
-                                {a.event_type === "Fall_Detected" ? "Critical" : "High"}
-                              </span>
-                            </td>
-                            <td className="p-4">
-                              <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-650 px-2 py-1 rounded text-[10px] font-bold border border-slate-200 dark:border-slate-700">
-                                {a.status}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                {a.status === "new" && (
-                                  <button onClick={() => handleAcknowledge(a.id)} className="text-label-caps font-label-caps font-bold px-3 py-1.5 rounded border border-teal-650 text-teal-650 hover:bg-teal-600 hover:text-white transition-colors">
-                                    Acknowledge
-                                  </button>
-                                )}
-                                <button onClick={() => setShowResolveModal(a.id)} className="text-label-caps font-label-caps font-bold px-3 py-1.5 rounded bg-teal-600 text-white hover:bg-teal-700 transition-colors">
-                                  Resolve
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {alerts.filter(a => a.status !== "resolved").length === 0 && (
-                          <tr>
-                            <td colSpan="6" className="p-8 text-center text-slate-400 italic">No pending alerts. All clear.</td>
-                          </tr>
-                        )}
-                      </tbody>
+                          {activePersonnel.map((person) => (
+                            <tr key={person.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors group">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-teal-650 dark:text-teal-450 font-bold text-sm">
+                                    {(person.first_name?.[0] || "") + (person.last_name?.[0] || "")}
+                                  </div>
+                                  <div>
+                                    <div className="font-headline-sm text-[14px] leading-tight text-slate-900 dark:text-white font-semibold">
+                                      {person.first_name} {person.last_name}
+                                    </div>
+                                    <div className="font-data-mono text-data-mono text-slate-400 mt-0.5">ID: {person.id.slice(0,8)}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1 font-label-caps text-label-caps text-teal-650 border border-teal-200/50 dark:border-teal-900/50 rounded px-2 py-0.5 w-max">
+                                    <span className="material-symbols-outlined text-[14px]">shield_person</span> {person.role_name}
+                                  </span>
+                                  <span className="font-body-md text-body-md text-slate-500 dark:text-slate-400 text-xs">{person.scope_description}</span>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {person.permissions.map((perm, idx) => (
+                                    <span key={idx} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs font-data-mono">{perm}</span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="p-4 text-right">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-caps text-label-caps font-bold ${
+                                  person.is_active ? 'bg-teal-50 dark:bg-teal-950/20 text-teal-650 dark:text-teal-450' : 'bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-450'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${person.is_active ? 'bg-teal-500 animate-pulse' : 'bg-red-500'}`}></span> {person.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {activePersonnel.length === 0 && (
+                            <tr>
+                              <td colSpan="4" className="p-4 text-center text-slate-500">No personnel found.</td>
+                            </tr>
+                          )}
+                        </tbody>
                     </table>
                   </div>
                 </div>
@@ -4368,6 +5486,50 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {currentView === "profile" && isViewAllowed("profile", appContext, role, isSystemAdmin) && (
+            <div className="space-y-6 text-left max-w-4xl mx-auto">
+              <div className="mb-6">
+                <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">My Profile</h2>
+                <p className="text-body-md text-slate-500 dark:text-slate-400">Manage your personal settings and caregiver details.</p>
+              </div>
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col md:flex-row gap-8">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-32 h-32 rounded-full border-4 border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+                    {user?.photo_url ? (
+                      <img src={user.photo_url.startsWith("http") ? user.photo_url : `${API_BASE}${user.photo_url}`} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-4xl text-slate-400 font-bold">{user?.first_name?.[0]}{user?.last_name?.[0]}</span>
+                    )}
+                  </div>
+                  <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="text-sm font-bold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg transition-colors">
+                    Upload Photo
+                  </button>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-label-caps text-slate-500 block mb-1">First Name</label>
+                      <div className="font-bold text-slate-900 dark:text-white text-lg">{user?.first_name}</div>
+                    </div>
+                    <div>
+                      <label className="text-label-caps text-slate-500 block mb-1">Last Name</label>
+                      <div className="font-bold text-slate-900 dark:text-white text-lg">{user?.last_name}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-label-caps text-slate-500 block mb-1">Email Address</label>
+                      <div className="font-bold text-slate-900 dark:text-white text-lg">{user?.email}</div>
+                    </div>
+                    <div className="col-span-2 mt-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <label className="text-label-caps text-slate-500 block mb-1">System Role</label>
+                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1 rounded font-mono text-sm font-bold uppercase">{role}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </div>

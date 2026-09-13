@@ -83,6 +83,12 @@ export const VIEW_DEFINITIONS = {
     icon: "admin_panel_settings",
     description: "Multi-tenant oversight, global health, and system diagnostics"
   },
+  profile: {
+    id: "profile",
+    label: "My Profile",
+    icon: "person",
+    description: "Manage your caregiver profile and settings"
+  },
   family: {
     id: "family",
     label: "Family Member Portal",
@@ -95,19 +101,19 @@ export const VIEW_DEFINITIONS = {
 const MATRIX = {
   [APP_CONTEXTS.CARE]: {
     caregiver: {
-      allowedViews: ["dashboard", "caregiver", "alerts", "residents", "occupancy", "family"],
+      allowedViews: ["dashboard", "caregiver", "alerts", "residents", "occupancy", "family", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Caregiver",
       theme: "care"
     },
     facility_manager: {
-      allowedViews: ["assets", "devices", "dashboard", "alerts", "occupancy", "analytics", "family"],
+      allowedViews: ["assets", "devices", "dashboard", "alerts", "occupancy", "analytics", "family", "profile"],
       defaultView: "assets",
       badgeText: "CARE • Facility Manager",
       theme: "care"
     },
     organization_admin: {
-      allowedViews: ["orgadmin", "assets", "devices", "alerts", "analytics", "residents", "family"],
+      allowedViews: ["orgadmin", "assets", "devices", "alerts", "analytics", "residents", "family", "profile"],
       defaultView: "orgadmin",
       badgeText: "CARE • Org Administrator",
       theme: "care"
@@ -121,13 +127,13 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SPACE]: {
     corporate_staff: {
-      allowedViews: ["corporate", "occupancy", "analytics"],
+      allowedViews: ["corporate", "occupancy", "analytics", "profile"],
       defaultView: "corporate",
       badgeText: "SPACE • Staff",
       theme: "space"
     },
     facility_manager: {
-      allowedViews: ["assets", "devices", "occupancy", "analytics", "alerts"],
+      allowedViews: ["assets", "devices", "occupancy", "analytics", "alerts", "profile"],
       defaultView: "assets",
       badgeText: "SPACE • Facility Manager",
       theme: "space"
@@ -141,7 +147,7 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SYSTEM]: {
     system_admin: {
-      allowedViews: ["sysadmin", "orgadmin", "assets", "devices", "alerts", "analytics", "occupancy", "dashboard"],
+      allowedViews: ["sysadmin", "orgadmin", "assets", "devices", "alerts", "analytics", "occupancy", "dashboard", "profile"],
       defaultView: "sysadmin",
       badgeText: "SYSTEM CONSOLE",
       theme: "system"

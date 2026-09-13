@@ -56,6 +56,13 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
             detail=f"Invalid role. Supported roles: {list(ROLE_MAPPING.keys())}"
         )
 
+    # Disallow self-registering as system_admin (only one root platform admin permitted)
+    if user_data.role == "system_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System Administrator accounts cannot be self-registered. Only one global platform administrator is permitted."
+        )
+
     # Validate parent scopes if provided
     if user_data.organization_id:
         org = session.get(Organization, user_data.organization_id)

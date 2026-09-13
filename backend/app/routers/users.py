@@ -43,3 +43,50 @@ def upload_profile_photo(
     session.refresh(current_user)
     
     return current_user
+
+from typing import List
+from sqlmodel import select
+from app.models.entities import UserRole, Role, Organization
+from app.schemas.schemas import PersonnelOut
+from app.routers.auth import require_roles
+
+@router.get("/personnel", response_model=List[PersonnelOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin"]))])
+def get_active_personnel(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    users = session.exec(select(User)).all()
+    results = []
+    for u in users:
+        # Get roles
+        user_roles = session.exec(select(UserRole).where(UserRole.user_id == u.id)).all()
+        if not user_roles:
+            continue
+        
+        # For simplicity, take the first role
+        ur = user_roles[0]
+        role = session.get(Role, ur.role_id)
+        role_name = role.name if role else "Unknown"
+        
+        # Get organization
+        org = session.get(Organization, ur.organization_id) if ur.organization_id else None
+        
+        scope_description = org.name if org else "Global Deployment Scope"
+        if role_name == "system_admin":
+            scope_description = "Global Deployment Scope"
+        elif role_name == "caregiver":
+            scope_description = f"{org.name if org else 'Facility'} - Patient Ward"
+            
+        permissions = ["View", "Edit"] if role_name in ["system_admin", "organization_admin"] else ["View"]
+        
+        results.append(PersonnelOut(
+            id=u.id,
+            email=u.email,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            is_active=u.is_active,
+            role_name=role_name,
+            scope_description=scope_description,
+            permissions=permissions
+        ))
+    return results

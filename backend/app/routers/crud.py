@@ -158,6 +158,7 @@ def create_room(
         floor_id=rm.floor_id,
         name=rm.name,
         room_type=rm.room_type,
+        classification=rm.classification or rm.room_type,
         capacity=rm.capacity or 1,
         dimensions_metadata=rm.dimensions_metadata
     )
