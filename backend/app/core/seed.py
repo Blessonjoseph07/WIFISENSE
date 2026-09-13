@@ -26,8 +26,15 @@ ACTIVITY_MAPPING = {
     "Resting": (6, "ACTIVITY")
 }
 
-def seed_database(session: Session):
+def seed_database(session: Session, force: bool = False):
+    # Guard against accidental data wipe on server reload/restart
+    if not force:
+        existing_org = session.exec(select(Organization)).first()
+        if existing_org:
+            return
+
     # 1. Clean existing tables
+
     try:
         session.execute(text("DELETE FROM node_fault_reports"))
     except Exception:

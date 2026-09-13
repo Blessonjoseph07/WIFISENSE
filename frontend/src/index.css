@@ -80,27 +80,6 @@ body {
   font-family: var(--font-serif) !important;
 }
 
-.theme-elder-care * {
-  border-color: var(--border-color);
-}
-
-.theme-elder-care .shadow-md,
-.theme-elder-care .shadow-lg,
-.theme-elder-care .shadow-sm,
-.theme-elder-care .shadow {
-  box-shadow: none !important;
-}
-
-.theme-elder-care .rounded-xl,
-.theme-elder-care .rounded-2xl,
-.theme-elder-care .rounded-lg,
-.theme-elder-care .rounded-md {
-  border-radius: 0.25rem !important;
-}
-
-.theme-elder-care .uppercase {
-  text-transform: none !important;
-}
 
 .bg-primary {
   background-color: var(--primary-color) !important;
