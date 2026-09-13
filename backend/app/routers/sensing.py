@@ -15,7 +15,8 @@ ACTIVITY_MAPPING = {
     "Presence": (2, "STATUS"),
     "Walking": (3, "ACTIVITY"),
     "Sitting": (4, "ACTIVITY"),
-    "Fall_Detected": (5, "CRITICAL")
+    "Fall_Detected": (5, "CRITICAL"),
+    "Resting": (6, "ACTIVITY")
 }
 
 def seed_activity_types_if_empty(session: Session):

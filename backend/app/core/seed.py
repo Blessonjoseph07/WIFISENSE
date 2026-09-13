@@ -22,7 +22,8 @@ ACTIVITY_MAPPING = {
     "Presence": (2, "STATUS"),
     "Walking": (3, "ACTIVITY"),
     "Sitting": (4, "ACTIVITY"),
-    "Fall_Detected": (5, "CRITICAL")
+    "Fall_Detected": (5, "CRITICAL"),
+    "Resting": (6, "ACTIVITY")
 }
 
 def seed_database(session: Session):
@@ -62,103 +63,579 @@ def seed_database(session: Session):
         session.add(new_act)
     session.commit()
 
-    # 4. Seed Organizations
-    org_ajce = Organization(name="Amal Jyothi College of Engineering", type="CORPORATE")
-    session.add(org_ajce)
-    
-    org_lab = Organization(name="St. Peter's Elder Care Home", type="ELDER_CARE")
-    session.add(org_lab)
+    # 4. Seed Organizations (Strict Separation)
+    org_ajce = Organization(
+        name="Amal Jyothi College of Engineering", 
+        type="CORPORATE"
+    )
+    org_lab = Organization(
+        name="St. Peter's Elder Care Home", 
+        type="ELDER_CARE"
+    )
+    session.add_all([org_ajce, org_lab])
     session.commit()
     session.refresh(org_ajce)
     session.refresh(org_lab)
 
     # 5. Seed Buildings
-    bld_mca = Building(organization_id=org_ajce.id, name="Department of Computer Applications (MCA Block)", address="Amal Jyothi College of Engineering Campus, Kanjirappally, Kerala, India")
-    session.add(bld_mca)
-    
-    bld_rd = Building(organization_id=org_ajce.id, name="R&D Central Annex", address="Main Campus Block C")
-    session.add(bld_rd)
+    # SPACE Buildings
+    bld_mca = Building(
+        organization_id=org_ajce.id, 
+        name="Department of Computer Applications (MCA Block)", 
+        address="Amal Jyothi College of Engineering Campus, Kanjirappally, Kerala, India"
+    )
+    bld_rd = Building(
+        organization_id=org_ajce.id, 
+        name="R&D Central Annex", 
+        address="Main Campus Block C, Tech Park"
+    )
+    bld_admin = Building(
+        organization_id=org_ajce.id, 
+        name="Administrative & Corporate Center", 
+        address="Executive Quadrangle, Building 4"
+    )
 
-    bld_wing_a = Building(organization_id=org_lab.id, name="Care Wing Alpha (North Sector)", address="St. Peter's Elder Care Campus, North Wing")
-    session.add(bld_wing_a)
-    
-    bld_wing_b = Building(organization_id=org_lab.id, name="Care Wing Beta (South Sector)", address="St. Peter's Elder Care Campus, South Wing")
-    session.add(bld_wing_b)
-    
+    # CARE Buildings
+    bld_wing_a = Building(
+        organization_id=org_lab.id, 
+        name="Care Wing Alpha (North Sector)", 
+        address="St. Peter's Elder Care Campus, North Wing"
+    )
+    bld_wing_b = Building(
+        organization_id=org_lab.id, 
+        name="Care Wing Beta (South Sector)", 
+        address="St. Peter's Elder Care Campus, South Wing"
+    )
+    bld_med = Building(
+        organization_id=org_lab.id, 
+        name="St. Jude Medical & Therapy Pavilion", 
+        address="St. Peter's Healthcare Facility, East Sector"
+    )
+
+    all_buildings = [bld_mca, bld_rd, bld_admin, bld_wing_a, bld_wing_b, bld_med]
+    session.add_all(all_buildings)
     session.commit()
-    session.refresh(bld_mca)
-    session.refresh(bld_rd)
-    session.refresh(bld_wing_a)
-    session.refresh(bld_wing_b)
+    for b in all_buildings:
+        session.refresh(b)
 
     # 6. Seed Floors
+    # SPACE Floors
     flr_mca_1 = Floor(building_id=bld_mca.id, floor_number=1)
-    session.add(flr_mca_1)
     flr_mca_2 = Floor(building_id=bld_mca.id, floor_number=2)
-    session.add(flr_mca_2)
-    
+    flr_mca_3 = Floor(building_id=bld_mca.id, floor_number=3)
     flr_rd_1 = Floor(building_id=bld_rd.id, floor_number=1)
-    session.add(flr_rd_1)
+    flr_rd_2 = Floor(building_id=bld_rd.id, floor_number=2)
+    flr_admin_1 = Floor(building_id=bld_admin.id, floor_number=1)
 
+    # CARE Floors
     flr_wing_a_1 = Floor(building_id=bld_wing_a.id, floor_number=1)
-    session.add(flr_wing_a_1)
     flr_wing_a_2 = Floor(building_id=bld_wing_a.id, floor_number=2)
-    session.add(flr_wing_a_2)
-
     flr_wing_b_1 = Floor(building_id=bld_wing_b.id, floor_number=1)
-    session.add(flr_wing_b_1)
     flr_wing_b_2 = Floor(building_id=bld_wing_b.id, floor_number=2)
-    session.add(flr_wing_b_2)
+    flr_med_1 = Floor(building_id=bld_med.id, floor_number=1)
 
+    all_floors = [
+        flr_mca_1, flr_mca_2, flr_mca_3, flr_rd_1, flr_rd_2, flr_admin_1,
+        flr_wing_a_1, flr_wing_a_2, flr_wing_b_1, flr_wing_b_2, flr_med_1
+    ]
+    session.add_all(all_floors)
     session.commit()
-    session.refresh(flr_mca_1)
-    session.refresh(flr_mca_2)
-    session.refresh(flr_rd_1)
-    session.refresh(flr_wing_a_1)
-    session.refresh(flr_wing_a_2)
-    session.refresh(flr_wing_b_1)
-    session.refresh(flr_wing_b_2)
+    for f in all_floors:
+        session.refresh(f)
 
-    # 7. Seed Rooms
-    # Corporate rooms (AJCE)
-    rm_mca_lab = Room(floor_id=flr_mca_1.id, name="MCA Lab 1", room_type="Conference Room", capacity=30)
-    session.add(rm_mca_lab)
-    rm_seminar_hall = Room(floor_id=flr_mca_2.id, name="MCA Seminar Hall", room_type="Conference Room", capacity=150)
-    session.add(rm_seminar_hall)
-    rm_staff_room = Room(floor_id=flr_mca_1.id, name="Staff Room A", room_type="Conference Room", capacity=15)
-    session.add(rm_staff_room)
-    rm_iot_lab = Room(floor_id=flr_rd_1.id, name="Internet IoT Lab", room_type="Conference Room", capacity=25)
-    session.add(rm_iot_lab)
+    # 7. Seed Rooms (Strict Separation & Meaningful Classifications)
+    # -------------------------------------------------------------
+    # CORPORATE (SPACE) ROOMS
+    rm_conf_a = Room(
+        floor_id=flr_mca_1.id,
+        name="Executive Conference Room A",
+        room_type="Conference Room",
+        classification="Conference Room",
+        capacity=20,
+        dimensions_metadata={
+            "classification": "Conference Room",
+            "expected_state": "Occupied",
+            "schedule": [
+                {"time_range": "10:00 - 11:30", "title": "Faculty Board Review", "status": "Occupied"},
+                {"time_range": "14:00 - 15:30", "title": "Quarterly Operations Sync", "status": "Occupied"},
+                {"time_range": "16:00 - 17:00", "title": "Project Demo", "status": "Vacant"}
+            ],
+            "energy_state": {"ac_status": "ON", "hvac_setpoint_c": 22.0, "lighting_status": "AUTO"}
+        }
+    )
 
-    # Elder Care rooms (St. Peter's Elder Care Home)
-    # Wing Alpha Floor 1
-    rm_101 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 101", room_type="Resident Bedroom", capacity=2)
-    rm_102 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 102", room_type="Resident Bedroom", capacity=2)
-    rm_103 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 103", room_type="Resident Bedroom", capacity=2)
-    rm_104 = Room(floor_id=flr_wing_a_1.id, name="Resident Room 104", room_type="Resident Bedroom", capacity=2)
-    session.add_all([rm_101, rm_102, rm_103, rm_104])
+    rm_meet_b = Room(
+        floor_id=flr_mca_2.id,
+        name="Board Meeting Room B",
+        room_type="Meeting Room",
+        classification="Meeting Room",
+        capacity=12,
+        dimensions_metadata={
+            "classification": "Meeting Room",
+            "expected_state": "Vacant",
+            "schedule": [
+                {"time_range": "09:00 - 10:30", "title": "Department Briefing", "status": "Occupied"},
+                {"time_range": "11:00 - 17:00", "title": "Open Booking Window", "status": "Vacant"}
+            ],
+            "energy_state": {
+                "ac_status": "ON",
+                "vacant_duration_hours": 2.5,
+                "efficiency_recommendation": "Room has remained vacant for 2.5 hours while AC is ON. Consider turning off AC to improve energy efficiency."
+            }
+        }
+    )
 
-    # Wing Alpha Floor 2
-    rm_201 = Room(floor_id=flr_wing_a_2.id, name="Resident Room 201", room_type="Resident Bedroom", capacity=2)
-    rm_202 = Room(floor_id=flr_wing_a_2.id, name="Resident Room 202", room_type="Resident Bedroom", capacity=2)
-    rm_203 = Room(floor_id=flr_wing_a_2.id, name="Resident Room 203", room_type="Resident Bedroom", capacity=2)
-    session.add_all([rm_201, rm_202, rm_203])
+    rm_comp_lab1 = Room(
+        floor_id=flr_mca_1.id,
+        name="Computer Lab 1 - Systems Hub",
+        room_type="Computer Lab",
+        classification="Computer Lab",
+        capacity=45,
+        dimensions_metadata={
+            "classification": "Computer Lab",
+            "expected_state": "Vacant",
+            "schedule": [
+                {"time_range": "09:00 - 12:00", "title": "MCA601 Distributed Systems Lab", "status": "Class"},
+                {"time_range": "12:00 - 14:00", "title": "Scheduled Maintenance & Sanitization", "status": "Vacant"},
+                {"time_range": "14:00 - 17:00", "title": "MCA602 Cloud Computing Practical", "status": "Class"}
+            ],
+            "security_policy": {"restricted_hours": "21:00 - 07:00", "after_hours_monitoring": True}
+        }
+    )
 
-    # Wing Beta Floor 1 & 2
-    rm_recreation = Room(floor_id=flr_wing_b_1.id, name="Recreation Center", room_type="Common Area", capacity=25)
-    rm_ward_1 = Room(floor_id=flr_wing_b_1.id, name="Common Area Ward 1", room_type="Observation Ward", capacity=10)
-    rm_physio = Room(floor_id=flr_wing_b_1.id, name="Physiotherapy Hall", room_type="Therapy Room", capacity=12)
-    rm_dining = Room(floor_id=flr_wing_b_2.id, name="Community Dining Hall", room_type="Dining Facility", capacity=35)
-    rm_quiet = Room(floor_id=flr_wing_b_2.id, name="Quiet Reading Lounge", room_type="Lounge", capacity=8)
-    session.add_all([rm_recreation, rm_ward_1, rm_physio, rm_dining, rm_quiet])
+    rm_comp_lab2 = Room(
+        floor_id=flr_mca_2.id,
+        name="Computer Lab 2 - AI Research",
+        room_type="Computer Lab",
+        classification="Computer Lab",
+        capacity=35,
+        dimensions_metadata={
+            "classification": "Computer Lab",
+            "expected_state": "Occupied",
+            "schedule": [
+                {"time_range": "10:00 - 16:00", "title": "Deep Learning Studio Practice", "status": "Class"}
+            ]
+        }
+    )
 
+    rm_res_lab2 = Room(
+        floor_id=flr_rd_1.id,
+        name="Research Lab 2 - Embedded CSI",
+        room_type="Research Lab",
+        classification="Research Lab",
+        capacity=18,
+        dimensions_metadata={
+            "classification": "Research Lab",
+            "expected_state": "Vacant",
+            "schedule": [
+                {"time_range": "08:30 - 18:00", "title": "Faculty Research & Experiments", "status": "Occupied"},
+                {"time_range": "18:00 - 08:30", "title": "Restricted Access Hours", "status": "Vacant"}
+            ],
+            "security_policy": {"restricted_hours": "22:00 - 06:00", "after_hours_monitoring": True}
+        }
+    )
+
+    rm_class_101 = Room(
+        floor_id=flr_mca_1.id,
+        name="Smart Classroom 101",
+        room_type="Classroom",
+        classification="Classroom",
+        capacity=60,
+        dimensions_metadata={
+            "classification": "Classroom",
+            "expected_state": "Occupied",
+            "schedule": [
+                {"time_range": "09:30 - 11:00", "title": "Software Engineering Lecture", "status": "Class"},
+                {"time_range": "11:15 - 12:45", "title": "Computer Networks Lecture", "status": "Class"}
+            ]
+        }
+    )
+
+    rm_class_102 = Room(
+        floor_id=flr_mca_2.id,
+        name="Smart Classroom 102",
+        room_type="Classroom",
+        classification="Classroom",
+        capacity=60,
+        dimensions_metadata={
+            "classification": "Classroom",
+            "expected_state": "Vacant",
+            "schedule": [
+                {"time_range": "13:00 - 15:00", "title": "Database Management Lecture", "status": "Class"}
+            ],
+            "energy_state": {
+                "ac_status": "ON",
+                "vacant_duration_hours": 1.8,
+                "efficiency_recommendation": "Room vacant for 1.8 hours with HVAC running. Auto-standby recommended."
+            }
+        }
+    )
+
+    rm_staff_a = Room(
+        floor_id=flr_mca_1.id,
+        name="Faculty Staff Room A",
+        room_type="Office",
+        classification="Office",
+        capacity=15,
+        dimensions_metadata={"classification": "Office", "expected_state": "Occupied"}
+    )
+
+    rm_server_telecom = Room(
+        floor_id=flr_mca_1.id,
+        name="Department Server & Telecom Room",
+        room_type="Server Room",
+        classification="Server Room",
+        capacity=4,
+        dimensions_metadata={
+            "classification": "Server Room",
+            "expected_state": "Vacant",
+            "security_policy": {"restricted_hours": "00:00 - 23:59", "after_hours_monitoring": True}
+        }
+    )
+
+    rm_seminar_mca = Room(
+        floor_id=flr_mca_3.id,
+        name="MCA Seminar Hall",
+        room_type="Seminar Hall",
+        classification="Seminar Hall",
+        capacity=150,
+        dimensions_metadata={
+            "classification": "Seminar Hall",
+            "expected_state": "Vacant",
+            "schedule": [
+                {"time_range": "15:00 - 17:00", "title": "Guest Lecture: Ambient AI in IoT", "status": "Upcoming"}
+            ]
+        }
+    )
+
+    rm_cafeteria = Room(
+        floor_id=flr_admin_1.id,
+        name="Campus Corporate Cafeteria Hub",
+        room_type="Cafeteria",
+        classification="Cafeteria",
+        capacity=90,
+        dimensions_metadata={"classification": "Cafeteria", "expected_state": "Occupied"}
+    )
+
+    rm_lounge_rd = Room(
+        floor_id=flr_rd_2.id,
+        name="Innovation Center Common Lounge",
+        room_type="Common Area",
+        classification="Common Area",
+        capacity=30,
+        dimensions_metadata={"classification": "Common Area", "expected_state": "Occupied"}
+    )
+
+    space_rooms = [
+        rm_conf_a, rm_meet_b, rm_comp_lab1, rm_comp_lab2, rm_res_lab2,
+        rm_class_101, rm_class_102, rm_staff_a, rm_server_telecom,
+        rm_seminar_mca, rm_cafeteria, rm_lounge_rd
+    ]
+    session.add_all(space_rooms)
+
+    # -------------------------------------------------------------
+    # ELDER CARE (CARE) ROOMS
+    rm_101 = Room(
+        floor_id=flr_wing_a_1.id,
+        name="Resident Room 101",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+    rm_102 = Room(
+        floor_id=flr_wing_a_1.id,
+        name="Resident Room 102",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+    rm_103 = Room(
+        floor_id=flr_wing_a_1.id,
+        name="Resident Room 103",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+    rm_104 = Room(
+        floor_id=flr_wing_a_1.id,
+        name="Resident Room 104",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+    rm_201 = Room(
+        floor_id=flr_wing_a_2.id,
+        name="Resident Room 201",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+    rm_202 = Room(
+        floor_id=flr_wing_a_2.id,
+        name="Resident Room 202",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+    rm_203 = Room(
+        floor_id=flr_wing_a_2.id,
+        name="Resident Room 203",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+    rm_204 = Room(
+        floor_id=flr_wing_a_2.id,
+        name="Resident Room 204",
+        room_type="Resident Room",
+        classification="Resident Bedroom",
+        capacity=2,
+        dimensions_metadata={"classification": "Resident Bedroom", "resident_capacity": 2}
+    )
+
+    rm_bath_1 = Room(
+        floor_id=flr_wing_a_1.id,
+        name="Wing A Ensuite Bathroom 1",
+        room_type="Bathroom",
+        classification="Bathroom",
+        capacity=1,
+        dimensions_metadata={"classification": "Bathroom", "wet_area": True, "high_risk_fall_zone": True}
+    )
+    rm_bath_2 = Room(
+        floor_id=flr_wing_a_2.id,
+        name="Wing A Ensuite Bathroom 2",
+        room_type="Bathroom",
+        classification="Bathroom",
+        capacity=1,
+        dimensions_metadata={"classification": "Bathroom", "wet_area": True, "high_risk_fall_zone": True}
+    )
+
+    rm_physio = Room(
+        floor_id=flr_med_1.id,
+        name="Central Physiotherapy Clinic",
+        room_type="Physiotherapy",
+        classification="Physiotherapy",
+        capacity=12,
+        dimensions_metadata={"classification": "Physiotherapy", "operating_hours": "08:00 - 17:00"}
+    )
+    rm_recreation = Room(
+        floor_id=flr_wing_b_1.id,
+        name="Recreation & Activity Lounge",
+        room_type="Recreation",
+        classification="Recreation",
+        capacity=30,
+        dimensions_metadata={"classification": "Recreation"}
+    )
+    rm_dining = Room(
+        floor_id=flr_wing_b_2.id,
+        name="Community Dining Hall",
+        room_type="Dining Area",
+        classification="Dining Area",
+        capacity=45,
+        dimensions_metadata={"classification": "Dining Area"}
+    )
+    rm_quiet = Room(
+        floor_id=flr_wing_b_2.id,
+        name="Quiet Reading Room & Hall",
+        room_type="Seminar/Common Hall",
+        classification="Seminar/Common Hall",
+        capacity=15,
+        dimensions_metadata={"classification": "Seminar/Common Hall"}
+    )
+    rm_nursing = Room(
+        floor_id=flr_wing_a_1.id,
+        name="Central Nursing Station & Duty Desk",
+        room_type="Nursing Area",
+        classification="Nursing Area",
+        capacity=8,
+        dimensions_metadata={"classification": "Nursing Area", "24_7_staffed": True}
+    )
+    rm_doctor_triage = Room(
+        floor_id=flr_med_1.id,
+        name="Doctor Consultation & Triage Room",
+        room_type="Staff Area",
+        classification="Staff Area",
+        capacity=5,
+        dimensions_metadata={"classification": "Staff Area"}
+    )
+    rm_ward_1 = Room(
+        floor_id=flr_wing_b_1.id,
+        name="High-Care Observation Ward 1",
+        room_type="Nursing Area",
+        classification="Nursing Area",
+        capacity=8,
+        dimensions_metadata={"classification": "Nursing Area"}
+    )
+
+    care_rooms = [
+        rm_101, rm_102, rm_103, rm_104, rm_201, rm_202, rm_203, rm_204,
+        rm_bath_1, rm_bath_2, rm_physio, rm_recreation, rm_dining,
+        rm_quiet, rm_nursing, rm_doctor_triage, rm_ward_1
+    ]
+    session.add_all(care_rooms)
     session.commit()
-    for r in [rm_mca_lab, rm_seminar_hall, rm_staff_room, rm_iot_lab,
-              rm_101, rm_102, rm_103, rm_104, rm_201, rm_202, rm_203,
-              rm_recreation, rm_ward_1, rm_physio, rm_dining, rm_quiet]:
+
+    for r in space_rooms + care_rooms:
         session.refresh(r)
 
-    # 8. Seed System Users (Staff / Faculty / Caregivers)
+    # 8. Seed Residents (Monitored Persons) - Strictly Elder Care
+    res_mary = Resident(
+        room_id=rm_204.id, 
+        first_name="Mary", 
+        last_name="Joseph", 
+        date_of_birth=datetime(1941, 9, 14)
+    )
+    res_devassy = Resident(
+        room_id=rm_101.id, 
+        first_name="Devassy", 
+        last_name="Varghese", 
+        date_of_birth=datetime(1942, 3, 10)
+    )
+    res_annamma = Resident(
+        room_id=rm_102.id, 
+        first_name="Annamma", 
+        last_name="Joseph", 
+        date_of_birth=datetime(1938, 7, 22)
+    )
+    res_mathew = Resident(
+        room_id=rm_103.id, 
+        first_name="K. C.", 
+        last_name="Mathew", 
+        date_of_birth=datetime(1945, 12, 5)
+    )
+    res_rosamma = Resident(
+        room_id=rm_104.id, 
+        first_name="Rosamma", 
+        last_name="Thomas", 
+        date_of_birth=datetime(1940, 9, 18)
+    )
+    res_george = Resident(
+        room_id=rm_201.id, 
+        first_name="George", 
+        last_name="Philip", 
+        date_of_birth=datetime(1941, 4, 14)
+    )
+    res_mariamma = Resident(
+        room_id=rm_202.id, 
+        first_name="Mariamma", 
+        last_name="Kuruvilla", 
+        date_of_birth=datetime(1939, 11, 30)
+    )
+    res_thomas = Resident(
+        room_id=rm_203.id, 
+        first_name="Thomas", 
+        last_name="Varkey", 
+        date_of_birth=datetime(1944, 8, 19)
+    )
+    res_saramma = Resident(
+        room_id=rm_101.id, 
+        first_name="Saramma", 
+        last_name="Chacko", 
+        date_of_birth=datetime(1937, 2, 8)
+    )
+    res_abraham = Resident(
+        room_id=rm_102.id, 
+        first_name="Abraham", 
+        last_name="Joseph", 
+        date_of_birth=datetime(1946, 6, 25)
+    )
+    res_thresia = Resident(
+        room_id=rm_204.id, 
+        first_name="Thresia", 
+        last_name="Augustine", 
+        date_of_birth=datetime(1943, 10, 11)
+    )
+    res_joseph = Resident(
+        room_id=rm_201.id, 
+        first_name="Joseph", 
+        last_name="Anthony", 
+        date_of_birth=datetime(1940, 1, 29)
+    )
+    res_varghese = Resident(
+        room_id=rm_203.id, 
+        first_name="Varghese", 
+        last_name="Mathai", 
+        date_of_birth=datetime(1945, 9, 3)
+    )
+    res_aleyamma = Resident(
+        room_id=rm_202.id, 
+        first_name="Aleyamma", 
+        last_name="Paul", 
+        date_of_birth=datetime(1942, 12, 21)
+    )
+
+    all_residents = [
+        res_mary, res_devassy, res_annamma, res_mathew, res_rosamma,
+        res_george, res_mariamma, res_thomas, res_saramma, res_abraham,
+        res_thresia, res_joseph, res_varghese, res_aleyamma
+    ]
+    session.add_all(all_residents)
+    session.commit()
+    for r in all_residents:
+        session.refresh(r)
+
+    # 9. Seed Doctors & Health Records
+    session.add_all([
+        # Mary Joseph
+        HealthCondition(
+            resident_id=res_mary.id,
+            condition_name="Mild Cognitive Impairment & Osteoporosis",
+            notes="Doctor: Dr. Anjali Thomas (Geriatric Medicine). Requires morning mobility exercises, prescribed calcium & vitamin D3.",
+            diagnosed_date=datetime(2021, 5, 14),
+            is_active=True
+        ),
+        # Devassy Varghese
+        HealthCondition(
+            resident_id=res_devassy.id,
+            condition_name="Hypertension & Osteoarthritis",
+            notes="Doctor: Dr. Anjali Thomas (Geriatric Medicine). Monitor prolonged sitting; assist during joint stiffness episodes.",
+            diagnosed_date=datetime(2015, 6, 1),
+            is_active=True
+        ),
+        # Annamma Joseph
+        HealthCondition(
+            resident_id=res_annamma.id,
+            condition_name="Type 2 Diabetes & Glaucoma",
+            notes="Doctor: Dr. Philip Mathew (Endocrinology). Daily insulin regimen, eye drops administered at 08:00 and 20:00.",
+            diagnosed_date=datetime(2010, 11, 5),
+            is_active=True
+        ),
+        # K. C. Mathew
+        HealthCondition(
+            resident_id=res_mathew.id,
+            condition_name="Parkinson's Early Stage",
+            notes="Doctor: Dr. George Varghese (Neurology). Gait instability warning; high fall risk in wet areas or unassisted transfers.",
+            diagnosed_date=datetime(2021, 3, 12),
+            is_active=True
+        ),
+        # Rosamma Thomas
+        HealthCondition(
+            resident_id=res_rosamma.id,
+            condition_name="Cardiac Arrhythmia",
+            notes="Doctor: Dr. Elizabeth Kurian (Cardiology / Facility Manager). Prescribed beta-blockers, monitor for nighttime dizziness.",
+            diagnosed_date=datetime(2017, 8, 20),
+            is_active=True
+        ),
+        # Thomas Varkey
+        HealthCondition(
+            resident_id=res_thomas.id,
+            condition_name="Knee Joint Arthroplasty (Post-Op)",
+            notes="Doctor: Dr. Joseph Kurian (Orthopedic Surgery). Weekly physiotherapy checkups in Central Rehab clinic.",
+            diagnosed_date=datetime(2022, 5, 23),
+            is_active=True
+        )
+    ])
+    session.commit()
+
+    # 10. Seed Users & Authorization Profiles
+    # System Admin (Root)
     blesson_user = User(
         email="blesson@wifisense.com",
         password_hash=hash_password("blessonpassword"),
@@ -170,9 +647,8 @@ def seed_database(session: Session):
     session.commit()
     session.refresh(blesson_user)
     session.add(UserRole(user_id=blesson_user.id, role_id=ROLE_MAPPING["system_admin"]))
-    session.commit()
 
-    # AJCE Facility Manager
+    # CORPORATE Users (Amal Jyothi College of Engineering)
     abhinand_user = User(
         email="abhinand@wifisense.com",
         password_hash=hash_password("abhinandpassword"),
@@ -189,9 +665,7 @@ def seed_database(session: Session):
         organization_id=org_ajce.id,
         building_id=bld_mca.id
     ))
-    session.commit()
 
-    # AJCE Faculty / Staff
     tomy_user = User(
         email="tomy@wifisense.com",
         password_hash=hash_password("tomypassword"),
@@ -208,9 +682,41 @@ def seed_database(session: Session):
         organization_id=org_ajce.id,
         building_id=bld_mca.id
     ))
-    session.commit()
 
-    # St. Peter's Caregivers and Facility Manager
+    kavitha_user = User(
+        email="kavitha@wifisense.com",
+        password_hash=hash_password("kavithapassword"),
+        first_name="Dr. Kavitha",
+        last_name="Nair",
+        is_active=True
+    )
+    session.add(kavitha_user)
+    session.commit()
+    session.refresh(kavitha_user)
+    session.add(UserRole(
+        user_id=kavitha_user.id,
+        role_id=ROLE_MAPPING["organization_admin"],
+        organization_id=org_ajce.id
+    ))
+
+    rahul_user = User(
+        email="rahul@wifisense.com",
+        password_hash=hash_password("rahulpassword"),
+        first_name="Rahul",
+        last_name="Menon",
+        is_active=True
+    )
+    session.add(rahul_user)
+    session.commit()
+    session.refresh(rahul_user)
+    session.add(UserRole(
+        user_id=rahul_user.id,
+        role_id=ROLE_MAPPING["corporate_staff"],
+        organization_id=org_ajce.id,
+        building_id=bld_rd.id
+    ))
+
+    # CARE Users (St. Peter's Elder Care Home)
     abhinanth_user = User(
         email="abhinanth@wifisense.com",
         password_hash=hash_password("abhinanthpassword"),
@@ -225,15 +731,13 @@ def seed_database(session: Session):
         user_id=abhinanth_user.id,
         role_id=ROLE_MAPPING["caregiver"],
         organization_id=org_lab.id,
-        building_id=bld_wing_a.id,
-        room_id=rm_101.id
+        building_id=bld_wing_a.id
     ))
     session.add(CaregiverProfile(
         user_id=abhinanth_user.id,
-        bio="Senior Caregiver with 8 years of experience in assisted living.",
-        work_history=[{"title": "Nurse Assistant", "years": 3}]
+        bio="Lead Care Specialist with 8 years of certified geriatric assisted living experience.",
+        work_history=[{"title": "Senior Care Nurse", "facility": "St. Peter's Elder Care", "years": 4}]
     ))
-    session.commit()
 
     mary_user = User(
         email="mary@wifisense.com",
@@ -251,7 +755,6 @@ def seed_database(session: Session):
         organization_id=org_lab.id,
         building_id=bld_wing_b.id
     ))
-    session.commit()
 
     elizabeth_user = User(
         email="elizabeth@wifisense.com",
@@ -269,359 +772,41 @@ def seed_database(session: Session):
         organization_id=org_lab.id,
         building_id=bld_wing_a.id
     ))
-    session.commit()
 
-    # 9. Seed Residents (Monitored Persons) - Elder Care Only
-
-    # Elder Care monitored residents (14 residents across buildings and rooms)
-    res_devassy = Resident(room_id=rm_101.id, first_name="Devassy", last_name="Varghese", date_of_birth=datetime(1942, 3, 10))
-    res_annamma = Resident(room_id=rm_102.id, first_name="Annamma", last_name="Joseph", date_of_birth=datetime(1938, 7, 22))
-    res_mathew = Resident(room_id=rm_recreation.id, first_name="K. C.", last_name="Mathew", date_of_birth=datetime(1945, 12, 5))
-    res_rosamma = Resident(room_id=rm_ward_1.id, first_name="Rosamma", last_name="Thomas", date_of_birth=datetime(1940, 9, 18))
-    res_george = Resident(room_id=rm_103.id, first_name="George", last_name="Philip", date_of_birth=datetime(1941, 4, 14))
-    res_mariamma = Resident(room_id=rm_104.id, first_name="Mariamma", last_name="Kuruvilla", date_of_birth=datetime(1939, 11, 30))
-    res_thomas = Resident(room_id=rm_201.id, first_name="Thomas", last_name="Varkey", date_of_birth=datetime(1944, 8, 19))
-    res_saramma = Resident(room_id=rm_202.id, first_name="Saramma", last_name="Chacko", date_of_birth=datetime(1937, 2, 8))
-    res_abraham = Resident(room_id=rm_203.id, first_name="Abraham", last_name="Joseph", date_of_birth=datetime(1946, 6, 25))
-    res_thresia = Resident(room_id=rm_physio.id, first_name="Thresia", last_name="Augustine", date_of_birth=datetime(1943, 10, 11))
-    res_joseph = Resident(room_id=rm_dining.id, first_name="Joseph", last_name="Anthony", date_of_birth=datetime(1940, 1, 29))
-    res_philomina = Resident(room_id=rm_quiet.id, first_name="Philomina", last_name="Xavier", date_of_birth=datetime(1947, 5, 16))
-    res_varghese = Resident(room_id=rm_101.id, first_name="Varghese", last_name="Mathai", date_of_birth=datetime(1945, 9, 3))
-    res_aleyamma = Resident(room_id=rm_102.id, first_name="Aleyamma", last_name="Paul", date_of_birth=datetime(1942, 12, 21))
-
-    elder_residents = [
-        res_devassy, res_annamma, res_mathew, res_rosamma,
-        res_george, res_mariamma, res_thomas, res_saramma,
-        res_abraham, res_thresia, res_joseph, res_philomina,
-        res_varghese, res_aleyamma
-    ]
-    session.add_all(elder_residents)
-    session.commit()
-
-    for r in elder_residents:
-        session.refresh(r)
-
-    # Health conditions for elder care residents
-    session.add_all([
-        HealthCondition(resident_id=res_devassy.id, condition_name="Hypertension", diagnosed_date=datetime(2015, 6, 1)),
-        HealthCondition(resident_id=res_devassy.id, condition_name="Osteoarthritis", diagnosed_date=datetime(2018, 2, 14)),
-        HealthCondition(resident_id=res_annamma.id, condition_name="Type 2 Diabetes", notes="Requires daily insulin", diagnosed_date=datetime(2010, 11, 5)),
-        HealthCondition(resident_id=res_mathew.id, condition_name="Parkinson's Early Stage", notes="Gait instability warning", diagnosed_date=datetime(2021, 3, 12)),
-        HealthCondition(resident_id=res_rosamma.id, condition_name="Cardiac Arrhythmia", notes="Prescribed beta-blockers", diagnosed_date=datetime(2017, 8, 20)),
-        HealthCondition(resident_id=res_george.id, condition_name="Chronic Bronchitis", diagnosed_date=datetime(2019, 1, 15)),
-        HealthCondition(resident_id=res_mariamma.id, condition_name="Glaucoma", diagnosed_date=datetime(2016, 7, 4)),
-        HealthCondition(resident_id=res_thomas.id, condition_name="Knee Joint Arthroplasty", diagnosed_date=datetime(2022, 5, 23))
-    ])
-    session.commit()
-
-    # Sharing Policies
-    session.add(SharingPolicy(organization_id=org_lab.id, share_presence=True, share_activity_detail=True, share_room_name=True, share_alert_history=True))
-    session.add(SharingPolicy(organization_id=org_ajce.id, share_presence=False, share_activity_detail=False, share_room_name=False, share_alert_history=False))
-    session.add(SharingPolicy(resident_id=res_annamma.id, share_presence=True, share_activity_detail=False, share_room_name=True, share_alert_history=True))
-    session.commit()
-
-    # 10. Seed Devices
-    dev_c1 = SensingDevice(mac_address="4C:75:25:AA:BB:CC", room_id=rm_mca_lab.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 101", hardware_token="TK-ESP32-9A4B12", last_seen_at=datetime.utcnow())
-    dev_c2 = SensingDevice(mac_address="4C:75:25:11:22:33", room_id=rm_staff_room.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 102", hardware_token="TK-ESP32-8C3D44", last_seen_at=datetime.utcnow())
-    dev_c3 = SensingDevice(mac_address="4C:75:25:99:88:77", room_id=rm_iot_lab.id, device_status="ONLINE", firmware_version="ESP32-CSI Node 103", hardware_token="TK-ESP32-7E2F55", last_seen_at=datetime.utcnow())
-
-    dev_ec1 = SensingDevice(mac_address="24:0A:C4:00:11:22", room_id=rm_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC101", hardware_token="TK-ESP32-6A1B22", last_seen_at=datetime.utcnow())
-    dev_ec2 = SensingDevice(mac_address="24:0A:C4:33:44:55", room_id=rm_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC102", hardware_token="TK-ESP32-5B2C33", last_seen_at=datetime.utcnow())
-    dev_ec3 = SensingDevice(mac_address="24:0A:C4:66:77:88", room_id=rm_recreation.id, device_status="FAULT_REPORTED", firmware_version="ESP32-CSI Node EC-REC", hardware_token="TK-ESP32-4C3D99", last_seen_at=datetime.utcnow())
-    dev_ec4 = SensingDevice(mac_address="24:0A:C4:99:AA:BB", room_id=rm_103.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC103", hardware_token="TK-ESP32-3D4E88", last_seen_at=datetime.utcnow())
-    dev_ec5 = SensingDevice(mac_address="24:0A:C4:CC:DD:EE", room_id=rm_104.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC104", hardware_token="TK-ESP32-2E5F77", last_seen_at=datetime.utcnow())
-    dev_ec6 = SensingDevice(mac_address="24:0A:C4:12:34:56", room_id=rm_201.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC201", hardware_token="TK-ESP32-1F6A66", last_seen_at=datetime.utcnow())
-    dev_ec7 = SensingDevice(mac_address="24:0A:C4:78:9A:BC", room_id=rm_ward_1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-WRD", hardware_token="TK-ESP32-0A7B55", last_seen_at=datetime.utcnow())
-    dev_ec8 = SensingDevice(mac_address="24:0A:C4:DE:F0:12", room_id=rm_physio.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-PHY", hardware_token="TK-ESP32-9B8C44", last_seen_at=datetime.utcnow())
-
-    all_devices = [dev_c1, dev_c2, dev_c3, dev_ec1, dev_ec2, dev_ec3, dev_ec4, dev_ec5, dev_ec6, dev_ec7, dev_ec8]
-    session.add_all(all_devices)
-    session.commit()
-    for d in all_devices:
-        session.refresh(d)
-
-    # Seed Sample Node Fault Query (Token Tracer item)
-    sample_fault = NodeFaultReport(
-        device_id=dev_ec3.id,
-        reported_by_user_id=mary_user.id,
-        issue_type="FAULTY_CSI_VALUES",
-        description="Subcarrier amplitudes fluctuating with 90% phase variance spikes. Suspected receiver antenna desync.",
-        severity="HIGH",
-        tracer_token="TRC-94A2F801",
-        status="REPORTED",
-        service_notes="Awaiting global admin service dispatch."
+    priya_user = User(
+        email="priya@wifisense.com",
+        password_hash=hash_password("priyapassword"),
+        first_name="Nurse Priya",
+        last_name="Nair",
+        is_active=True
     )
-    session.add(sample_fault)
+    session.add(priya_user)
     session.commit()
+    session.refresh(priya_user)
+    session.add(UserRole(
+        user_id=priya_user.id,
+        role_id=ROLE_MAPPING["caregiver"],
+        organization_id=org_lab.id,
+        building_id=bld_wing_a.id
+    ))
 
-    # 11. Seed Realistic Historical Sensing Events (spanning past 7 days, ~120 events)
-    now = datetime.utcnow()
-    events_to_add = []
-
-    # Recent baseline events (now - 5 mins) to power live occupancy
-    live_scenarios = [
-        (dev_c1, rm_mca_lab, 3, -55, 0.94),      # Walking
-        (dev_c2, rm_staff_room, 4, -62, 0.91),   # Sitting
-        (dev_c3, rm_iot_lab, 2, -68, 0.87),      # Presence
-        (dev_ec1, rm_101, 3, -50, 0.96),         # Walking (Devassy)
-        (dev_ec2, rm_102, 4, -58, 0.93),         # Sitting (Annamma)
-        (dev_ec3, rm_recreation, 5, -48, 0.99),  # Fall_Detected (Mathew - active incident)
-        (dev_ec4, rm_103, 4, -60, 0.89),         # Sitting (George)
-        (dev_ec5, rm_104, 3, -54, 0.92),         # Walking (Mariamma)
-        (dev_ec6, rm_201, 2, -64, 0.88),         # Presence (Thomas)
-        (dev_ec7, rm_ward_1, 3, -52, 0.95),      # Walking (Rosamma)
-        (dev_ec8, rm_physio, 4, -57, 0.90)       # Sitting (Thresia)
-    ]
-
-    for dev, rm, act_id, rssi, conf in live_scenarios:
-        events_to_add.append(SensingEvent(
-            device_id=dev.id,
-            room_id=rm.id,
-            timestamp=now - timedelta(minutes=random.randint(1, 10)),
-            rssi=rssi,
-            subcarrier_count=64,
-            extracted_features={
-                "amplitude_variance": round(random.uniform(4.0, 45.0), 2),
-                "phase_variance": round(random.uniform(0.5, 8.0), 2),
-                "presence_detected": True
-            },
-            inferred_activity_id=act_id,
-            model_confidence=conf
-        ))
-
-    # Multi-day history: 1 to 7 days in the past across devices
-    activity_pool = [1, 2, 3, 4, 3, 4, 2, 1]  # mostly empty, presence, walking, sitting
-    for day in range(1, 8):
-        for dev in [dev_ec1, dev_ec2, dev_ec3, dev_ec4, dev_ec5, dev_ec6, dev_ec7, dev_ec8, dev_c1, dev_c2]:
-            for hour_offset in [3, 7, 11, 15, 19, 23]:
-                evt_time = now - timedelta(days=day, hours=hour_offset, minutes=random.randint(5, 55))
-                act_choice = random.choice(activity_pool)
-                events_to_add.append(SensingEvent(
-                    device_id=dev.id,
-                    room_id=dev.room_id,
-                    timestamp=evt_time,
-                    rssi=random.randint(-72, -45),
-                    subcarrier_count=64,
-                    extracted_features={
-                        "amplitude_variance": round(random.uniform(0.2, 15.0), 2),
-                        "phase_variance": round(random.uniform(0.05, 3.5), 2),
-                        "presence_detected": act_choice != 1
-                    },
-                    inferred_activity_id=act_choice,
-                    model_confidence=round(random.uniform(0.85, 0.98), 2)
-                ))
-
-    session.add_all(events_to_add)
+    anjali_user = User(
+        email="anjali@wifisense.com",
+        password_hash=hash_password("anjalipassword"),
+        first_name="Dr. Anjali",
+        last_name="Thomas",
+        is_active=True
+    )
+    session.add(anjali_user)
     session.commit()
+    session.refresh(anjali_user)
+    session.add(UserRole(
+        user_id=anjali_user.id,
+        role_id=ROLE_MAPPING["organization_admin"],
+        organization_id=org_lab.id
+    ))
 
-    # 12. Seed Alerts (Realistic spread of 12 alerts over past 7 days)
-    alerts_to_create = [
-        # Incident 1: Active Alert (Right now, recreation room)
-        Alert(
-            room_id=rm_recreation.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            status="new",
-            message="Critical Fall Alert: K. C. Mathew sudden descent stance in Recreation Center",
-            created_at=now - timedelta(minutes=2)
-        ),
-        # Incident 2: Acknowledged Alert (45 min ago, Room 104)
-        Alert(
-            room_id=rm_104.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            status="acknowledged",
-            message="Fall Signature Warning: Mariamma Kuruvilla detected in Resident Room 104",
-            created_at=now - timedelta(minutes=45)
-        ),
-        # Incident 3: Resolved (3 hours ago, Room 101)
-        Alert(
-            room_id=rm_101.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            status="resolved",
-            message="Emergency Fall Warning: Devassy Varghese detected horizontal in Resident Room 101",
-            created_at=now - timedelta(hours=3),
-            resolved_at=now - timedelta(hours=2, minutes=45)
-        ),
-        # Incident 4: Resolved (Yesterday morning, Room 102)
-        Alert(
-            room_id=rm_102.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            status="resolved",
-            message="Fall Warning: Annamma Joseph in Resident Room 102",
-            created_at=now - timedelta(days=1, hours=2),
-            resolved_at=now - timedelta(days=1, hours=1, minutes=40)
-        ),
-        # Incident 5: Resolved (2 days ago, Ward 1)
-        Alert(
-            room_id=rm_ward_1.id,
-            event_type="Fall_Detected",
-            severity="HIGH",
-            status="resolved",
-            message="Rapid Stance Change: Rosamma Thomas in Common Area Ward 1",
-            created_at=now - timedelta(days=2, hours=5),
-            resolved_at=now - timedelta(days=2, hours=4, minutes=30)
-        ),
-        # Incident 6: Resolved (3 days ago, Room 103)
-        Alert(
-            room_id=rm_103.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            status="resolved",
-            message="Possible Slip Incident: George Philip in Resident Room 103",
-            created_at=now - timedelta(days=3, hours=8),
-            resolved_at=now - timedelta(days=3, hours=7, minutes=50)
-        ),
-        # Incident 7: Resolved (4 days ago, Physiotherapy Hall)
-        Alert(
-            room_id=rm_physio.id,
-            event_type="Fall_Detected",
-            severity="HIGH",
-            status="resolved",
-            message="Loss of Balance Detected: Thresia Augustine in Physiotherapy Hall",
-            created_at=now - timedelta(days=4, hours=3),
-            resolved_at=now - timedelta(days=4, hours=2, minutes=35)
-        ),
-        # Incident 8: Resolved (5 days ago, Room 201)
-        Alert(
-            room_id=rm_201.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            status="resolved",
-            message="Impact Event: Thomas Varkey in Resident Room 201",
-            created_at=now - timedelta(days=5, hours=6),
-            resolved_at=now - timedelta(days=5, hours=5, minutes=40)
-        ),
-        # Incident 9: Resolved (6 days ago, Room 101)
-        Alert(
-            room_id=rm_101.id,
-            event_type="Fall_Detected",
-            severity="CRITICAL",
-            status="resolved",
-            message="Bedside Fall Stance: Varghese Mathai in Resident Room 101",
-            created_at=now - timedelta(days=6, hours=10),
-            resolved_at=now - timedelta(days=6, hours=9, minutes=50)
-        ),
-        # Incident 10: Resolved (7 days ago, Recreation Center)
-        Alert(
-            room_id=rm_recreation.id,
-            event_type="Fall_Detected",
-            severity="HIGH",
-            status="resolved",
-            message="Unbalanced Movement Pattern in Recreation Center",
-            created_at=now - timedelta(days=7, hours=4),
-            resolved_at=now - timedelta(days=7, hours=3, minutes=30)
-        ),
-        # Incident 11: Corporate False Spike (Resolved, MCA Lab)
-        Alert(
-            room_id=rm_mca_lab.id,
-            event_type="Anomaly_Movement",
-            severity="MEDIUM",
-            status="resolved",
-            message="CSI Doppler Burst during off-hours in MCA Lab 1",
-            created_at=now - timedelta(days=2, hours=12),
-            resolved_at=now - timedelta(days=2, hours=11, minutes=45)
-        ),
-        # Incident 12: Corporate Sensor Calibration Warning (Resolved, IoT Lab)
-        Alert(
-            room_id=rm_iot_lab.id,
-            event_type="Anomaly_Movement",
-            severity="LOW",
-            status="resolved",
-            message="Intermittent Carrier Noise detected on Node 103",
-            created_at=now - timedelta(days=5, hours=1),
-            resolved_at=now - timedelta(days=5, hours=0, minutes=45)
-        )
-    ]
-
-    session.add_all(alerts_to_create)
-    session.commit()
-    for a in alerts_to_create:
-        session.refresh(a)
-
-    # Acknowledgements and resolution notes for resolved & acknowledged alerts
-    session.add_all([
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[1].id,  # Incident 2 (acknowledged)
-            user_id=abhinanth_user.id,
-            acknowledged_at=now - timedelta(minutes=40)
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[2].id,  # Incident 3 (resolved)
-            user_id=abhinanth_user.id,
-            acknowledged_at=now - timedelta(hours=2, minutes=58),
-            resolved_at=now - timedelta(hours=2, minutes=45),
-            resolution_notes="Resident assisted. Devassy Varghese was sitting on the floor but unhurt. Safely helped back to armchair."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[3].id,  # Incident 4 (resolved)
-            user_id=mary_user.id,
-            acknowledged_at=now - timedelta(days=1, hours=1, minutes=55),
-            resolved_at=now - timedelta(days=1, hours=1, minutes=40),
-            resolution_notes="Checked Room 102. Resident was picking up fallen eyeglasses. No injury."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[4].id,  # Incident 5 (resolved)
-            user_id=abhinanth_user.id,
-            acknowledged_at=now - timedelta(days=2, hours=4, minutes=45),
-            resolved_at=now - timedelta(days=2, hours=4, minutes=30),
-            resolution_notes="Staff attended Rosamma Thomas in Ward 1. Stabilized with walker."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[5].id,  # Incident 6 (resolved)
-            user_id=mary_user.id,
-            acknowledged_at=now - timedelta(days=3, hours=7, minutes=55),
-            resolved_at=now - timedelta(days=3, hours=7, minutes=50),
-            resolution_notes="George Philip reached for water pitcher. Vitals normal."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[6].id,  # Incident 7 (resolved)
-            user_id=elizabeth_user.id,
-            acknowledged_at=now - timedelta(days=4, hours=2, minutes=40),
-            resolved_at=now - timedelta(days=4, hours=2, minutes=35),
-            resolution_notes="Physiotherapist caught resident during balance exercises. Resident rested comfortably."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[7].id,  # Incident 8 (resolved)
-            user_id=abhinanth_user.id,
-            acknowledged_at=now - timedelta(days=5, hours=5, minutes=50),
-            resolved_at=now - timedelta(days=5, hours=5, minutes=40),
-            resolution_notes="Bed transfer assist performed. Floor mats repositioned."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[8].id,  # Incident 9 (resolved)
-            user_id=mary_user.id,
-            acknowledged_at=now - timedelta(days=6, hours=9, minutes=55),
-            resolved_at=now - timedelta(days=6, hours=9, minutes=50),
-            resolution_notes="Varghese assisted back to bed. Blood pressure measured 125/80."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[9].id,  # Incident 10 (resolved)
-            user_id=abhinanth_user.id,
-            acknowledged_at=now - timedelta(days=7, hours=3, minutes=40),
-            resolved_at=now - timedelta(days=7, hours=3, minutes=30),
-            resolution_notes="Chair bumped by wheelchair; false positive movement cleared."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[10].id,  # Incident 11 (resolved)
-            user_id=abhinand_user.id,
-            acknowledged_at=now - timedelta(days=2, hours=11, minutes=50),
-            resolved_at=now - timedelta(days=2, hours=11, minutes=45),
-            resolution_notes="Janitorial staff entered room for routine scheduled cleanup."
-        ),
-        AlertAcknowledgement(
-            alert_id=alerts_to_create[11].id,  # Incident 12 (resolved)
-            user_id=abhinand_user.id,
-            acknowledged_at=now - timedelta(days=5, hours=0, minutes=50),
-            resolved_at=now - timedelta(days=5, hours=0, minutes=45),
-            resolution_notes="Antenna re-oriented; RSSI sensitivity threshold normalized."
-        )
-    ])
-    session.commit()
-
-    # 13. Seed Family Members (emergency_contact) and AccessRequests
+    # Family Members (Emergency Contacts)
     john_user = User(
         email="john@wifisense.com",
         password_hash=hash_password("johnpassword"),
@@ -630,26 +815,22 @@ def seed_database(session: Session):
         resident_id=res_annamma.id,
         is_active=True
     )
-    session.add(john_user)
-    session.commit()
-    session.refresh(john_user)
-    
-    session.add(UserRole(
-        user_id=john_user.id,
-        role_id=ROLE_MAPPING["emergency_contact"],
-        organization_id=org_lab.id
-    ))
-    
-    req_john = AccessRequest(
-        requesting_user_id=john_user.id,
-        resident_id=res_annamma.id,
-        status="approved",
-        reviewed_by=blesson_user.id,
-        reviewed_at=datetime.utcnow() - timedelta(days=2)
+    anna_user = User(
+        email="anna@wifisense.com",
+        password_hash=hash_password("annapassword"),
+        first_name="Anna",
+        last_name="Joseph",
+        resident_id=res_mary.id,
+        is_active=True
     )
-    session.add(req_john)
-    session.commit()
-
+    robert_user = User(
+        email="robert@wifisense.com",
+        password_hash=hash_password("robertpassword"),
+        first_name="Robert",
+        last_name="Lang",
+        resident_id=res_mary.id,
+        is_active=True
+    )
     susan_user = User(
         email="susan@wifisense.com",
         password_hash=hash_password("susanpassword"),
@@ -658,20 +839,547 @@ def seed_database(session: Session):
         resident_id=None,
         is_active=True
     )
-    session.add(susan_user)
-    session.commit()
-    session.refresh(susan_user)
+    david_user = User(
+        email="david@wifisense.com",
+        password_hash=hash_password("davidpassword"),
+        first_name="David",
+        last_name="Mathew",
+        resident_id=res_mathew.id,
+        is_active=True
+    )
+    grace_user = User(
+        email="grace@wifisense.com",
+        password_hash=hash_password("gracepassword"),
+        first_name="Grace",
+        last_name="Thomas",
+        resident_id=None,
+        is_active=True
+    )
 
-    session.add(UserRole(
-        user_id=susan_user.id,
-        role_id=ROLE_MAPPING["emergency_contact"],
-        organization_id=org_lab.id
+    all_family = [john_user, anna_user, robert_user, susan_user, david_user, grace_user]
+    session.add_all(all_family)
+    session.commit()
+    for u in all_family:
+        session.refresh(u)
+        session.add(UserRole(
+            user_id=u.id,
+            role_id=ROLE_MAPPING["emergency_contact"],
+            organization_id=org_lab.id
+        ))
+
+    # Access Requests (Approved and Pending)
+    session.add_all([
+        AccessRequest(
+            requesting_user_id=john_user.id,
+            resident_id=res_annamma.id,
+            status="approved",
+            reviewed_by=blesson_user.id,
+            reviewed_at=datetime.utcnow() - timedelta(days=5)
+        ),
+        AccessRequest(
+            requesting_user_id=anna_user.id,
+            resident_id=res_mary.id,
+            status="approved",
+            reviewed_by=elizabeth_user.id,
+            reviewed_at=datetime.utcnow() - timedelta(days=12)
+        ),
+        AccessRequest(
+            requesting_user_id=robert_user.id,
+            resident_id=res_mary.id,
+            status="approved",
+            reviewed_by=elizabeth_user.id,
+            reviewed_at=datetime.utcnow() - timedelta(days=10)
+        ),
+        AccessRequest(
+            requesting_user_id=david_user.id,
+            resident_id=res_mathew.id,
+            status="approved",
+            reviewed_by=elizabeth_user.id,
+            reviewed_at=datetime.utcnow() - timedelta(days=2)
+        ),
+        AccessRequest(
+            requesting_user_id=susan_user.id,
+            resident_id=res_devassy.id,
+            status="pending"
+        ),
+        AccessRequest(
+            requesting_user_id=grace_user.id,
+            resident_id=res_rosamma.id,
+            status="pending"
+        )
+    ])
+    session.commit()
+
+    # 11. Seed Sharing Policies
+    session.add_all([
+        SharingPolicy(
+            organization_id=org_lab.id,
+            share_presence=True,
+            share_activity_detail=True,
+            share_room_name=True,
+            share_alert_history=True,
+            share_alert_severity_threshold="MEDIUM"
+        ),
+        SharingPolicy(
+            organization_id=org_ajce.id,
+            share_presence=False,
+            share_activity_detail=False,
+            share_room_name=False,
+            share_alert_history=False
+        ),
+        SharingPolicy(
+            resident_id=res_annamma.id,
+            share_presence=True,
+            share_activity_detail=False,
+            share_room_name=True,
+            share_alert_history=True
+        ),
+        SharingPolicy(
+            resident_id=res_mary.id,
+            share_presence=True,
+            share_activity_detail=True,
+            share_room_name=True,
+            share_alert_history=True
+        )
+    ])
+    session.commit()
+
+    # 12. Seed Sensing Devices
+    # SPACE Devices
+    dev_c_conf_a = SensingDevice(mac_address="4C:75:25:AA:10:01", room_id=rm_conf_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP101", hardware_token="TK-ESP32-CONF-A", last_seen_at=datetime.utcnow())
+    dev_c_meet_b = SensingDevice(mac_address="4C:75:25:AA:10:02", room_id=rm_meet_b.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP102", hardware_token="TK-ESP32-MEET-B", last_seen_at=datetime.utcnow())
+    dev_c_lab1 = SensingDevice(mac_address="4C:75:25:AA:10:03", room_id=rm_comp_lab1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP103", hardware_token="TK-ESP32-LAB-01", last_seen_at=datetime.utcnow())
+    dev_c_lab2 = SensingDevice(mac_address="4C:75:25:AA:10:04", room_id=rm_comp_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP104", hardware_token="TK-ESP32-LAB-02", last_seen_at=datetime.utcnow())
+    dev_c_res2 = SensingDevice(mac_address="4C:75:25:AA:10:05", room_id=rm_res_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP105", hardware_token="TK-ESP32-RES-02", last_seen_at=datetime.utcnow())
+    dev_c_cls101 = SensingDevice(mac_address="4C:75:25:AA:10:06", room_id=rm_class_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP106", hardware_token="TK-ESP32-CLS-101", last_seen_at=datetime.utcnow())
+    dev_c_cls102 = SensingDevice(mac_address="4C:75:25:AA:10:07", room_id=rm_class_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP107", hardware_token="TK-ESP32-CLS-102", last_seen_at=datetime.utcnow())
+    dev_c_staff = SensingDevice(mac_address="4C:75:25:AA:10:08", room_id=rm_staff_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP108", hardware_token="TK-ESP32-STF-01", last_seen_at=datetime.utcnow())
+    dev_c_server = SensingDevice(mac_address="4C:75:25:AA:10:09", room_id=rm_server_telecom.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP109", hardware_token="TK-ESP32-SRV-01", last_seen_at=datetime.utcnow())
+    dev_c_sem = SensingDevice(mac_address="4C:75:25:AA:10:10", room_id=rm_seminar_mca.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP110", hardware_token="TK-ESP32-SEM-01", last_seen_at=datetime.utcnow())
+
+    # CARE Devices
+    dev_ec_101 = SensingDevice(mac_address="24:0A:C4:00:20:01", room_id=rm_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC101", hardware_token="TK-ESP32-EC-101", last_seen_at=datetime.utcnow())
+    dev_ec_102 = SensingDevice(mac_address="24:0A:C4:00:20:02", room_id=rm_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC102", hardware_token="TK-ESP32-EC-102", last_seen_at=datetime.utcnow())
+    dev_ec_103 = SensingDevice(mac_address="24:0A:C4:00:20:03", room_id=rm_103.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC103", hardware_token="TK-ESP32-EC-103", last_seen_at=datetime.utcnow())
+    dev_ec_104 = SensingDevice(mac_address="24:0A:C4:00:20:04", room_id=rm_104.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC104", hardware_token="TK-ESP32-EC-104", last_seen_at=datetime.utcnow())
+    dev_ec_201 = SensingDevice(mac_address="24:0A:C4:00:20:05", room_id=rm_201.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC201", hardware_token="TK-ESP32-EC-201", last_seen_at=datetime.utcnow())
+    dev_ec_202 = SensingDevice(mac_address="24:0A:C4:00:20:06", room_id=rm_202.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC202", hardware_token="TK-ESP32-EC-202", last_seen_at=datetime.utcnow())
+    dev_ec_203 = SensingDevice(mac_address="24:0A:C4:00:20:07", room_id=rm_203.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC203", hardware_token="TK-ESP32-EC-203", last_seen_at=datetime.utcnow())
+    dev_ec_204 = SensingDevice(mac_address="24:0A:C4:00:20:08", room_id=rm_204.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC204", hardware_token="TK-ESP32-EC-204", last_seen_at=datetime.utcnow())
+    dev_ec_bath1 = SensingDevice(mac_address="24:0A:C4:00:20:09", room_id=rm_bath_1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-B01", hardware_token="TK-ESP32-EC-B01", last_seen_at=datetime.utcnow())
+    dev_ec_physio = SensingDevice(mac_address="24:0A:C4:00:20:10", room_id=rm_physio.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-PHY", hardware_token="TK-ESP32-EC-PHY", last_seen_at=datetime.utcnow())
+    dev_ec_rec = SensingDevice(mac_address="24:0A:C4:00:20:11", room_id=rm_recreation.id, device_status="FAULT_REPORTED", firmware_version="ESP32-CSI Node EC-REC", hardware_token="TK-ESP32-EC-REC", last_seen_at=datetime.utcnow())
+    dev_ec_dining = SensingDevice(mac_address="24:0A:C4:00:20:12", room_id=rm_dining.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-DIN", hardware_token="TK-ESP32-EC-DIN", last_seen_at=datetime.utcnow())
+    dev_ec_nurse = SensingDevice(mac_address="24:0A:C4:00:20:13", room_id=rm_nursing.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-NUR", hardware_token="TK-ESP32-EC-NUR", last_seen_at=datetime.utcnow())
+
+    all_devices = [
+        dev_c_conf_a, dev_c_meet_b, dev_c_lab1, dev_c_lab2, dev_c_res2,
+        dev_c_cls101, dev_c_cls102, dev_c_staff, dev_c_server, dev_c_sem,
+        dev_ec_101, dev_ec_102, dev_ec_103, dev_ec_104, dev_ec_201,
+        dev_ec_202, dev_ec_203, dev_ec_204, dev_ec_bath1, dev_ec_physio,
+        dev_ec_rec, dev_ec_dining, dev_ec_nurse
+    ]
+    session.add_all(all_devices)
+    session.commit()
+    for d in all_devices:
+        session.refresh(d)
+
+    # 13. Seed Hardware Maintenance Fault Reports
+    session.add_all([
+        NodeFaultReport(
+            device_id=dev_ec_rec.id,
+            reported_by_user_id=mary_user.id,
+            issue_type="FAULTY_CSI_VALUES",
+            description="Subcarrier amplitude fluctuation with 90% phase variance spikes in Recreation Lounge. Receiver antenna desync suspected.",
+            severity="HIGH",
+            tracer_token="TRC-94A2F801",
+            status="REPORTED",
+            service_notes="Pending hardware engineer inspection on next scheduled maintenance sweep."
+        ),
+        NodeFaultReport(
+            device_id=dev_c_server.id,
+            reported_by_user_id=abhinand_user.id,
+            issue_type="INTERMITTENT_CONNECTIVITY",
+            description="High thermal buildup near server rack causing node packet retransmissions.",
+            severity="MEDIUM",
+            tracer_token="TRC-C83E1094",
+            status="UNDER_INSPECTION",
+            service_notes="Thermal shield relocated. Monitoring packet drop rates over 48 hours."
+        )
+    ])
+    session.commit()
+
+    # 14. Seed Realistic Sensing Events with Relative Timestamps
+    now = datetime.utcnow()
+    events = []
+
+    # SCENARIO A: Mary Joseph in Room 204 (Walking -> Sitting -> Resting)
+    events.append(SensingEvent(
+        device_id=dev_ec_204.id, room_id=rm_204.id,
+        timestamp=now - timedelta(minutes=6),
+        rssi=-54, subcarrier_count=64,
+        extracted_features={"phase_var": 4.2, "doppler_hz": 1.4, "subject": "Mary Joseph"},
+        inferred_activity_id=3, model_confidence=0.96 # Walking
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_204.id, room_id=rm_204.id,
+        timestamp=now - timedelta(minutes=3),
+        rssi=-58, subcarrier_count=64,
+        extracted_features={"phase_var": 0.8, "doppler_hz": 0.2, "subject": "Mary Joseph"},
+        inferred_activity_id=4, model_confidence=0.94 # Sitting
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_204.id, room_id=rm_204.id,
+        timestamp=now - timedelta(seconds=45),
+        rssi=-62, subcarrier_count=64,
+        extracted_features={"phase_var": 0.1, "doppler_hz": 0.02, "subject": "Mary Joseph"},
+        inferred_activity_id=6, model_confidence=0.98 # Resting
     ))
 
-    req_susan = AccessRequest(
-        requesting_user_id=susan_user.id,
-        resident_id=res_devassy.id,
-        status="pending"
-    )
-    session.add(req_susan)
+    # SCENARIO B: Devassy Varghese in Room 101 (Prolonged Inactivity - Sitting > 1 hour)
+    events.append(SensingEvent(
+        device_id=dev_ec_101.id, room_id=rm_101.id,
+        timestamp=now - timedelta(hours=1, minutes=15),
+        rssi=-56, subcarrier_count=64,
+        extracted_features={"phase_var": 0.9, "subject": "Devassy Varghese"},
+        inferred_activity_id=4, model_confidence=0.93 # Sitting
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_101.id, room_id=rm_101.id,
+        timestamp=now - timedelta(minutes=2),
+        rssi=-57, subcarrier_count=64,
+        extracted_features={"phase_var": 0.4, "subject": "Devassy Varghese", "inactivity_duration_minutes": 75},
+        inferred_activity_id=4, model_confidence=0.95 # Sitting (Unusually long period)
+    ))
+
+    # SCENARIO C: K. C. Mathew in Ensuite Bathroom 1 (Fall_Detected, Active Emergency)
+    events.append(SensingEvent(
+        device_id=dev_ec_bath1.id, room_id=rm_bath_1.id,
+        timestamp=now - timedelta(minutes=4),
+        rssi=-50, subcarrier_count=64,
+        extracted_features={"phase_var": 3.8, "doppler_hz": 1.2, "subject": "K. C. Mathew"},
+        inferred_activity_id=3, model_confidence=0.94 # Walking into bathroom
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_bath1.id, room_id=rm_bath_1.id,
+        timestamp=now - timedelta(minutes=1, seconds=30),
+        rssi=-45, subcarrier_count=64,
+        extracted_features={"rapid_stance_drop": True, "floor_plane_proximity": 0.98, "subject": "K. C. Mathew"},
+        inferred_activity_id=5, model_confidence=0.99 # Fall_Detected
+    ))
+
+    # SCENARIO D: Rosamma Thomas in Room 104 (Nighttime movement)
+    events.append(SensingEvent(
+        device_id=dev_ec_104.id, room_id=rm_104.id,
+        timestamp=now - timedelta(minutes=12),
+        rssi=-55, subcarrier_count=64,
+        extracted_features={"nighttime_motion": True, "subject": "Rosamma Thomas"},
+        inferred_activity_id=3, model_confidence=0.91 # Walking
+    ))
+
+    # SCENARIO E: Other CARE Rooms live status
+    events.append(SensingEvent(
+        device_id=dev_ec_102.id, room_id=rm_102.id,
+        timestamp=now - timedelta(minutes=5),
+        rssi=-61, subcarrier_count=64,
+        extracted_features={"subject": "Annamma Joseph"},
+        inferred_activity_id=6, model_confidence=0.95 # Resting
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_103.id, room_id=rm_103.id,
+        timestamp=now - timedelta(minutes=8),
+        rssi=-59, subcarrier_count=64,
+        extracted_features={"subject": "George Philip"},
+        inferred_activity_id=4, model_confidence=0.92 # Sitting
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_physio.id, room_id=rm_physio.id,
+        timestamp=now - timedelta(minutes=7),
+        rssi=-52, subcarrier_count=64,
+        extracted_features={"subject": "Thomas Varkey"},
+        inferred_activity_id=3, model_confidence=0.93 # Walking / Balance therapy
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_dining.id, room_id=rm_dining.id,
+        timestamp=now - timedelta(minutes=15),
+        rssi=-50, subcarrier_count=64,
+        extracted_features={"occupants_count": 8},
+        inferred_activity_id=2, model_confidence=0.96 # Presence
+    ))
+    events.append(SensingEvent(
+        device_id=dev_ec_nurse.id, room_id=rm_nursing.id,
+        timestamp=now - timedelta(minutes=1),
+        rssi=-48, subcarrier_count=64,
+        extracted_features={"staff_present": True},
+        inferred_activity_id=3, model_confidence=0.97 # Walking
+    ))
+
+    # -------------------------------------------------------------
+    # CORPORATE (SPACE) SENSING SCENARIOS
+    # SCENARIO F: Computer Lab 1 (Unexpected Occupancy during scheduled vacant maintenance)
+    events.append(SensingEvent(
+        device_id=dev_c_lab1.id, room_id=rm_comp_lab1.id,
+        timestamp=now - timedelta(minutes=3),
+        rssi=-53, subcarrier_count=64,
+        extracted_features={"doppler_hz": 1.6, "unexpected_occupancy": True},
+        inferred_activity_id=3, model_confidence=0.94 # Walking
+    ))
+
+    # SCENARIO G: Executive Conference Room A (Normal Scheduled Meeting)
+    events.append(SensingEvent(
+        device_id=dev_c_conf_a.id, room_id=rm_conf_a.id,
+        timestamp=now - timedelta(minutes=4),
+        rssi=-56, subcarrier_count=64,
+        extracted_features={"group_presence": True, "ambient_variance": 3.2},
+        inferred_activity_id=4, model_confidence=0.92 # Sitting
+    ))
+
+    # SCENARIO H: Board Meeting Room B (Vacant, AC running)
+    events.append(SensingEvent(
+        device_id=dev_c_meet_b.id, room_id=rm_meet_b.id,
+        timestamp=now - timedelta(hours=2, minutes=30),
+        rssi=-78, subcarrier_count=64,
+        extracted_features={"presence_detected": False, "ac_running_no_occupants": True},
+        inferred_activity_id=1, model_confidence=0.99 # Empty
+    ))
+
+    # SCENARIO I: Research Lab 2 (After-hours unexpected activity)
+    events.append(SensingEvent(
+        device_id=dev_c_res2.id, room_id=rm_res_lab2.id,
+        timestamp=now - timedelta(minutes=18),
+        rssi=-55, subcarrier_count=64,
+        extracted_features={"off_hours_burst": True, "doppler_hz": 2.1},
+        inferred_activity_id=3, model_confidence=0.91 # Walking
+    ))
+
+    # SCENARIO J: Smart Classroom 101 (Class in session)
+    events.append(SensingEvent(
+        device_id=dev_c_cls101.id, room_id=rm_class_101.id,
+        timestamp=now - timedelta(minutes=6),
+        rssi=-51, subcarrier_count=64,
+        extracted_features={"density_cluster": "HIGH"},
+        inferred_activity_id=4, model_confidence=0.95 # Sitting
+    ))
+
+    # SCENARIO K: Smart Classroom 102 (Vacant, HVAC running)
+    events.append(SensingEvent(
+        device_id=dev_c_cls102.id, room_id=rm_class_102.id,
+        timestamp=now - timedelta(hours=1, minutes=48),
+        rssi=-75, subcarrier_count=64,
+        extracted_features={"presence_detected": False},
+        inferred_activity_id=1, model_confidence=0.98 # Empty
+    ))
+
+    # SCENARIO L: Staff Room A
+    events.append(SensingEvent(
+        device_id=dev_c_staff.id, room_id=rm_staff_a.id,
+        timestamp=now - timedelta(minutes=5),
+        rssi=-60, subcarrier_count=64,
+        extracted_features={"desk_presence": True},
+        inferred_activity_id=4, model_confidence=0.92 # Sitting
+    ))
+
+    # SCENARIO M: Server Room (Empty, secure)
+    events.append(SensingEvent(
+        device_id=dev_c_server.id, room_id=rm_server_telecom.id,
+        timestamp=now - timedelta(minutes=30),
+        rssi=-80, subcarrier_count=64,
+        extracted_features={"secure_baseline": True},
+        inferred_activity_id=1, model_confidence=0.99 # Empty
+    ))
+
+    # Historical Telemetry spanning 7 days across devices for rich analytics
+    for day in range(1, 8):
+        for dev in [dev_ec_101, dev_ec_102, dev_ec_204, dev_c_conf_a, dev_c_lab1, dev_c_cls101]:
+            for hr in [4, 9, 13, 16, 20]:
+                evt_time = now - timedelta(days=day, hours=hr, minutes=random.randint(2, 50))
+                act_pick = random.choice([1, 2, 3, 4, 6])
+                events.append(SensingEvent(
+                    device_id=dev.id,
+                    room_id=dev.room_id,
+                    timestamp=evt_time,
+                    rssi=random.randint(-70, -48),
+                    subcarrier_count=64,
+                    extracted_features={"historical_log": True},
+                    inferred_activity_id=act_pick,
+                    model_confidence=round(random.uniform(0.88, 0.98), 2)
+                ))
+
+    session.add_all(events)
     session.commit()
+
+    # 15. Seed Alerts (Strict Separation: CARE vs SPACE)
+    # -------------------------------------------------
+    alerts = []
+
+    # CARE ALERTS
+    # 1. Active Critical Fall in Bathroom 1
+    alerts.append(Alert(
+        room_id=rm_bath_1.id,
+        event_type="Fall_Detected",
+        severity="CRITICAL",
+        status="new",
+        message="Critical Fall Alert: K. C. Mathew sudden stance collapse detected in Wing A Ensuite Bathroom 1",
+        created_at=now - timedelta(minutes=1, seconds=30)
+    ))
+
+    # 2. Acknowledged Fall Alert in Room 202
+    alerts.append(Alert(
+        room_id=rm_202.id,
+        event_type="Fall_Detected",
+        severity="CRITICAL",
+        status="acknowledged",
+        message="Fall Signature Warning: Mariamma Kuruvilla sudden floor descent in Resident Room 202",
+        created_at=now - timedelta(minutes=35)
+    ))
+
+    # 3. Active Extended Inactivity Alert in Room 101
+    alerts.append(Alert(
+        room_id=rm_101.id,
+        event_type="Prolonged_Inactivity",
+        severity="MEDIUM",
+        status="new",
+        message="Extended Inactivity Detected: Devassy Varghese has remained seated without postural change for over 75 minutes in Resident Room 101",
+        created_at=now - timedelta(minutes=2)
+    ))
+
+    # 4. Active Nighttime Movement in Room 104
+    alerts.append(Alert(
+        room_id=rm_104.id,
+        event_type="Nighttime_Movement",
+        severity="LOW",
+        status="new",
+        message="Nighttime Activity Notice: Rosamma Thomas unassisted ambulation detected during resting hours in Resident Room 104",
+        created_at=now - timedelta(minutes=12)
+    ))
+
+    # 5. Resolved Care Alert: Bedside Assist (Room 204)
+    alerts.append(Alert(
+        room_id=rm_204.id,
+        event_type="Fall_Detected",
+        severity="CRITICAL",
+        status="resolved",
+        message="Fall Risk Incident: Mary Joseph slip transfer near bedside in Resident Room 204",
+        created_at=now - timedelta(hours=4, minutes=10)
+    ))
+
+    # 6. Resolved Care Alert: Loss of balance (Physiotherapy Clinic)
+    alerts.append(Alert(
+        room_id=rm_physio.id,
+        event_type="Rapid_Deceleration",
+        severity="HIGH",
+        status="resolved",
+        message="Postural Instability Warning: Thomas Varkey balance loss during parallel bar walk in Central Physiotherapy Clinic",
+        created_at=now - timedelta(days=1, hours=3)
+    ))
+
+    # 7. Resolved Care Alert: Slip warning (Room 102)
+    alerts.append(Alert(
+        room_id=rm_102.id,
+        event_type="Fall_Detected",
+        severity="HIGH",
+        status="resolved",
+        message="Sudden Descent: Annamma Joseph dropped glasses in Resident Room 102",
+        created_at=now - timedelta(days=2, hours=6)
+    ))
+
+    # SPACE ALERTS
+    # 8. Active Space Alert: Unexpected Occupancy (Computer Lab 1)
+    alerts.append(Alert(
+        room_id=rm_comp_lab1.id,
+        event_type="Unexpected_Occupancy",
+        severity="MEDIUM",
+        status="new",
+        message="Unexpected Occupancy Alert: Motion detected in Computer Lab 1 during scheduled vacant maintenance window",
+        created_at=now - timedelta(minutes=3)
+    ))
+
+    # 9. Active Space Alert: After-hours Activity (Research Lab 2)
+    alerts.append(Alert(
+        room_id=rm_res_lab2.id,
+        event_type="Restricted_Hours_Activity",
+        severity="HIGH",
+        status="new",
+        message="Restricted Hours Breach: Unexpected activity detected in Research Lab 2 outside authorized access hours",
+        created_at=now - timedelta(minutes=18)
+    ))
+
+    # 10. Active Space Alert: Energy Waste Recommendation (Board Meeting Room B)
+    alerts.append(Alert(
+        room_id=rm_meet_b.id,
+        event_type="Energy_Efficiency_Recommendation",
+        severity="LOW",
+        status="new",
+        message="Energy Advisory: Board Meeting Room B has remained vacant for 2.5 hours while AC is ON. Auto-standby recommended.",
+        created_at=now - timedelta(minutes=45)
+    ))
+
+    # 11. Active Space Alert: Energy Waste Recommendation (Smart Classroom 102)
+    alerts.append(Alert(
+        room_id=rm_class_102.id,
+        event_type="Energy_Efficiency_Recommendation",
+        severity="LOW",
+        status="new",
+        message="HVAC Optimization: Smart Classroom 102 vacant for 1.8 hours with HVAC running. Auto-standby recommended.",
+        created_at=now - timedelta(hours=1, minutes=10)
+    ))
+
+    # 12. Resolved Space Alert: Janitorial Off-hours sweep (MCA Seminar Hall)
+    alerts.append(Alert(
+        room_id=rm_seminar_mca.id,
+        event_type="Restricted_Hours_Activity",
+        severity="LOW",
+        status="resolved",
+        message="Off-Hours Detection: Routine cleaning personnel sweep in MCA Seminar Hall",
+        created_at=now - timedelta(days=2, hours=10)
+    ))
+
+    session.add_all(alerts)
+    session.commit()
+    for a in alerts:
+        session.refresh(a)
+
+    # 16. Seed Alert Acknowledgements & Resolution Notes
+    session.add_all([
+        # Incident 2 (acknowledged by Abhinanth)
+        AlertAcknowledgement(
+            alert_id=alerts[1].id,
+            user_id=abhinanth_user.id,
+            acknowledged_at=now - timedelta(minutes=30)
+        ),
+        # Incident 5 (resolved by Sr. Mary)
+        AlertAcknowledgement(
+            alert_id=alerts[4].id,
+            user_id=mary_user.id,
+            acknowledged_at=now - timedelta(hours=4, minutes=5),
+            resolved_at=now - timedelta(hours=3, minutes=50),
+            resolution_notes="Responded to Room 204 immediately. Mary Joseph was safely seated in armchair; no trauma, vitals stable (BP 120/78). Blanket provided."
+        ),
+        # Incident 6 (resolved by Dr. Elizabeth)
+        AlertAcknowledgement(
+            alert_id=alerts[5].id,
+            user_id=elizabeth_user.id,
+            acknowledged_at=now - timedelta(days=1, hours=2, minutes=55),
+            resolved_at=now - timedelta(days=1, hours=2, minutes=45),
+            resolution_notes="Physiotherapist caught Thomas Varkey during balance exercise. Assisted to rest couch; gait stability assessment logged."
+        ),
+        # Incident 7 (resolved by Abhinanth)
+        AlertAcknowledgement(
+            alert_id=alerts[6].id,
+            user_id=abhinanth_user.id,
+            acknowledged_at=now - timedelta(days=2, hours=5, minutes=55),
+            resolved_at=now - timedelta(days=2, hours=5, minutes=40),
+            resolution_notes="Annamma Joseph was retrieving reading glasses from bedside rug. Helped her upright; no injury."
+        ),
+        # Incident 12 (resolved by Abhinand)
+        AlertAcknowledgement(
+            alert_id=alerts[11].id,
+            user_id=abhinand_user.id,
+            acknowledged_at=now - timedelta(days=2, hours=9, minutes=50),
+            resolved_at=now - timedelta(days=2, hours=9, minutes=45),
+            resolution_notes="Verified authorized night custodial pass. All security locks confirmed intact."
+        )
+    ])
+    session.commit()
+
+    print("[WIFISENSE SEED ENGINE] Database seeded with realistic, strictly separated CARE and SPACE datasets successfully!")

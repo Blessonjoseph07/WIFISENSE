@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { getNavItemsForUser } from "../navigation/navConfig";
 
 export default function SpaceAppShell({
@@ -23,6 +23,13 @@ export default function SpaceAppShell({
   API_BASE,
   children
 }) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const navItems = getNavItemsForUser(appContext, role, isSystemAdmin);
   const activeAlertsCount = alerts?.filter(a => a.status === "new").length || 0;
 
@@ -107,6 +114,10 @@ export default function SpaceAppShell({
           </div>
 
           <div className="flex items-center gap-gutter">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-xs font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
+            </div>
             <div className="flex items-center gap-stack-sm border-l border-slate-200 dark:border-slate-800 pl-gutter">
               <button
                 onClick={() => {

@@ -26,7 +26,6 @@ class UserOut(BaseModel):
     first_name: str
     last_name: str
     is_active: bool
-    photo_url: Optional[str] = None
     resident_id: Optional[str] = None
     created_at: datetime
 
@@ -37,31 +36,9 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     role: str
-    application_context: str
-    is_system_admin: bool = False
     user: UserOut
-
-class SharingPolicyOut(BaseModel):
-    id: str
-    organization_id: Optional[str] = None
-    resident_id: Optional[str] = None
-    share_presence: bool
-    share_activity_detail: bool
-    share_room_name: bool
-    share_alert_history: bool
-    share_alert_severity_threshold: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class SharingPolicyUpdate(BaseModel):
-    share_presence: Optional[bool] = None
-    share_activity_detail: Optional[bool] = None
-    share_room_name: Optional[bool] = None
-    share_alert_history: Optional[bool] = None
-    share_alert_severity_threshold: Optional[str] = None
+    application_context: str
+    is_system_admin: bool
 
 class AccessRequestCreate(BaseModel):
     resident_id: str
@@ -137,6 +114,7 @@ class RoomCreate(BaseModel):
     floor_id: str
     name: str
     room_type: str
+    classification: Optional[str] = None
     capacity: Optional[int] = 1
     dimensions_metadata: Optional[Dict[str, Any]] = None
 
@@ -145,6 +123,7 @@ class RoomOut(BaseModel):
     floor_id: str
     name: str
     room_type: str
+    classification: Optional[str] = None
     capacity: int
     dimensions_metadata: Optional[Dict[str, Any]]
     created_at: datetime
@@ -165,41 +144,7 @@ class SensingDeviceOut(BaseModel):
     mac_address: str
     device_status: str
     firmware_version: Optional[str]
-    hardware_token: Optional[str] = None
     last_seen_at: Optional[datetime]
-    created_at: datetime
-    updated_at: datetime
-    organization_id: Optional[str] = None
-    organization_name: Optional[str] = None
-    organization_type: Optional[str] = None
-    building_name: Optional[str] = None
-    room_name: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-class FaultReportCreate(BaseModel):
-    issue_type: str = "FAULTY_CSI_VALUES"
-    description: str
-    severity: str = "HIGH"
-
-class FaultReportServiceUpdate(BaseModel):
-    status: str # UNDER_INSPECTION, DISPATCHED_SERVICE, REPLACED_RESOLVED
-    service_notes: Optional[str] = None
-
-class FaultReportOut(BaseModel):
-    id: str
-    device_id: str
-    mac_address: Optional[str] = None
-    room_name: Optional[str] = None
-    organization_name: Optional[str] = None
-    organization_type: Optional[str] = None
-    issue_type: str
-    description: str
-    severity: str
-    tracer_token: str
-    status: str
-    service_notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -293,3 +238,76 @@ class AlertSummaryOut(BaseModel):
     total_alerts: int
     status_counts: Dict[str, int]
     severity_counts: Dict[str, int]
+
+class HealthConditionOut(BaseModel):
+    id: str
+    resident_id: str
+    condition_name: str
+    notes: Optional[str]
+    diagnosed_date: Optional[datetime]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class FaultReportCreate(BaseModel):
+    issue_type: str = "FAULTY_CSI_VALUES"
+    description: str
+    severity: str = "HIGH"
+
+class FaultReportServiceUpdate(BaseModel):
+    status: str
+    service_notes: Optional[str] = None
+
+class FaultReportOut(BaseModel):
+    id: str
+    device_id: str
+    mac_address: Optional[str] = "Unknown MAC"
+    room_name: Optional[str] = "Unassigned Room"
+    organization_name: Optional[str] = "Global / Unassigned"
+    organization_type: Optional[str] = "SYSTEM"
+    issue_type: str
+    description: str
+    severity: str
+    tracer_token: str
+    status: str
+    service_notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SharingPolicyOut(BaseModel):
+    id: str
+    organization_id: Optional[str] = None
+    resident_id: Optional[str] = None
+    share_presence: bool
+    share_activity_detail: bool
+    share_room_name: bool
+    share_alert_history: bool
+    share_alert_severity_threshold: str = "MEDIUM"
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SharingPolicyUpdate(BaseModel):
+    share_presence: Optional[bool] = None
+    share_activity_detail: Optional[bool] = None
+    share_room_name: Optional[bool] = None
+    share_alert_history: Optional[bool] = None
+    share_alert_severity_threshold: Optional[str] = None
+
+class PersonnelOut(BaseModel):
+    id: str
+    email: str
+    first_name: str
+    last_name: str
+    is_active: bool
+    role_name: str
+    scope_description: str
+    permissions: List[str]
