@@ -109,6 +109,36 @@ class AccessRequest(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+class FamilyConnection(SQLModel, table=True):
+    __tablename__ = "family_connections"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    family_user_id: str = Field(foreign_key="users.id", nullable=False)
+    relationship: str = Field(nullable=False) # Son, Daughter, Son-in-law, Daughter-in-law, Grandson, Granddaughter, Brother, Sister, Other
+    status: str = Field(default="pending") # pending, approved, rejected, revoked
+    requested_at: datetime = Field(default_factory=datetime.utcnow)
+    approved_at: Optional[datetime] = Field(default=None)
+    approved_by: Optional[str] = Field(default=None, foreign_key="users.id")
+    revoked_at: Optional[datetime] = Field(default=None)
+    notes: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resident: "Resident" = Relationship(back_populates="family_connections")
+
+class FamilySubscription(SQLModel, table=True):
+    __tablename__ = "family_subscriptions"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    family_user_id: str = Field(foreign_key="users.id", nullable=False)
+    family_connection_id: Optional[str] = Field(default=None, foreign_key="family_connections.id")
+    plan: str = Field(default="CARE_MONTHLY")
+    status: str = Field(default="PENDING") # PENDING, ACTIVE, EXPIRED, SUSPENDED, CANCELLED
+    start_date: Optional[datetime] = Field(default=None)
+    end_date: Optional[datetime] = Field(default=None)
+    renewal_date: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 class CaregiverProfile(SQLModel, table=True):
     __tablename__ = "caregiver_profiles"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -166,6 +196,75 @@ class NodeFaultReport(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+class EmergencyContact(SQLModel, table=True):
+    __tablename__ = "emergency_contacts"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    name: str = Field(nullable=False)
+    relationship: str = Field(nullable=False)
+    phone: str = Field(nullable=False)
+    priority: int = Field(default=1) # 1 = primary, 2 = secondary
+    email: Optional[str] = Field(default=None)
+    availability: Optional[str] = Field(default="24/7 Primary Response")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resident: "Resident" = Relationship(back_populates="emergency_contacts")
+
+class Doctor(SQLModel, table=True):
+    __tablename__ = "doctors"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    name: str = Field(nullable=False)
+    specialty: str = Field(nullable=False)
+    hospital: Optional[str] = Field(default=None)
+    phone: Optional[str] = Field(default=None)
+    email: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resident: "Resident" = Relationship(back_populates="doctors")
+
+class HospitalVisit(SQLModel, table=True):
+    __tablename__ = "hospital_visits"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    hospital_name: str = Field(nullable=False)
+    reason: str = Field(nullable=False)
+    visit_date: datetime = Field(default_factory=datetime.utcnow)
+    discharge_date: Optional[datetime] = Field(default=None)
+    doctor_notes: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resident: "Resident" = Relationship(back_populates="hospital_visits")
+
+class LabReport(SQLModel, table=True):
+    __tablename__ = "lab_reports"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    test_name: str = Field(nullable=False)
+    test_date: datetime = Field(default_factory=datetime.utcnow)
+    result_summary: str = Field(nullable=False)
+    normal_range: Optional[str] = Field(default=None)
+    flag: Optional[str] = Field(default="NORMAL") # NORMAL, ELEVATED, HIGH, CRITICAL
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resident: "Resident" = Relationship(back_populates="lab_reports")
+
+class Prescription(SQLModel, table=True):
+    __tablename__ = "prescriptions"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False)
+    medication_name: str = Field(nullable=False)
+    dosage: str = Field(nullable=False)
+    frequency: str = Field(nullable=False)
+    start_date: datetime = Field(default_factory=datetime.utcnow)
+    end_date: Optional[datetime] = Field(default=None)
+    prescribing_doctor: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    resident: "Resident" = Relationship(back_populates="prescriptions")
+
 class Resident(SQLModel, table=True):
     __tablename__ = "residents"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -173,11 +272,18 @@ class Resident(SQLModel, table=True):
     first_name: str = Field(nullable=False)
     last_name: str = Field(nullable=False)
     date_of_birth: Optional[datetime] = Field(default=None)
+    resident_status: Optional[str] = Field(default="Active")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     room: Room = Relationship(back_populates="residents")
     health_conditions: List["HealthCondition"] = Relationship(back_populates="resident", cascade_delete=True)
+    emergency_contacts: List[EmergencyContact] = Relationship(back_populates="resident", cascade_delete=True)
+    doctors: List[Doctor] = Relationship(back_populates="resident", cascade_delete=True)
+    hospital_visits: List[HospitalVisit] = Relationship(back_populates="resident", cascade_delete=True)
+    lab_reports: List[LabReport] = Relationship(back_populates="resident", cascade_delete=True)
+    prescriptions: List[Prescription] = Relationship(back_populates="resident", cascade_delete=True)
+    family_connections: List[FamilyConnection] = Relationship(back_populates="resident", cascade_delete=True)
 
 class HealthCondition(SQLModel, table=True):
     __tablename__ = "health_conditions"
@@ -205,11 +311,42 @@ class SensingEvent(SQLModel, table=True):
     room_id: str = Field(foreign_key="rooms.id", nullable=False)
     timestamp: datetime = Field(default_factory=datetime.utcnow, index=True)
     rssi: int = Field(nullable=False)
-    subcarrier_count: int = Field(nullable=False)
+    subcarrier_count: int = Field(default=56)
+    signal_quality: Optional[int] = Field(default=94)
+    event_type: Optional[str] = Field(default="SensingTelemetry")
     raw_csi_payload_path: Optional[str] = Field(default=None)
     extracted_features: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     inferred_activity_id: int = Field(foreign_key="activity_types.id", nullable=False)
     model_confidence: float = Field(nullable=False)
+
+class RoomCalibration(SQLModel, table=True):
+    __tablename__ = "room_calibrations"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    room_id: str = Field(foreign_key="rooms.id", nullable=False)
+    device_id: Optional[str] = Field(default=None, foreign_key="devices.id")
+    baseline_status: str = Field(default="VALID") # VALID, CALIBRATION_REQUIRED, CAPTURING
+    baseline_captured_at: datetime = Field(default_factory=datetime.utcnow)
+    noise_floor_dbm: int = Field(default=-88)
+    baseline_rssi: int = Field(default=-48)
+    rf_similarity_pct: float = Field(default=96.0) # 0 - 100%
+    rf_environment_status: str = Field(default="NORMAL") # NORMAL, ENVIRONMENT_CHANGED
+    subcarrier_profile: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class RoomSchedule(SQLModel, table=True):
+    __tablename__ = "room_schedules"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    room_id: str = Field(foreign_key="rooms.id", nullable=False)
+    day_of_week: str = Field(default="ALL")
+    start_time: str = Field(default="09:00")
+    end_time: str = Field(default="17:00")
+    expected_status: str = Field(default="FREE") # FREE, BOOKED, AFTER_HOURS_CLOSED
+    meeting_title: Optional[str] = Field(default=None)
+    organizer: Optional[str] = Field(default=None)
+    ac_state: Optional[str] = Field(default="OFF") # ON, OFF
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 # ============================================================================
 # 4. ALERTS & NOTIFICATION ENGINE

@@ -6,7 +6,8 @@ export const BACKEND_ROLES = [
   "facility_manager",
   "caregiver",
   "corporate_staff",
-  "emergency_contact"
+  "emergency_contact",
+  "family_member"
 ];
 
 export const APP_CONTEXTS = {
@@ -24,9 +25,9 @@ export const VIEW_DEFINITIONS = {
   },
   caregiver: {
     id: "caregiver",
-    label: "Caregiver Dashboard",
-    icon: "medical_services",
-    description: "Resident vitals, shift logs, and fall alerts"
+    label: "Elder Care & Safety",
+    icon: "health_and_safety",
+    description: "Resident health status, clinical details, CSI telemetry, and fall alerts"
   },
   residents: {
     id: "residents",
@@ -50,13 +51,13 @@ export const VIEW_DEFINITIONS = {
     id: "assets",
     label: "Facility & Assets",
     icon: "account_tree",
-    description: "Buildings, floors, and room infrastructure management"
+    description: "Buildings, floors, rooms, and schedule management"
   },
   devices: {
     id: "devices",
-    label: "Sensing Devices",
+    label: "Devices & Service Desk",
     icon: "router",
-    description: "Wi-Fi sensing node provisioning and status"
+    description: "Wi-Fi sensing node provisioning, CSI diagnostics, and fault repairs"
   },
   alerts: {
     id: "alerts",
@@ -73,9 +74,9 @@ export const VIEW_DEFINITIONS = {
   },
   orgadmin: {
     id: "orgadmin",
-    label: "Organization Admin",
+    label: "Staff & Organization",
     icon: "settings_applications",
-    description: "Organization policies, link requests, and user administration"
+    description: "Personnel management, policies, and link requests"
   },
   sysadmin: {
     id: "sysadmin",
@@ -87,13 +88,13 @@ export const VIEW_DEFINITIONS = {
     id: "profile",
     label: "My Profile",
     icon: "person",
-    description: "Manage your caregiver profile and settings"
+    description: "Manage your profile and account settings"
   },
   family: {
     id: "family",
-    label: "Family Member Portal",
+    label: "Family Portal",
     icon: "group",
-    description: "Elder-care resident safety updates and privacy sharing"
+    description: "Elder-care resident safety updates and subscription status"
   }
 };
 
@@ -101,25 +102,31 @@ export const VIEW_DEFINITIONS = {
 const MATRIX = {
   [APP_CONTEXTS.CARE]: {
     caregiver: {
-      allowedViews: ["dashboard", "caregiver", "alerts", "residents", "occupancy", "family", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "alerts", "devices", "occupancy", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Caregiver",
       theme: "care"
     },
     facility_manager: {
-      allowedViews: ["assets", "devices", "dashboard", "alerts", "occupancy", "analytics", "family", "profile"],
-      defaultView: "assets",
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      defaultView: "dashboard",
       badgeText: "CARE • Facility Manager",
       theme: "care"
     },
     organization_admin: {
-      allowedViews: ["orgadmin", "assets", "devices", "alerts", "analytics", "residents", "family", "profile"],
-      defaultView: "orgadmin",
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      defaultView: "dashboard",
       badgeText: "CARE • Org Administrator",
       theme: "care"
     },
+    family_member: {
+      allowedViews: ["family", "profile"],
+      defaultView: "family",
+      badgeText: "CARE • Family Portal",
+      theme: "care"
+    },
     emergency_contact: {
-      allowedViews: ["family"],
+      allowedViews: ["family", "profile"],
       defaultView: "family",
       badgeText: "CARE • Family Portal",
       theme: "care"
@@ -127,27 +134,27 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SPACE]: {
     corporate_staff: {
-      allowedViews: ["corporate", "occupancy", "analytics", "profile"],
+      allowedViews: ["corporate", "occupancy", "alerts", "profile"],
       defaultView: "corporate",
       badgeText: "SPACE • Staff",
       theme: "space"
     },
     facility_manager: {
-      allowedViews: ["assets", "devices", "occupancy", "analytics", "alerts", "profile"],
-      defaultView: "assets",
+      allowedViews: ["corporate", "occupancy", "assets", "analytics", "alerts", "devices", "profile"],
+      defaultView: "corporate",
       badgeText: "SPACE • Facility Manager",
       theme: "space"
     },
     organization_admin: {
-      allowedViews: ["orgadmin", "assets", "devices", "occupancy", "analytics", "alerts"],
-      defaultView: "orgadmin",
+      allowedViews: ["corporate", "occupancy", "assets", "analytics", "alerts", "devices", "profile"],
+      defaultView: "corporate",
       badgeText: "SPACE • Org Administrator",
       theme: "space"
     }
   },
   [APP_CONTEXTS.SYSTEM]: {
     system_admin: {
-      allowedViews: ["sysadmin", "orgadmin", "assets", "devices", "alerts", "analytics", "occupancy", "dashboard", "profile"],
+      allowedViews: ["sysadmin", "orgadmin", "devices", "alerts", "analytics", "assets", "occupancy", "dashboard", "profile"],
       defaultView: "sysadmin",
       badgeText: "SYSTEM CONSOLE",
       theme: "system"

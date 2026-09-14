@@ -28,6 +28,7 @@ import DevicesView from "./views/DevicesView";
 import ResidentsView from "./views/ResidentsView";
 import AlertsView from "./views/AlertsView";
 import UserProfileView from "./views/UserProfileView";
+import EmergencyFallModal from "./components/EmergencyFallModal";
 
 const API_BASE = "http://localhost:8000";
 
@@ -1565,6 +1566,9 @@ export default function App() {
               exportCorporateAnalytics={exportCorporateAnalytics}
               occupancySummary={occupancySummary}
               generateRepurposingReport={generateRepurposingReport}
+              authToken={token}
+              setToastMessage={setToastMessage}
+              fetchAllData={fetchAllData}
             />
           )}
 
@@ -1585,6 +1589,7 @@ export default function App() {
               setStrictPrivacy={setStrictPrivacy}
               contextualVisibility={contextualVisibility}
               setContextualVisibility={setContextualVisibility}
+              authToken={token}
             />
           )}
 
@@ -2124,6 +2129,20 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Real-time CSI Emergency Fall Protocol Modal (Auto-pops for Elder Caregiver & Facility Manager) */}
+      {token &&
+        appContext === "ELDER_CARE" &&
+        !isSystemAdmin &&
+        (role === "caregiver" || role === "organization_admin" || role === "facility_manager") && (
+          <EmergencyFallModal
+            authToken={token}
+            role={role}
+            appContext={appContext}
+            isSystemAdmin={isSystemAdmin}
+            onActionComplete={fetchAllData}
+          />
+        )}
 
       {/* 8. Emergency Protocol Animated Modal */}
       {showEmergencyModal && (
