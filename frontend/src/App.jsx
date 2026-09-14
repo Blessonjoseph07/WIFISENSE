@@ -30,7 +30,7 @@ import AlertsView from "./views/AlertsView";
 import UserProfileView from "./views/UserProfileView";
 import EmergencyFallModal from "./components/EmergencyFallModal";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function App() {
   // Loading & Pre-Entry Screen State
@@ -172,7 +172,6 @@ export default function App() {
   const [regPassword, setRegPassword] = useState("");
   const [regFirst, setRegFirst] = useState("");
   const [regLast, setRegLast] = useState("");
-  const [regRole, setRegRole] = useState("caregiver");
   const [isRegistering, setIsRegistering] = useState(false);
 
   // Asset Creation Inputs
@@ -594,8 +593,7 @@ export default function App() {
           email: regEmail,
           password: regPassword,
           first_name: regFirst,
-          last_name: regLast,
-          role: regRole
+          last_name: regLast
         })
       });
       if (!res.ok) {
@@ -1303,8 +1301,12 @@ export default function App() {
                     className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
+                    minLength={8}
                     required
                   />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Minimum 8 characters. New accounts start with family / emergency-contact access; an administrator assigns staff roles.
+                  </p>
                 </div>
                 <div className="flex items-center justify-between pt-4">
                   <button type="button" onClick={() => setIsRegistering(false)} className="text-slate-500 dark:text-slate-400 font-medium text-xs hover:underline">
