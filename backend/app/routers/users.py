@@ -3,7 +3,11 @@ import time
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
-from PIL import Image, UnidentifiedImageError
+try:
+    from PIL import Image, UnidentifiedImageError
+except ImportError:
+    Image = None
+    UnidentifiedImageError = Exception
 from sqlmodel import Session
 from app.core.config import settings
 from app.core.database import get_session
