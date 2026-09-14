@@ -311,3 +311,257 @@ class PersonnelOut(BaseModel):
     role_name: str
     scope_description: str
     permissions: List[str]
+
+# ============================================================================
+# 6. EMERGENCY CONTACT & MEDICAL SCHEMAS
+# ============================================================================
+
+class EmergencyContactCreate(BaseModel):
+    resident_id: str
+    name: str
+    relationship: str
+    phone: str
+    priority: Optional[int] = 1
+    email: Optional[str] = None
+    availability: Optional[str] = "24/7 Primary Response"
+
+class EmergencyContactUpdate(BaseModel):
+    name: Optional[str] = None
+    relationship: Optional[str] = None
+    phone: Optional[str] = None
+    priority: Optional[int] = None
+    email: Optional[str] = None
+    availability: Optional[str] = None
+
+class EmergencyContactOut(BaseModel):
+    id: str
+    resident_id: str
+    name: str
+    relationship: str
+    phone: str
+    priority: int
+    email: Optional[str] = None
+    availability: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class DoctorCreate(BaseModel):
+    resident_id: str
+    name: str
+    specialty: str
+    hospital: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+class DoctorOut(BaseModel):
+    id: str
+    resident_id: str
+    name: str
+    specialty: str
+    hospital: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class HospitalVisitCreate(BaseModel):
+    resident_id: str
+    hospital_name: str
+    reason: str
+    visit_date: datetime
+    discharge_date: Optional[datetime] = None
+    doctor_notes: Optional[str] = None
+
+class HospitalVisitOut(BaseModel):
+    id: str
+    resident_id: str
+    hospital_name: str
+    reason: str
+    visit_date: datetime
+    discharge_date: Optional[datetime] = None
+    doctor_notes: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class LabReportCreate(BaseModel):
+    resident_id: str
+    test_name: str
+    test_date: datetime
+    result_summary: str
+    normal_range: Optional[str] = None
+    flag: Optional[str] = "NORMAL"
+
+class LabReportOut(BaseModel):
+    id: str
+    resident_id: str
+    test_name: str
+    test_date: datetime
+    result_summary: str
+    normal_range: Optional[str] = None
+    flag: Optional[str] = "NORMAL"
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PrescriptionCreate(BaseModel):
+    resident_id: str
+    medication_name: str
+    dosage: str
+    frequency: str
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    prescribing_doctor: Optional[str] = None
+
+class PrescriptionOut(BaseModel):
+    id: str
+    resident_id: str
+    medication_name: str
+    dosage: str
+    frequency: str
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    prescribing_doctor: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ResidentDetailOut(BaseModel):
+    id: str
+    room_id: str
+    room_name: Optional[str] = None
+    first_name: str
+    last_name: str
+    date_of_birth: Optional[datetime] = None
+    resident_status: Optional[str] = "Active"
+    emergency_contacts: List[EmergencyContactOut] = []
+    health_conditions: List[HealthConditionOut] = []
+    doctors: List[DoctorOut] = []
+    hospital_visits: List[HospitalVisitOut] = []
+    lab_reports: List[LabReportOut] = []
+    prescriptions: List[PrescriptionOut] = []
+    current_activity: Optional[str] = "Resting"
+    latest_sensing_event: Optional[Dict[str, Any]] = None
+    safety_status: Optional[str] = "Normal"
+    active_alert: Optional[Dict[str, Any]] = None
+    recent_activity_history: List[Dict[str, Any]] = []
+
+# ============================================================================
+# 7. FAMILY CONNECTION & SUBSCRIPTION SCHEMAS
+# ============================================================================
+
+class FamilyConnectionCreate(BaseModel):
+    resident_id: str
+    relationship: str # Son, Daughter, Son-in-law, Daughter-in-law, Grandson, Granddaughter, Brother, Sister, Other
+    notes: Optional[str] = None
+
+class FamilyConnectionReview(BaseModel):
+    status: str # approved, rejected, revoked
+
+class FamilyConnectionOut(BaseModel):
+    id: str
+    resident_id: str
+    resident_name: Optional[str] = None
+    room_name: Optional[str] = None
+    family_user_id: str
+    family_user_name: Optional[str] = None
+    family_user_email: Optional[str] = None
+    relationship: str
+    status: str
+    requested_at: datetime
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    notes: Optional[str] = None
+    subscription_status: Optional[str] = "PENDING"
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class FamilySubscriptionUpdate(BaseModel):
+    status: str # PENDING, ACTIVE, EXPIRED, SUSPENDED, CANCELLED
+    plan: Optional[str] = "CARE_MONTHLY"
+
+class FamilySubscriptionOut(BaseModel):
+    id: str
+    family_user_id: str
+    family_connection_id: Optional[str] = None
+    plan: str
+    status: str
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    renewal_date: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ============================================================================
+# 8. ROOM CALIBRATION & SCHEDULE SCHEMAS
+# ============================================================================
+
+class RoomCalibrationOut(BaseModel):
+    id: str
+    room_id: str
+    room_name: Optional[str] = None
+    device_id: Optional[str] = None
+    device_mac: Optional[str] = None
+    baseline_status: str
+    baseline_captured_at: datetime
+    noise_floor_dbm: int
+    baseline_rssi: int
+    rf_similarity_pct: float
+    rf_environment_status: str
+    subcarrier_profile: Optional[Dict[str, Any]] = None
+
+    class Config:
+        from_attributes = True
+
+class RoomScheduleCreate(BaseModel):
+    room_id: str
+    day_of_week: Optional[str] = "ALL"
+    start_time: str
+    end_time: str
+    expected_status: Optional[str] = "FREE"
+    meeting_title: Optional[str] = None
+    organizer: Optional[str] = None
+    ac_state: Optional[str] = "OFF"
+
+class RoomScheduleOut(BaseModel):
+    id: str
+    room_id: str
+    day_of_week: str
+    start_time: str
+    end_time: str
+    expected_status: str
+    meeting_title: Optional[str] = None
+    organizer: Optional[str] = None
+    ac_state: Optional[str] = "OFF"
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class EnergyActionIn(BaseModel):
+    action: str = "SHUT_OFF_AC" # SHUT_OFF_AC, SHUT_OFF_LIGHTS, ECO_STANDBY, RESTORE_NORMAL
+
+class EnergyActionOut(BaseModel):
+    success: bool
+    room_id: str
+    room_name: str
+    action: str
+    energy_state: dict
+    message: str
+

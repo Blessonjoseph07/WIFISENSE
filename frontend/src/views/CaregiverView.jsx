@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import ResidentProfileModal from "../components/ResidentProfileModal";
 
 export default function CaregiverView({
   activeFallAlert = null,
@@ -10,17 +11,22 @@ export default function CaregiverView({
   rooms = [],
   occupancySummary = { occupied_room_details: [] },
   setCurrentView = () => {},
+  authToken = "",
 }) {
+  const [selectedResidentId, setSelectedResidentId] = useState(null);
+  const token = authToken || localStorage.getItem("token") || "";
+
   return (
     <div className="space-y-6 text-left">
       {/* Page Header */}
       <div className="mb-stack-lg flex justify-between items-end">
         <div>
-          <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">
-            Caregiver Dashboard
+          <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-600 text-3xl">health_and_safety</span>
+            Elder Care & Safety
           </h2>
           <p className="text-body-md text-slate-500 dark:text-slate-400">
-            Shift handovers, caregiver logs, and patient safety tracking.
+            Real-time resident monitoring, clinical profiles, emergency contacts, and fall protocol.
           </p>
         </div>
         <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
@@ -199,9 +205,9 @@ export default function CaregiverView({
                   <div
                     key={res.id}
                     onClick={() => {
-                      setCurrentView("occupancy");
+                      setSelectedResidentId(res.id);
                     }}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3 hover:border-teal-500 transition-colors cursor-pointer group"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3 hover:border-teal-500 transition-colors cursor-pointer group shadow-2xs hover:shadow-md"
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
@@ -333,6 +339,15 @@ export default function CaregiverView({
           </div>
         </aside>
       </div>
+
+      {/* Resident Clinical & CSI Profile Modal */}
+      {selectedResidentId && (
+        <ResidentProfileModal
+          residentId={selectedResidentId}
+          onClose={() => setSelectedResidentId(null)}
+          authToken={token}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,9 @@ import random
 from app.models.entities import (
     Role, User, UserRole, Organization, Building, Floor, Room, 
     SensingDevice, Resident, ActivityType, SensingEvent, Alert, AlertAcknowledgement, AccessRequest,
-    SharingPolicy, HealthCondition, CaregiverProfile, NodeFaultReport
+    SharingPolicy, HealthCondition, CaregiverProfile, NodeFaultReport,
+    EmergencyContact, Doctor, HospitalVisit, LabReport, Prescription,
+    FamilyConnection, FamilySubscription, RoomCalibration, RoomSchedule
 )
 from app.core.security import hash_password
 
@@ -14,7 +16,8 @@ ROLE_MAPPING = {
     "facility_manager": 3,
     "caregiver": 4,
     "corporate_staff": 5,
-    "emergency_contact": 6
+    "emergency_contact": 6,
+    "family_member": 7
 }
 
 ACTIVITY_MAPPING = {
@@ -34,7 +37,42 @@ def seed_database(session: Session, force: bool = False):
             return
 
     # 1. Clean existing tables
-
+    try:
+        session.execute(text("DELETE FROM family_subscriptions"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM family_connections"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM prescriptions"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM lab_reports"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM hospital_visits"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM doctors"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM emergency_contacts"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM room_schedules"))
+    except Exception:
+        pass
+    try:
+        session.execute(text("DELETE FROM room_calibrations"))
+    except Exception:
+        pass
     try:
         session.execute(text("DELETE FROM node_fault_reports"))
     except Exception:
@@ -493,11 +531,11 @@ def seed_database(session: Session, force: bool = False):
         session.refresh(r)
 
     # 8. Seed Residents (Monitored Persons) - Strictly Elder Care
-    res_mary = Resident(
+    res_annamma = Resident(
         room_id=rm_204.id, 
-        first_name="Mary", 
+        first_name="Annamma", 
         last_name="Joseph", 
-        date_of_birth=datetime(1941, 9, 14)
+        date_of_birth=datetime(1938, 7, 22)
     )
     res_devassy = Resident(
         room_id=rm_101.id, 
@@ -505,11 +543,11 @@ def seed_database(session: Session, force: bool = False):
         last_name="Varghese", 
         date_of_birth=datetime(1942, 3, 10)
     )
-    res_annamma = Resident(
+    res_mary = Resident(
         room_id=rm_102.id, 
-        first_name="Annamma", 
+        first_name="Mary", 
         last_name="Joseph", 
-        date_of_birth=datetime(1938, 7, 22)
+        date_of_birth=datetime(1941, 9, 14)
     )
     res_mathew = Resident(
         room_id=rm_103.id, 
@@ -1389,4 +1427,9 @@ def seed_database(session: Session, force: bool = False):
     ])
     session.commit()
 
+    # 17. Seed Master Extensions (Emergency Contacts, Medical Records, Family Connections, Subscriptions, Calibrations, Schedules)
+    from app.core.seed_extensions import populate_master_extensions
+    populate_master_extensions(session, now)
+
     print("[WIFISENSE SEED ENGINE] Database seeded with realistic, strictly separated CARE and SPACE datasets successfully!")
+

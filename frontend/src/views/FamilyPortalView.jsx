@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 export default function FamilyPortalView({
   role = "",
@@ -13,460 +13,667 @@ export default function FamilyPortalView({
   setStrictPrivacy = () => {},
   contextualVisibility = true,
   setContextualVisibility = () => {},
+  authToken = "",
 }) {
-  return (
-    <div className="space-y-6 text-left">
-      {role !== "emergency_contact" ? (
-        /* Admin Preview / Warning */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center max-w-2xl mx-auto shadow-sm">
-          <div className="w-16 h-16 bg-teal-50 dark:bg-teal-950/20 rounded-full flex items-center justify-center mb-6 mx-auto">
-            <span className="material-symbols-outlined text-[36px] text-teal-600">verified_user</span>
+  const [connections, setConnections] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [adminViewTab, setAdminViewTab] = useState("connections"); // "connections" | "subscriptions" | "preview"
+  const [newRelationship, setNewRelationship] = useState("Son");
+  const [newNotes, setNewNotes] = useState("");
+  const [submittingConnection, setSubmittingConnection] = useState(false);
+
+  const token = authToken || localStorage.getItem("token") || "";
+  const isAdmin = role === "system_admin" || role === "organization_admin" || role === "facility_manager";
+
+  const fetchConnectionsAndSubscriptions = async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      const connRes = await fetch("http://127.0.0.1:8000/family/connections", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (connRes.ok) {
+        setConnections(await connRes.json());
+      }
+
+      const subRes = await fetch("http://127.0.0.1:8000/family/subscriptions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (subRes.ok) {
+        setSubscriptions(await subRes.json());
+      }
+    } catch (e) {
+      console.warn("Failed to load family connections:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchConnectionsAndSubscriptions();
+  }, [token]);
+
+  const handleReviewConnection = async (connectionId, newStatus) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/family/connections/${connectionId}/review`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setToastMessage({
+          type: "success",
+          text: `Family connection status updated to: ${newStatus.toUpperCase()}`,
+        });
+        fetchConnectionsAndSubscriptions();
+      } else {
+        const err = await res.json();
+        setToastMessage({ type: "error", text: err.detail || "Failed to update connection." });
+      }
+    } catch (e) {
+      setToastMessage({ type: "error", text: "Network error updating connection." });
+    }
+  };
+
+  const handleToggleSubscription = async (subId, currentStatus) => {
+    const nextStatus = currentStatus === "ACTIVE" ? "PENDING" : "ACTIVE";
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/family/subscriptions/${subId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        setToastMessage({
+          type: "success",
+          text: `Subscription set to ${nextStatus}`,
+        });
+        fetchConnectionsAndSubscriptions();
+      }
+    } catch (e) {
+      setToastMessage({ type: "error", text: "Failed to update subscription." });
+    }
+  };
+
+  const handleCreateConnection = async (e) => {
+    e.preventDefault();
+    if (!selectedRequestResidentId) return;
+    setSubmittingConnection(true);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/family/connections", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resident_id: selectedRequestResidentId,
+          relationship: newRelationship,
+          notes: newNotes,
+        }),
+      });
+      if (res.ok) {
+        setToastMessage({
+          type: "success",
+          text: "Connection request submitted. Awaiting Facility Manager approval.",
+        });
+        setSelectedRequestResidentId("");
+        setNewNotes("");
+        fetchConnectionsAndSubscriptions();
+      } else {
+        const err = await res.json();
+        setToastMessage({ type: "error", text: err.detail || "Failed to submit request." });
+      }
+    } catch (e) {
+      setToastMessage({ type: "error", text: "Network error submitting request." });
+    } finally {
+      setSubmittingConnection(false);
+    }
+  };
+
+  // =========================================================================
+  // ADMIN / FACILITY MANAGER VIEW
+  // =========================================================================
+  if (isAdmin) {
+    return (
+      <div className="space-y-6 text-left">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-600 text-3xl">family_restroom</span>
+              Family Portal Administration
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Manage multi-resident family connections, access verification, and subscription gating.
+            </p>
           </div>
-          <h2 className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold mb-2">
-            Administrative Preview Mode
-          </h2>
-          <p className="text-body-md text-slate-500 dark:text-slate-400 mb-6">
-            This Family Member Portal is customized exclusively for elder-care resident emergency
-            contacts. Administrators can approve access link requests, but to view the live dashboard
-            interface, please register a family member account and submit a link request.
-          </p>
-          <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-lg border border-slate-200 dark:border-slate-850 text-left text-xs space-y-3">
-            <div className="font-bold text-slate-800 dark:text-white uppercase tracking-wider">
-              Demo Credentials:
-            </div>
-            <div className="flex justify-between">
-              <span>John Smith (Approved Link):</span>{" "}
-              <code className="bg-slate-250 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">
-                john@wifisense.com / johnpassword
-              </code>
-            </div>
-            <div className="flex justify-between">
-              <span>Susan Varghese (Pending Link):</span>{" "}
-              <code className="bg-slate-255 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">
-                susan@wifisense.com / susanpassword
-              </code>
-            </div>
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button
+              onClick={() => setAdminViewTab("connections")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                adminViewTab === "connections"
+                  ? "bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              Connections ({connections.length})
+            </button>
+            <button
+              onClick={() => setAdminViewTab("subscriptions")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                adminViewTab === "subscriptions"
+                  ? "bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              Subscriptions ({subscriptions.length})
+            </button>
+            <button
+              onClick={() => setAdminViewTab("preview")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                adminViewTab === "preview"
+                  ? "bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              Member Preview
+            </button>
           </div>
         </div>
-      ) : !familyStatus ? (
-        /* Loading */
-        <div className="p-8 text-center text-slate-500 italic">Syncing family portal status...</div>
-      ) : familyStatus.linked === false ? (
-        /* Unlinked Statuses */
-        <div className="space-y-6">
-          {familyStatus.request_status === "pending" ? (
-            /* Pending Request */
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center max-w-2xl mx-auto shadow-sm">
-              <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/20 rounded-full flex items-center justify-center mb-6 mx-auto animate-pulse">
-                <span className="material-symbols-outlined text-[36px] text-amber-500">pending</span>
-              </div>
-              <h2 className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold mb-2">
-                Access Link Request Pending
+
+        {/* Tab 1: Connections Manager */}
+        {adminViewTab === "connections" && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Elder-Care Resident Family Connections
               </h2>
-              <p className="text-body-md text-slate-500 dark:text-slate-400 mb-6">
-                Your request to view real-time safety status for{" "}
-                <strong className="text-slate-850 dark:text-white">
-                  {familyStatus.resident_name}
-                </strong>{" "}
-                is currently pending. The Organization Administrator will verify your credentials and
-                approve link access.
-              </p>
-              {/* Stepper representation */}
-              <div className="flex justify-between items-center max-w-md mx-auto mt-8 text-xs font-semibold text-slate-500">
-                <div className="flex flex-col items-center gap-1 text-teal-650">
-                  <span className="w-6 h-6 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center border border-teal-500 font-bold">
-                    1
-                  </span>
-                  <span>Registered</span>
-                </div>
-                <div className="h-0.5 bg-teal-500 flex-1 mx-2"></div>
-                <div className="flex flex-col items-center gap-1 text-teal-655 relative">
-                  <span className="w-6 h-6 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center border border-teal-500 font-bold animate-ping absolute"></span>
-                  <span className="w-6 h-6 rounded-full bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center border border-teal-500 font-bold relative">
-                    2
-                  </span>
-                  <span>Link Submitted</span>
-                </div>
-                <div className="h-0.5 bg-slate-250 dark:bg-slate-800 flex-1 mx-2"></div>
-                <div className="flex flex-col items-center gap-1 text-slate-400">
-                  <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 font-bold">
-                    3
-                  </span>
-                  <span>Approved</span>
-                </div>
-              </div>
-            </div>
-          ) : familyStatus.request_status === "declined" ? (
-            /* Declined Request */
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center max-w-2xl mx-auto shadow-sm">
-              <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center mb-6 mx-auto">
-                <span className="material-symbols-outlined text-[36px] text-red-500">cancel</span>
-              </div>
-              <h2 className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold mb-2">
-                Access Link Request Declined
-              </h2>
-              <p className="text-body-md text-slate-500 dark:text-slate-400 mb-6">
-                Your request to link with{" "}
-                <strong className="text-slate-850 dark:text-white">
-                  {familyStatus.resident_name}
-                </strong>{" "}
-                was declined by the administrator. Please ensure the registration details align with the
-                resident records.
-              </p>
               <button
-                onClick={async () => {
-                  setSelectedRequestResidentId("");
-                  setFamilyStatus((prev) => ({ ...prev, request_status: null }));
-                }}
-                className="px-4 py-2 bg-teal-600 text-white rounded font-bold hover:bg-teal-700 cursor-pointer"
+                onClick={fetchConnectionsAndSubscriptions}
+                className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1"
               >
-                Resubmit New Link Request
+                <span className="material-symbols-outlined text-[16px]">refresh</span> Refresh
               </button>
             </div>
-          ) : (
-            /* No request yet: Link Request Form */
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 max-w-xl mx-auto shadow-sm">
-              <h2 className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold mb-2 text-center">
-                Link Resident Profile
-              </h2>
-              <p className="text-body-md text-slate-500 dark:text-slate-400 mb-6 text-center">
-                Please select the resident profile at this elder-care facility that you are authorized
-                to monitor.
-              </p>
-              <form onSubmit={submitLinkRequest} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
-                    MONITORED SUBJECT
-                  </label>
-                  <select
-                    className="w-full border border-slate-200 dark:border-slate-800 rounded p-2.5 text-sm bg-slate-50 dark:bg-slate-800 dark:text-white font-semibold"
-                    value={selectedRequestResidentId}
-                    onChange={(e) => setSelectedRequestResidentId(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Select Resident Profile --</option>
-                    {residents.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.first_name} {r.last_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-teal-600 text-white rounded-lg text-sm font-bold uppercase shadow hover:bg-teal-700 transition-colors cursor-pointer"
-                >
-                  Submit Link Request
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Approved Linked Family Member Portal Dashboard */
-        <div className="space-y-6">
-          {/* Page Header */}
-          <div className="mb-stack-lg flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div>
-              <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold mb-1">
-                Access Control &amp; Privacy
-              </h1>
-              <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400">
-                Configure family member visibility and monitor safety status.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() =>
-                  setToastMessage({ type: "success", text: "Saved visibility settings." })
-                }
-                className="px-4 py-2 bg-teal-650 text-white rounded-lg text-label-caps font-label-caps hover:opacity-90 font-bold cursor-pointer"
-              >
-                Save Settings
-              </button>
-            </div>
-          </div>
-
-          {/* Bento Grid Layout */}
-          <div className="grid grid-cols-12 gap-gutter">
-            {/* Privacy Guarantee Hero Card (Span 8) */}
-            <div className="col-span-12 lg:col-span-8 bg-teal-50/40 dark:bg-teal-950/10 rounded-xl border border-slate-200 dark:border-slate-800 p-8 relative overflow-hidden flex flex-col justify-between shadow-sm">
-              <div className="absolute -right-20 -top-20 w-64 h-64 border-[40px] border-teal-100/30 dark:border-teal-900/10 rounded-full opacity-50"></div>
-
-              <div className="relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 mb-6">
-                  <span className="material-symbols-outlined text-[16px] text-teal-600 dark:text-teal-400">
-                    verified_user
-                  </span>
-                  <span className="text-label-caps font-label-caps text-slate-655 dark:text-slate-350">
-                    Core Principle
-                  </span>
-                </div>
-                <h2 className="text-headline-md font-headline-md text-slate-900 dark:text-white font-bold mb-4 max-w-lg">
-                  Invisible Security. Zero Cameras. Absolute Privacy.
-                </h2>
-                <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 max-w-xl mb-6">
-                  Wi-Fi Sense monitors ambient signal shifts instead of cameras. Your loved one's
-                  optical privacy is fully preserved.
-                </p>
-              </div>
-              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                  <span className="material-symbols-outlined text-teal-605 mb-2">videocam_off</span>
-                  <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">
-                    No Cameras
-                  </div>
-                  <div className="text-label-caps font-label-caps text-slate-500 dark:text-slate-450 mt-1">
-                    100% optical privacy
-                  </div>
-                </div>
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                  <span className="material-symbols-outlined text-teal-605 mb-2">mic_off</span>
-                  <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">
-                    No Microphones
-                  </div>
-                  <div className="text-label-caps font-label-caps text-slate-500 dark:text-slate-450 mt-1">
-                    No audio recorded
-                  </div>
-                </div>
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                  <span className="material-symbols-outlined text-teal-605 mb-2">lock</span>
-                  <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">
-                    Encrypted CSI
-                  </div>
-                  <div className="text-label-caps font-label-caps text-slate-500 dark:text-slate-450 mt-1">
-                    Data mathematically hashed
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Facility Contact Info Card (Span 4) */}
-            <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold">
-                  Facility Contact Info
-                </h3>
-              </div>
-              <div className="flex-1 flex flex-col justify-center p-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 space-y-4">
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">CARE CENTRE</div>
-                  <div className="text-sm font-bold text-slate-850 dark:text-white">
-                    {familyStatus?.facility_contact?.name || "Care Facility"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">
-                    TELEPHONE LINE
-                  </div>
-                  <div className="text-sm font-mono text-slate-850 dark:text-white">
-                    {familyStatus?.facility_contact?.phone || "N/A"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">DIRECT EMAIL</div>
-                  <div className="text-sm font-mono text-slate-850 dark:text-white">
-                    {familyStatus?.facility_contact?.email || "N/A"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Resident Live Status Card (Span 6) */}
-            <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
-              <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-250 dark:border-slate-800 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-teal-605">verified_user</span>
-                  <h3 className="text-body-md font-body-md font-bold text-slate-950 dark:text-white">
-                    Resident Status
-                  </h3>
-                </div>
-                <span className="text-[10px] font-bold bg-teal-50 text-teal-650 px-2.5 py-1 rounded">
-                  Linked profile
-                </span>
-              </div>
-              <div className="p-6 flex-1 bg-slate-50 dark:bg-slate-950 flex flex-col justify-between">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 text-left space-y-4 shadow-sm">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-headline-md font-headline-md font-bold text-slate-950 dark:text-white">
-                        {familyStatus?.resident?.first_name} {familyStatus?.resident?.last_name}
-                      </div>
-                      <div className="text-body-md font-data-mono text-slate-500 mt-1">
-                        Assigned: {familyStatus?.resident?.room_name || "Living Quarters"}
-                      </div>
-                    </div>
-                    <div className="bg-teal-50 dark:bg-teal-950/20 text-teal-650 px-3 py-1 rounded-full text-label-caps font-label-caps border border-teal-200/20 flex items-center gap-1.5 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-                      {(familyStatus?.presence_status || "Safe").toUpperCase()}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex justify-between items-center text-xs">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        RECENT ACTIVITY
-                      </p>
-                      <p className="font-semibold text-slate-850 dark:text-white mt-1 capitalize">
-                        {familyStatus?.recent_activity?.activity?.replace("_", " ") || "Nominal"}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        LAST DETECTED
-                      </p>
-                      <p className="font-data-mono text-data-mono text-slate-850 dark:text-white mt-1">
-                        {familyStatus?.recent_activity?.timestamp
-                          ? new Date(familyStatus.recent_activity.timestamp).toLocaleTimeString()
-                          : "Live"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Read-Only Alert History List */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 mt-4 text-left shadow-sm flex-1">
-                  <h4 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider">
-                    Alert History (Read-only)
-                  </h4>
-                  <div className="space-y-3 max-h-[160px] overflow-y-auto">
-                    {(familyStatus?.alerts || []).map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex justify-between items-center p-3 rounded bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-855 text-xs"
-                      >
-                        <div>
-                          <div className="font-bold text-slate-850 dark:text-white">
-                            {a.event_type?.replace("_", " ")}
-                          </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">
-                            {new Date(a.created_at).toLocaleTimeString()}
-                          </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-500 uppercase">
+                  <tr>
+                    <th className="px-5 py-3">Family User</th>
+                    <th className="px-5 py-3">Relationship</th>
+                    <th className="px-5 py-3">Linked Resident</th>
+                    <th className="px-5 py-3">Room</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Subscription</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  {connections.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                      <td className="px-5 py-3.5">
+                        <div className="font-bold text-slate-900 dark:text-white">
+                          {c.family_user_name || "Family User"}
                         </div>
+                        <div className="text-[11px] text-slate-400 font-mono">{c.family_user_email}</div>
+                      </td>
+                      <td className="px-5 py-3.5 font-semibold text-slate-700 dark:text-slate-300">
+                        {c.relationship}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="font-bold text-slate-900 dark:text-white">{c.resident_name}</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
+                        {c.room_name}
+                      </td>
+                      <td className="px-5 py-3.5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            a.status === "resolved"
-                              ? "bg-slate-100 text-slate-600"
-                              : "bg-red-50 text-red-600"
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            c.status === "approved"
+                              ? "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"
+                              : c.status === "rejected"
+                              ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400"
+                              : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 animate-pulse"
                           }`}
                         >
-                          {a.status?.toUpperCase()}
+                          {c.status}
                         </span>
-                      </div>
-                    ))}
-                    {(!familyStatus?.alerts || familyStatus.alerts.length === 0) && (
-                      <p className="text-xs text-slate-400 italic text-center p-4">
-                        No historic warnings logged.
-                      </p>
-                    )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                            c.subscription_status === "ACTIVE"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                          }`}
+                        >
+                          {c.subscription_status || "PENDING"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right space-x-2">
+                        {c.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => handleReviewConnection(c.id, "approved")}
+                              className="px-3 py-1 bg-teal-600 text-white rounded text-[11px] font-bold hover:bg-teal-700 cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleReviewConnection(c.id, "rejected")}
+                              className="px-3 py-1 bg-red-100 text-red-700 rounded text-[11px] font-bold hover:bg-red-200 cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {c.status === "approved" && (
+                          <button
+                            onClick={() => handleReviewConnection(c.id, "revoked")}
+                            className="px-2.5 py-1 text-slate-400 hover:text-red-600 text-[11px] font-bold cursor-pointer"
+                          >
+                            Revoke
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {connections.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="p-8 text-center text-slate-400 italic">
+                        No family connection requests logged.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Subscriptions Manager */}
+        {adminViewTab === "subscriptions" && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Family Portal Subscriptions & Access Tier Gating
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-500 uppercase">
+                  <tr>
+                    <th className="px-5 py-3">Subscription ID</th>
+                    <th className="px-5 py-3">Plan Tier</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Started At</th>
+                    <th className="px-5 py-3 text-right">Toggle Tier</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  {subscriptions.map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                      <td className="px-5 py-3.5 font-mono text-slate-500 text-[11px]">{s.id.slice(0, 8)}...</td>
+                      <td className="px-5 py-3.5 font-bold text-teal-600 dark:text-teal-400">{s.plan}</td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            s.status === "ACTIVE"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                          }`}
+                        >
+                          {s.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-400 font-mono text-[11px]">
+                        {s.started_at ? new Date(s.started_at).toLocaleDateString() : "Pending"}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          onClick={() => handleToggleSubscription(s.id, s.status)}
+                          className={`px-3 py-1 rounded text-[11px] font-bold cursor-pointer ${
+                            s.status === "ACTIVE"
+                              ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                              : "bg-emerald-600 text-white hover:bg-emerald-700"
+                          }`}
+                        >
+                          Set {s.status === "ACTIVE" ? "PENDING" : "ACTIVE"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {subscriptions.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="p-8 text-center text-slate-400 italic">
+                        No subscriptions found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Member Preview (Live Demo Mode) */}
+        {adminViewTab === "preview" && (
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <p className="text-xs text-slate-500 mb-4 font-semibold">
+              Previewing the family member live portal view below:
+            </p>
+            {renderMemberPortal()}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // FAMILY MEMBER USER VIEW
+  // =========================================================================
+  return renderMemberPortal();
+
+  function renderMemberPortal() {
+    const activeSub = subscriptions.find((s) => s.status === "ACTIVE") || (connections[0]?.subscription_status === "ACTIVE" ? { status: "ACTIVE" } : null);
+
+    return (
+      <div className="space-y-6 text-left">
+        {/* Header with Connection & Subscription status */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-teal-600 text-3xl">family_restroom</span>
+              Family Care Portal
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Zero-camera privacy-first RF sensing for your loved ones.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+              <span className="text-slate-400 font-semibold">Subscription:</span>
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  activeSub
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                }`}
+              >
+                {activeSub ? "ACTIVE • CARE_MONTHLY" : "PENDING APPROVAL"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bento Grid */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Privacy Guarantee Hero Card (Span 8) */}
+          <div className="col-span-12 lg:col-span-8 bg-teal-50/40 dark:bg-teal-950/10 rounded-xl border border-slate-200 dark:border-slate-800 p-6 relative overflow-hidden flex flex-col justify-between shadow-sm">
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 mb-4">
+                <span className="material-symbols-outlined text-[16px] text-teal-600">verified_user</span>
+                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
+                  Zero Camera Ambient Sensing
+                </span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                Invisible Security. Zero Cameras. Absolute Dignity.
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mb-4">
+                Wi-Fi CSI senses room presence and gait motion mathematically through 56 subcarrier signal reflections. No cameras or microphones are ever used.
+              </p>
+            </div>
+            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                <span className="material-symbols-outlined text-teal-600 text-xl mb-1">videocam_off</span>
+                <div className="font-bold text-xs text-slate-900 dark:text-white">No Optical Video</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">100% Visual Privacy</div>
+              </div>
+              <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                <span className="material-symbols-outlined text-teal-600 text-xl mb-1">mic_off</span>
+                <div className="font-bold text-xs text-slate-900 dark:text-white">No Audio Capture</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Zero Microphones</div>
+              </div>
+              <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                <span className="material-symbols-outlined text-teal-600 text-xl mb-1">lock</span>
+                <div className="font-bold text-xs text-slate-900 dark:text-white">Encrypted CSI</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Secure Facility Telemetry</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Connect Another Resident Card (Span 4) */}
+          <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col shadow-sm">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-teal-600 text-[18px]">person_add</span>
+              Connect Elder Resident
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">Submit link request for family authorization.</p>
+            <form onSubmit={handleCreateConnection} className="space-y-3 text-xs flex-1 flex flex-col justify-between">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Target Resident</label>
+                <select
+                  value={selectedRequestResidentId}
+                  onChange={(e) => setSelectedRequestResidentId(e.target.value)}
+                  required
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">-- Choose Resident --</option>
+                  {residents.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.first_name} {r.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Your Relationship</label>
+                <select
+                  value={newRelationship}
+                  onChange={(e) => setNewRelationship(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="Son">Son</option>
+                  <option value="Daughter">Daughter</option>
+                  <option value="Spouse">Spouse</option>
+                  <option value="Brother">Brother</option>
+                  <option value="Sister">Sister</option>
+                  <option value="Guardian">Guardian</option>
+                  <option value="Other">Other Relative</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Verification Note</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Registered next-of-kin"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={submittingConnection}
+                className="w-full py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 transition-colors cursor-pointer mt-2"
+              >
+                {submittingConnection ? "Submitting..." : "Submit Connection Request"}
+              </button>
+            </form>
+          </div>
+
+          {/* Resident Live Status Card (Span 6) */}
+          <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm flex flex-col">
+            <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-teal-600">health_and_safety</span>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Monitored Elder Safety Status
+                </h3>
+              </div>
+              <span className="text-[10px] font-bold bg-teal-50 text-teal-700 px-2 py-0.5 rounded">
+                Live Telemetry
+              </span>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                      {familyStatus?.resident?.first_name || "Annamma"} {familyStatus?.resident?.last_name || "Joseph"}
+                    </h4>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                      Assigned: {familyStatus?.resident?.room_name || "Resident Room 204"}
+                    </p>
+                  </div>
+                  <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    {(familyStatus?.presence_status || "Safe").toUpperCase()}
+                  </span>
+                </div>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-3 flex justify-between items-center text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Current Activity</span>
+                    <span className="font-bold text-slate-900 dark:text-white capitalize">
+                      {familyStatus?.recent_activity?.activity?.replace("_", " ") || "Nominal Resting"}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Last Shift Detection</span>
+                    <span className="font-mono text-slate-600 dark:text-slate-400">
+                      {familyStatus?.recent_activity?.timestamp
+                        ? new Date(familyStatus.recent_activity.timestamp).toLocaleTimeString()
+                        : "Synchronized"}
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Access Control Settings (Span 6) */}
-            <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-sm">
-              <div className="mb-6">
-                <h3 className="text-headline-sm font-headline-sm text-slate-950 dark:text-white font-bold mb-1">
-                  Privacy Controls
-                </h3>
-                <p className="text-body-md font-body-md text-slate-500">
-                  Configure safety granularity settings.
-                </p>
+              {/* Alert History */}
+              <div className="flex-1">
+                <h4 className="text-[11px] font-bold uppercase text-slate-400 mb-2">
+                  Recent Incident History (Read-Only)
+                </h4>
+                <div className="space-y-2 max-h-[140px] overflow-y-auto">
+                  {(familyStatus?.alerts || []).map((a) => (
+                    <div
+                      key={a.id}
+                      className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs"
+                    >
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-white">
+                          {a.event_type?.replace("_", " ")}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {new Date(a.created_at).toLocaleTimeString()}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          a.status === "resolved"
+                            ? "bg-slate-100 text-slate-600"
+                            : "bg-red-50 text-red-600"
+                        }`}
+                      >
+                        {a.status?.toUpperCase()}
+                      </span>
+                    </div>
+                  ))}
+                  {(!familyStatus?.alerts || familyStatus.alerts.length === 0) && (
+                    <p className="text-xs text-slate-400 italic text-center p-3">
+                      No warning incidents recorded.
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex-1 space-y-4">
-                {/* Toggle 1 */}
+            </div>
+          </div>
+
+          {/* Privacy Controls (Span 6) */}
+          <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col justify-between shadow-sm">
+            <div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1">
+                Sharing Policy &amp; Safety Controls
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                Strict privacy masks fine-grained coordinates according to resident consent.
+              </p>
+              <div className="space-y-3">
                 <div
                   onClick={() => {
                     setStrictPrivacy(!strictPrivacy);
                     setToastMessage({
                       type: "success",
-                      text: `Strict Privacy Mode toggled: ${!strictPrivacy ? "ON" : "OFF"}`,
+                      text: `Strict Privacy Mode: ${!strictPrivacy ? "ON" : "OFF"}`,
                     });
                   }}
-                  className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer bg-slate-50 dark:bg-slate-950 ${
-                    strictPrivacy
-                      ? "border-teal-500 bg-teal-50/10"
-                      : "border-slate-200 dark:border-slate-800 hover:border-teal-500"
+                  className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer transition-colors ${
+                    strictPrivacy ? "border-teal-500 bg-teal-50/20" : "border-slate-200 dark:border-slate-800"
                   }`}
                 >
-                  <div className="flex gap-4">
-                    <div className="mt-1">
-                      <span className="material-symbols-outlined text-slate-550">
-                        visibility_off
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-teal-600">visibility_off</span>
                     <div>
-                      <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">
-                        Strict Privacy Mode
-                      </div>
-                      <div className="text-body-md font-body-md text-slate-500 mt-1 max-w-sm">
-                        Mask presence values to safe status indicators. Hide room location.
-                      </div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">Strict Privacy Mode</div>
+                      <div className="text-[11px] text-slate-500">Mask presence coordinates to high-level status only</div>
                     </div>
                   </div>
-                  <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                    <input
-                      checked={strictPrivacy}
-                      type="checkbox"
-                      readOnly
-                      className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-300 dark:border-slate-700 appearance-none cursor-pointer"
-                    />
-                    <label
-                      className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${
-                        strictPrivacy ? "bg-teal-500" : "bg-slate-300 dark:bg-slate-800"
-                      }`}
-                    ></label>
-                  </div>
+                  <span className={`w-3 h-3 rounded-full ${strictPrivacy ? "bg-teal-600" : "bg-slate-300"}`}></span>
                 </div>
 
-                {/* Toggle 2 */}
                 <div
                   onClick={() => {
                     setContextualVisibility(!contextualVisibility);
                     setToastMessage({
                       type: "success",
-                      text: `Contextual Visibility toggled: ${!contextualVisibility ? "ON" : "OFF"}`,
+                      text: `Contextual Visibility: ${!contextualVisibility ? "ON" : "OFF"}`,
                     });
                   }}
-                  className={`flex items-center justify-between p-4 border rounded-lg transition-colors cursor-pointer bg-slate-50 dark:bg-slate-950 ${
-                    contextualVisibility
-                      ? "border-teal-500 bg-teal-50/10"
-                      : "border-slate-200 dark:border-slate-800 hover:border-teal-500"
+                  className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer transition-colors ${
+                    contextualVisibility ? "border-teal-500 bg-teal-50/20" : "border-slate-200 dark:border-slate-800"
                   }`}
                 >
-                  <div className="flex gap-4">
-                    <div className="mt-1">
-                      <span className="material-symbols-outlined text-teal-605">visibility</span>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-teal-600">visibility</span>
                     <div>
-                      <div className="text-body-md font-body-md font-bold text-slate-900 dark:text-white">
-                        Contextual Visibility
-                      </div>
-                      <div className="text-body-md font-body-md text-slate-500 mt-1 max-w-sm">
-                        View current room activity indicators and alerts logs.
-                      </div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">Contextual Activity Stream</div>
+                      <div className="text-[11px] text-slate-500">Show room activity classifications (walking, resting)</div>
                     </div>
                   </div>
-                  <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                    <input
-                      checked={contextualVisibility}
-                      type="checkbox"
-                      readOnly
-                      className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-slate-300 dark:border-slate-700 appearance-none cursor-pointer"
-                    />
-                    <label
-                      className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${
-                        contextualVisibility ? "bg-teal-500" : "bg-slate-300 dark:bg-slate-800"
-                      }`}
-                    ></label>
-                  </div>
+                  <span className={`w-3 h-3 rounded-full ${contextualVisibility ? "bg-teal-600" : "bg-slate-300"}`}></span>
                 </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-800 mt-4">
+              <div className="text-[10px] font-bold uppercase text-slate-400">Emergency Help Desk Contact</div>
+              <div className="flex justify-between items-center mt-1 text-xs">
+                <div>
+                  <div className="font-bold text-slate-900 dark:text-white">St. Peter's Care Desk</div>
+                  <div className="text-slate-500 font-mono text-[11px]">+91 4828 251122</div>
+                </div>
+                <a
+                  href="tel:+914828251122"
+                  className="px-3 py-1 bg-teal-600 text-white rounded text-xs font-bold hover:bg-teal-700 flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[14px]">call</span>
+                  Direct Desk
+                </a>
               </div>
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
 }

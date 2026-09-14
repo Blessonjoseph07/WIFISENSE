@@ -298,6 +298,11 @@ export default function DevicesView({
                           ></span>
                           {isOnline ? "ONLINE" : "OFFLINE"}
                         </span>
+                        {isOnline && (
+                          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                            <span className="text-teal-600 dark:text-teal-400 font-bold">56 SC</span> • -47 dBm • 94% SQ
+                          </div>
+                        )}
                       </td>
                       <td className="p-4 text-right">
                         <button

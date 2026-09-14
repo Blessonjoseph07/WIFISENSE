@@ -16,7 +16,8 @@ ROLE_MAPPING = {
     "facility_manager": 3,
     "caregiver": 4,
     "corporate_staff": 5,
-    "emergency_contact": 6
+    "emergency_contact": 6,
+    "family_member": 7
 }
 
 ROLE_NAMES = {
@@ -25,7 +26,8 @@ ROLE_NAMES = {
     3: "facility_manager",
     4: "caregiver",
     5: "corporate_staff",
-    6: "emergency_contact"
+    6: "emergency_contact",
+    7: "family_member"
 }
 
 def seed_roles_if_empty(session: Session):

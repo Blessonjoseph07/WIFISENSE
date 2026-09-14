@@ -21,6 +21,21 @@ def init_db():
             conn.commit()
         except Exception:
             pass
+        try:
+            conn.execute(text("ALTER TABLE residents ADD COLUMN resident_status VARCHAR DEFAULT 'Active'"))
+            conn.commit()
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE sensing_events ADD COLUMN signal_quality INTEGER DEFAULT 94"))
+            conn.commit()
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE sensing_events ADD COLUMN event_type VARCHAR DEFAULT 'SensingTelemetry'"))
+            conn.commit()
+        except Exception:
+            pass
 
 def get_session():
     # Set expire_on_commit=False globally as per project requirements
