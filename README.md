@@ -22,6 +22,10 @@ cd backend
 # Install dependencies (already installed in venv)
 pip install -r requirements.txt
 
+# Configure the environment (SECRET_KEY is required; the server refuses to start without it)
+cp .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"  # paste into SECRET_KEY
+
 # Start the FastAPI server
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
@@ -47,20 +51,35 @@ npm.cmd run dev
 
 ---
 
-## 👥 Seeded Demo Accounts
+## ⚙️ Configuration
 
-The database is pre-seeded with sample facilities, devices, residents, and the following accounts:
+Backend settings come from the environment (see `backend/.env.example`):
 
-| Email | Password | Role | Description |
+| Variable | Required | Default | Purpose |
 | :--- | :--- | :--- | :--- |
-| `blesson@wifisense.com` | `blessonpassword` | System Administrator | Full administrative system access |
-| `abhinand@wifisense.com` | `abhinandpassword` | Facility Manager | Amal Jyothi College of Engineering (Corporate) |
-| `tomy@wifisense.com` | `tomypassword` | Corporate Staff | AJCE Computer Applications |
-| `abhinanth@wifisense.com` | `abhinanthpassword` | Caregiver | St. Peter's Elder Care Home (Ward 101) |
-| `mary@wifisense.com` | `marypassword` | Caregiver | St. Peter's Elder Care Home (Wing Beta) |
-| `elizabeth@wifisense.com` | `elizabethpassword` | Facility Manager | St. Peter's Elder Care Home |
-| `john@wifisense.com` | `johnpassword` | Emergency Contact | Family portal linked to Annamma Joseph |
-| `susan@wifisense.com` | `susanpassword` | Emergency Contact | Family portal access pending |
+| `SECRET_KEY` | yes | – | JWT signing key. Startup fails if unset. |
+| `DATABASE_URL` | no | `sqlite:///./wifisense.db` | Database connection string. |
+| `ALLOWED_ORIGINS` | no | `http://localhost:5173` | Comma-separated CORS origins. |
+| `SEED_DEMO_DATA` | no | `0` | Set to `1` to seed demo data on startup. |
+| `MAX_UPLOAD_BYTES` | no | `5242880` | Profile photo size limit. |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | no | – | Creates the first system administrator on startup. |
+
+The frontend reads `VITE_API_BASE` (see `frontend/.env.example`), defaulting to `http://localhost:8000`.
+
+---
+
+## 👥 Accounts
+
+Self-registration via `POST /auth/register` always creates an unprivileged `emergency_contact`
+account. A system administrator grants staff roles and scopes through `POST /auth/assign-role`.
+
+A fresh install has no administrator. Start the backend once with `BOOTSTRAP_ADMIN_EMAIL` and
+`BOOTSTRAP_ADMIN_PASSWORD` set to create one — the bootstrap is skipped as soon as any system
+administrator exists. Unset both variables afterwards.
+
+For local development only, start the backend with `SEED_DEMO_DATA=1` to create sample
+facilities, devices, residents and demo logins (their passwords are in `backend/app/core/seed.py`).
+Never enable demo seeding on a deployed instance.
 
 ---
 

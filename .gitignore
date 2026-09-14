@@ -1,6 +1,13 @@
 # Python virtual environment
 backend/venv/
+backend/.venv/
 *.db
+
+# Generated database dumps (contain user credentials and resident data)
+backend/supabase_data.sql
+
+# Uploaded profile photos
+backend/uploads/
 
 # Node.js dependencies
 frontend/node_modules/
