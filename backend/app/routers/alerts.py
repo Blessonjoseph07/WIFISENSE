@@ -6,8 +6,10 @@ from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
 from app.models.entities import Alert, AlertAcknowledgement, Room, Floor, Building, Resident, EmergencyContact, SensingEvent, ActivityType
 from app.schemas.schemas import AlertOut, AlertResolve
+from app.core.audit import record_audit_event
 
 router = APIRouter(prefix="/alerts", tags=["Alert Engine"])
+
 STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
 
 def get_scoped_alert_query(scopes):
@@ -138,9 +140,20 @@ def acknowledge_alert(
         ack.user_id = current_user.id
         ack.acknowledged_at = datetime.utcnow()
     session.add(ack)
-    
     session.commit()
     session.refresh(alert)
+
+    record_audit_event(
+        session=session,
+        what_action="ALERT_ACKNOWLEDGED",
+        resource_type="ALERT",
+        resource_id=alert.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        details={"status": alert.status, "room_id": alert.room_id}
+    )
+
     return alert
 
 @router.patch("/{alert_id}/responding", response_model=AlertOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
@@ -174,6 +187,18 @@ def mark_alert_responding(
     
     session.commit()
     session.refresh(alert)
+
+    record_audit_event(
+        session=session,
+        what_action="ALERT_RESPONDING",
+        resource_type="ALERT",
+        resource_id=alert.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        details={"status": alert.status, "room_id": alert.room_id}
+    )
+
     return alert
 
 @router.patch("/{alert_id}/resolve", response_model=AlertOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
@@ -213,4 +238,17 @@ def resolve_alert(
 
     session.commit()
     session.refresh(alert)
+
+    record_audit_event(
+        session=session,
+        what_action="ALERT_RESOLVED",
+        resource_type="ALERT",
+        resource_id=alert.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        details={"status": alert.status, "room_id": alert.room_id, "resolution_notes": resolution_data.resolution_notes}
+    )
+
     return alert
+

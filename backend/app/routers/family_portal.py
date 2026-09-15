@@ -332,6 +332,7 @@ def get_linked_resident_status(
     # GATING 2: Subscription Status
     sub = session.exec(select(FamilySubscription).where(FamilySubscription.family_user_id == current_user.id)).first()
     sub_status = sub.status if sub else "PENDING"
+    room = session.get(Room, target_res.room_id)
     if sub_status != "ACTIVE":
         return {
             "linked": True,
@@ -339,9 +340,16 @@ def get_linked_resident_status(
             "subscription_status": sub_status,
             "resident_id": target_res.id,
             "resident_name": f"{target_res.first_name} {target_res.last_name}",
+            "resident": {
+                "id": target_res.id,
+                "first_name": target_res.first_name,
+                "last_name": target_res.last_name,
+                "room_name": room.name if room else "Resident Room"
+            },
             "has_active_subscription": False,
             "reason": f"Active family subscription required. Current subscription status: '{sub_status}'. Please contact the Care Facility Manager."
         }
+
 
     # GATING 3: SharingPolicy Enforcement
     room = session.get(Room, target_res.room_id)

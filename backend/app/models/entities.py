@@ -376,3 +376,40 @@ class AlertAcknowledgement(SQLModel, table=True):
     resolution_notes: Optional[str] = Field(default=None)
 
     alert: Alert = Relationship(back_populates="acknowledgement")
+
+# ============================================================================
+# 5. SECURITY, TOKENS & AUDIT LOGGING (PHASE 1 FOUNDATION)
+# ============================================================================
+
+class RefreshToken(SQLModel, table=True):
+    __tablename__ = "refresh_tokens"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(foreign_key="users.id", index=True, nullable=False)
+    token_hash: str = Field(unique=True, index=True, nullable=False)
+    expires_at: datetime = Field(index=True, nullable=False)
+    revoked_at: Optional[datetime] = Field(default=None)
+    replaced_by_token_id: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class TokenRevocation(SQLModel, table=True):
+    __tablename__ = "token_revocations"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    token_identifier: str = Field(unique=True, index=True, nullable=False)
+    user_id: Optional[str] = Field(default=None, index=True)
+    revoked_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime = Field(index=True, nullable=False)
+    reason: Optional[str] = Field(default=None)
+
+class AuditLog(SQLModel, table=True):
+    __tablename__ = "audit_logs"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    who_user_id: Optional[str] = Field(default=None, index=True)
+    who_email: Optional[str] = Field(default=None, index=True)
+    what_action: str = Field(index=True, nullable=False)
+    resource_type: str = Field(index=True, nullable=False)
+    resource_id: Optional[str] = Field(default=None, index=True)
+    result: str = Field(default="SUCCESS") # SUCCESS, FAILURE, DENIED
+    details: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    ip_address: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+

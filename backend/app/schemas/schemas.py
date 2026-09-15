@@ -42,6 +42,29 @@ class Token(BaseModel):
     user: UserOut
     application_context: str
     is_system_admin: bool
+    refresh_token: Optional[str] = None
+
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str
+
+class LogoutRequest(BaseModel):
+    refresh_token: Optional[str] = None
+
+class AuditLogOut(BaseModel):
+    id: str
+    who_user_id: Optional[str] = None
+    who_email: Optional[str] = None
+    what_action: str
+    resource_type: str
+    resource_id: Optional[str] = None
+    result: str
+    details: Optional[Dict[str, Any]] = None
+    ip_address: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 
 class AccessRequestCreate(BaseModel):
     resident_id: str

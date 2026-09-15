@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, or_
 from typing import List, Optional
 from app.core.database import get_session
+from app.core.audit import record_audit_event
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
+
 from app.models.entities import (
     Organization, Building, Floor, Room, SensingDevice, Resident,
     HealthCondition, SharingPolicy, NodeFaultReport, EmergencyContact,
@@ -427,6 +429,18 @@ def reset_device_token(
     session.add(db_dev)
     session.commit()
     session.refresh(db_dev)
+
+    record_audit_event(
+        session=session,
+        what_action="DEVICE_CREDENTIAL_ROTATED",
+        resource_type="DEVICE",
+        resource_id=db_dev.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        details={"mac_address": db_dev.mac_address}
+    )
+
     return {
         "status": "success",
         "device_id": db_dev.id,
@@ -434,6 +448,7 @@ def reset_device_token(
         "hardware_token": new_token,
         "message": f"Hardware token successfully reset to {new_token}"
     }
+
 
 @router.post("/devices/{device_id}/report-fault", response_model=FaultReportOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "corporate_staff", "caregiver"]))])
 def report_node_fault(
@@ -709,7 +724,20 @@ def update_sharing_policy(
     session.add(policy)
     session.commit()
     session.refresh(policy)
+
+    record_audit_event(
+        session=session,
+        what_action="SHARING_POLICY_UPDATED",
+        resource_type="SHARING_POLICY",
+        resource_id=policy.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        details={"updated_fields": list(update_dict.keys())}
+    )
+
     return policy
+
 
 # ============================================================================
 # 8. EMERGENCY CONTACTS & STRUCTURED MEDICAL RECORDS (PHASE 2 & 2A)
