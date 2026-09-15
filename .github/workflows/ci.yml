@@ -29,32 +29,53 @@ jobs:
           pip install -r requirements.txt
           pip install httpx pytest
 
-      - name: Start FastAPI backend server in background
+      - name: Initialize Database & Run Backend Tests
         working-directory: ./backend
+        env:
+          SEED_DEMO_DATA: "1"
         run: |
-          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
-          # Wait for backend server to become available
+          # 1. Initialize and seed SQLite database cleanly
+          python -c "from app.core.database import init_db, engine; from sqlmodel import Session; from app.core.seed import seed_database; init_db(); session=Session(engine); seed_database(session)"
+          
+          # 2. Start Uvicorn server in background
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+          UVICORN_PID=$!
+          
+          # 3. Wait for backend to become available
           for i in {1..30}; do
             if curl -s http://127.0.0.1:8000/docs > /dev/null; then
-              echo "Backend server is up and listening on port 8000."
+              echo "Backend server is up and listening on port 8000 (PID: $UVICORN_PID)."
               break
             fi
             echo "Waiting for server to start ($i/30)..."
             sleep 1
           done
-
-      - name: Run test_boundaries.py
-        working-directory: ./backend
-        run: |
+          
+          if ! kill -0 $UVICORN_PID 2>/dev/null; then
+            echo "Uvicorn process died unexpectedly. Logs:"
+            cat uvicorn.log
+            exit 1
+          fi
+          
+          echo "=== RUNNING BOUNDARY TESTS ==="
           python test_boundaries.py
-
-      - name: Run test_master_phases.py
-        working-directory: ./backend
-        run: |
+          
+          echo "=== RUNNING MASTER PHASES TESTS ==="
           python test_master_phases.py
-
-      - name: Run test_phase1_security.py
-        working-directory: ./backend
-        run: |
+          
+          echo "=== RUNNING PHASE 1 SECURITY TESTS ==="
           python test_phase1_security.py
+          
+          kill $UVICORN_PID 2>/dev/null || true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: |
+          npm install
+          npm run build
 
