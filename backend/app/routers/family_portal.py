@@ -411,7 +411,7 @@ def get_linked_resident_status(
                     "severity": a.severity,
                     "message": a.message,
                     "status": a.status,
-                    "created_at": a.created_at.strftime("%d %b %H:%M")
+                    "created_at": a.created_at.isoformat() if hasattr(a.created_at, "isoformat") else str(a.created_at)
                 })
 
     return {
