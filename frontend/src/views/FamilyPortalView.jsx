@@ -430,33 +430,33 @@ export default function FamilyPortalView({
     };
 
     return (
-      <div className="space-y-5 text-left max-w-7xl mx-auto pb-10">
-        {/* Top Portal Banner & Status */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="space-y-4 text-left max-w-7xl mx-auto pb-8">
+        {/* Compact Page Title Bar (No redundant enclosing box) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-emerald-600 text-2xl">family_restroom</span>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                 Family Care Portal
               </h1>
               <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
-                Live Guardian
+                Active Guardian
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Zero-camera RF sensing telemetry • Dignified non-invasive safety guardian for your loved one.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-slate-500 dark:text-slate-400">RF Sensing:</span>
-              <span className="font-bold text-emerald-700 dark:text-emerald-400">ONLINE</span>
+              <span className="text-slate-400">RF Sensing:</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">ONLINE</span>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-              <span className="text-slate-500 dark:text-slate-400">Care Plan:</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs shadow-2xs">
+              <span className="text-slate-400">Care Plan:</span>
               <span
                 className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                   activeSub
@@ -470,7 +470,7 @@ export default function FamilyPortalView({
 
             <a
               href="tel:+914828251122"
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer ml-1"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer ml-0.5"
             >
               <span className="material-symbols-outlined text-[16px]">call</span>
               <span>Care Desk: +91 4828 251122</span>
@@ -478,13 +478,13 @@ export default function FamilyPortalView({
           </div>
         </div>
 
-        {/* PRIMARY HERO: Monitored Loved One Live Safety & Telemetry Centerpiece */}
-        <div className="bg-gradient-to-br from-white via-slate-50/50 to-emerald-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 rounded-2xl border border-emerald-500/30 dark:border-emerald-500/20 p-5 sm:p-6 shadow-xs relative overflow-hidden">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-slate-200/80 dark:border-slate-800">
-            {/* Resident Bio & Identity */}
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 border-2 border-emerald-300 dark:border-emerald-600 flex items-center justify-center text-emerald-800 dark:text-emerald-200 font-black text-2xl shadow-xs">
+        {/* PRIMARY HERO: Integrated Monitored Loved One Live Safety & Telemetry Card */}
+        <div className="bg-gradient-to-br from-white via-slate-50/60 to-emerald-50/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/25 rounded-2xl border border-emerald-500/30 dark:border-emerald-500/20 p-5 shadow-xs relative overflow-hidden">
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pb-4 border-b border-slate-200/80 dark:border-slate-800">
+            {/* Col 1: Resident Identity (Span 6) */}
+            <div className="lg:col-span-6 flex items-center gap-4">
+              <div className="relative shrink-0">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 border-2 border-emerald-300 dark:border-emerald-600 flex items-center justify-center text-emerald-800 dark:text-emerald-200 font-black text-xl shadow-xs">
                   {((resFirstName?.[0] || "A") + (resLastName?.[0] || "J")).toUpperCase()}
                 </div>
                 <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center">
@@ -493,34 +493,38 @@ export default function FamilyPortalView({
               </div>
 
               <div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                     {resFirstName} {resLastName}
                   </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                     Mother
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
                     (Monitored by {resRelationship})
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
                   <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-                    <span className="material-symbols-outlined text-[16px] text-emerald-600">room</span>
+                    <span className="material-symbols-outlined text-[15px] text-emerald-600">room</span>
                     {resRoom}
                   </span>
                   <span>•</span>
                   <span>St. Mary's Elder Care Home</span>
+                  <span>•</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-medium font-mono text-[11px]">
+                    Telemetry Synchronized
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Prominent Live Status Badges */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
+            {/* Col 2: Prominent Live Status & Dignity Badges (Span 6) */}
+            <div className="lg:col-span-6 flex flex-wrap items-center justify-start lg:justify-end gap-2.5">
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block leading-none">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block leading-none">
                     CURRENT STATE
                   </span>
                   <span className="text-sm font-black text-emerald-900 dark:text-emerald-200">
@@ -529,23 +533,23 @@ export default function FamilyPortalView({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-2xs">
-                <span className="material-symbols-outlined text-[18px] text-emerald-600">visibility_off</span>
-                <span className="font-semibold">Zero Cameras • 100% Privacy</span>
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                <span className="material-symbols-outlined text-[17px] text-emerald-600">visibility_off</span>
+                <span className="font-semibold text-xs">Zero Cameras • 100% Privacy</span>
               </div>
             </div>
           </div>
 
-          {/* Real-Time Telemetry Metrics Grid */}
-          <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 pt-5">
-            <div className="bg-white dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
+          {/* Real-Time Telemetry Metrics Strip (Fills width without vast empty space) */}
+          <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
+            <div className="bg-white/90 dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider">Current Posture</span>
                 <span className="material-symbols-outlined text-[18px] text-emerald-600">
                   {rawActivity.includes("bed") || rawActivity.includes("rest") ? "bed" : "directions_walk"}
                 </span>
               </div>
-              <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white capitalize leading-snug">
+              <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white capitalize leading-tight">
                 {activityName}
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -553,25 +557,25 @@ export default function FamilyPortalView({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <div className="bg-white/90 dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider">Room Presence</span>
                 <span className="material-symbols-outlined text-[18px] text-emerald-600">person_pin_circle</span>
               </div>
-              <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-snug">
-                Present in Room
+              <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">
+                Present in Room 204
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                RF reflections confirmed
+                RF reflections verified
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <div className="bg-white/90 dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider">CSI Telemetry</span>
                 <span className="material-symbols-outlined text-[18px] text-emerald-600">sensors</span>
               </div>
-              <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white font-mono leading-snug">
+              <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white font-mono leading-tight">
                 56 Subcarriers
               </div>
               <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-semibold">
@@ -579,12 +583,12 @@ export default function FamilyPortalView({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
+            <div className="bg-white/90 dark:bg-slate-800/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider">Fall Safety</span>
                 <span className="material-symbols-outlined text-[18px] text-emerald-600">health_and_safety</span>
               </div>
-              <div className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 leading-snug">
+              <div className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">
                 Nominal (No Falls)
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -595,14 +599,14 @@ export default function FamilyPortalView({
         </div>
 
         {/* MIDDLE SECTION: 2-Column Grid */}
-        <div className="grid grid-cols-12 gap-5">
+        <div className="grid grid-cols-12 gap-4">
           {/* Left Column (7 cols): Safety Incident History & Dignity Architecture */}
-          <div className="col-span-12 lg:col-span-7 space-y-5">
+          <div className="col-span-12 lg:col-span-7 space-y-4">
             {/* Safety & Incident History Log */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-emerald-600">notifications_active</span>
+                  <span className="material-symbols-outlined text-emerald-600 text-xl">notifications_active</span>
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
                     Safety & Incident Log
                   </h3>
@@ -612,7 +616,7 @@ export default function FamilyPortalView({
                 </span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {(familyStatus?.alerts || []).map((a) => (
                   <div
                     key={a.id}
@@ -658,7 +662,7 @@ export default function FamilyPortalView({
             </div>
 
             {/* Privacy Architecture Guarantee Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-2">
                 <span className="material-symbols-outlined text-emerald-600 text-xl">shield</span>
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">
@@ -666,7 +670,7 @@ export default function FamilyPortalView({
                 </h3>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
-                Wi-Fi CSI (Channel State Information) measures subtle variations in ambient RF wave fields across 56 OFDM subcarriers without cameras or microphones.
+                Wi-Fi CSI measures subtle variations in ambient RF wave fields across 56 OFDM subcarriers without cameras or microphones.
               </p>
               <div className="grid grid-cols-3 gap-2.5">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-center">
@@ -689,16 +693,16 @@ export default function FamilyPortalView({
           </div>
 
           {/* Right Column (5 cols): Controls & Connections */}
-          <div className="col-span-12 lg:col-span-5 space-y-5">
+          <div className="col-span-12 lg:col-span-5 space-y-4">
             {/* Sharing Policy & Privacy Toggles */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-1">
                 <span className="material-symbols-outlined text-emerald-600">tune</span>
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
                   Sharing & Privacy Controls
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                 Tailor telemetry fidelity and disclosure preferences according to family wishes.
               </p>
 
@@ -777,7 +781,7 @@ export default function FamilyPortalView({
               </div>
 
               {/* Direct Care Desk Quick Contact Box */}
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 mt-4">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 mt-3.5">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -790,7 +794,7 @@ export default function FamilyPortalView({
                   </div>
                   <a
                     href="tel:+914828251122"
-                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
                   >
                     <span className="material-symbols-outlined text-[16px]">call</span>
                     <span>Call Desk</span>
@@ -800,7 +804,7 @@ export default function FamilyPortalView({
             </div>
 
             {/* Resident Connections & Expandable Link Option */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-emerald-600">link</span>
@@ -820,9 +824,9 @@ export default function FamilyPortalView({
               </div>
 
               {/* Active Connection Summary */}
-              <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 mb-3 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
                     {((resFirstName?.[0] || "A") + (resLastName?.[0] || "J")).toUpperCase()}
                   </div>
                   <div>
