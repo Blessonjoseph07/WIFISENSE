@@ -419,7 +419,7 @@ export default function App() {
       const headers = getHeaders();
 
       // If family member, fetch their resident's status
-      if (role === "emergency_contact") {
+      if (role === "family_member") {
         const statusRes = await fetch(`${API_BASE}/family/resident-status`, { headers });
         if (statusRes.ok) {
           const statusData = await statusRes.json();
@@ -1288,7 +1288,7 @@ export default function App() {
                     onChange={(e) => setRegRole(e.target.value)}
                   >
                     <option value="caregiver">Caregiver (Elder-Care Home)</option>
-                    <option value="emergency_contact">Family Member / Emergency Contact (Elder-Care)</option>
+                    <option value="family_member">Family Member (Elder-Care)</option>
                     <option value="facility_manager">Facility Manager</option>
                     <option value="corporate_staff">Corporate Staff (Smart Workplace)</option>
                     <option value="organization_admin">Organization Administrator</option>
@@ -1352,7 +1352,7 @@ export default function App() {
       API_BASE
     };
 
-    if (role === "emergency_contact") {
+    if (role === "family_member") {
       return (
         <FamilyPortalShell
           user={user}
@@ -1428,7 +1428,7 @@ export default function App() {
       {renderAppShell(
         <div className="space-y-6 w-full">
           {/* Global Fall Alert Banner */}
-          {activeFallAlert && role !== "emergency_contact" && (
+          {activeFallAlert && role !== "family_member" && (
             <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 rounded-xl flex items-center justify-between pulse-animation relative z-25">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-red-500 text-2xl fill">warning</span>
