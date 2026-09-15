@@ -1652,7 +1652,11 @@ export default function App() {
               setSelectedFaultDevice={setSelectedFaultDevice}
               setShowReportFaultModal={setShowReportFaultModal}
               handleServiceTicket={handleServiceTicket}
+              appContext={appContext}
+              isSystemAdmin={isSystemAdmin}
+              role={role}
             />
+
           )}
 
           {/* ============================================================================

@@ -1,0 +1,60 @@
+name: WIFISENSE CI Regression Safety Net
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  backend-regression-tests:
+    name: Backend Boundary & Regression Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install httpx pytest
+
+      - name: Start FastAPI backend server in background
+        working-directory: ./backend
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          # Wait for backend server to become available
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:8000/docs > /dev/null; then
+              echo "Backend server is up and listening on port 8000."
+              break
+            fi
+            echo "Waiting for server to start ($i/30)..."
+            sleep 1
+          done
+
+      - name: Run test_boundaries.py
+        working-directory: ./backend
+        run: |
+          python test_boundaries.py
+
+      - name: Run test_master_phases.py
+        working-directory: ./backend
+        run: |
+          python test_master_phases.py
+
+      - name: Run test_phase1_security.py
+        working-directory: ./backend
+        run: |
+          python test_phase1_security.py
+

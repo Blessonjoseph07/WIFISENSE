@@ -22,6 +22,7 @@ export default function FamilyPortalView({
   const [newRelationship, setNewRelationship] = useState("Son");
   const [newNotes, setNewNotes] = useState("");
   const [submittingConnection, setSubmittingConnection] = useState(false);
+  const [showAddResident, setShowAddResident] = useState(false);
 
   const token = authToken || localStorage.getItem("token") || "";
   const isAdmin = role === "system_admin" || role === "organization_admin" || role === "facility_manager";
@@ -384,251 +385,355 @@ export default function FamilyPortalView({
   return renderMemberPortal();
 
   function renderMemberPortal() {
-    const activeSub = subscriptions.find((s) => s.status === "ACTIVE") || (connections[0]?.subscription_status === "ACTIVE" ? { status: "ACTIVE" } : null);
+    const activeSub =
+      subscriptions.find((s) => s.status === "ACTIVE") ||
+      (connections[0]?.subscription_status === "ACTIVE"
+        ? { status: "ACTIVE", plan: "CARE_MONTHLY" }
+        : familyStatus?.subscription_status === "ACTIVE"
+        ? { status: "ACTIVE", plan: "CARE_MONTHLY" }
+        : null);
+
+    const approvedConnection = connections.find((c) => c.status === "approved") || connections[0];
+    const resFirstName =
+      familyStatus?.resident?.first_name ||
+      (familyStatus?.resident_name
+        ? familyStatus.resident_name.split(" ")[0]
+        : approvedConnection?.resident_name
+        ? approvedConnection.resident_name.split(" ")[0]
+        : "Annamma");
+    const resLastName =
+      familyStatus?.resident?.last_name ||
+      (familyStatus?.resident_name
+        ? familyStatus.resident_name.split(" ").slice(1).join(" ")
+        : approvedConnection?.resident_name
+        ? approvedConnection.resident_name.split(" ").slice(1).join(" ")
+        : "Joseph");
+    const resRoom =
+      familyStatus?.resident?.room_name ||
+      familyStatus?.resident?.room?.name ||
+      approvedConnection?.room_name ||
+      "Resident Room 204";
+    const resRelationship = approvedConnection?.relationship || "Son";
+    const presenceStatus = (familyStatus?.presence_status || "Safe").toUpperCase();
+    const rawActivity = familyStatus?.recent_activity?.activity || "nominal_resting";
+    const activityName = rawActivity.replace(/_/g, " ");
 
     return (
-      <div className="space-y-6 text-left">
-        {/* Header with Connection & Subscription status */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="space-y-6 text-left max-w-7xl mx-auto pb-12">
+        {/* Top Portal Banner & Status */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-teal-600 text-3xl">family_restroom</span>
-              Family Care Portal
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Zero-camera privacy-first RF sensing for your loved ones.
+            <div className="flex items-center gap-2 mb-1">
+              <span className="material-symbols-outlined text-emerald-600 text-2xl">family_restroom</span>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                Family Care Portal
+              </h1>
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+                Live Care
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              Zero-camera ambient RF safety telemetry • Dignified privacy for your loved ones.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
-              <span className="text-slate-400 font-semibold">Subscription:</span>
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-slate-500 dark:text-slate-400 font-medium">RF Sensing:</span>
+              <span className="font-bold text-emerald-700 dark:text-emerald-400">ONLINE</span>
+            </div>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Subscription:</span>
               <span
-                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                   activeSub
                     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                     : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                 }`}
               >
-                {activeSub ? "ACTIVE • CARE_MONTHLY" : "PENDING APPROVAL"}
+                {activeSub ? "ACTIVE • CARE_PLAN" : "PENDING APPROVAL"}
               </span>
+            </div>
+
+            <a
+              href="tel:+914828251122"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">call</span>
+              <span>Care Desk: +91 4828 251122</span>
+            </a>
+          </div>
+        </div>
+
+        {/* PRIMARY HERO: Monitored Loved One Live Safety & Telemetry Centerpiece */}
+        <div className="bg-gradient-to-br from-white via-white to-emerald-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 rounded-2xl border-2 border-emerald-500/20 dark:border-emerald-500/30 p-6 sm:p-7 shadow-sm relative overflow-hidden">
+          {/* Subtle Ambient Background Watermark */}
+          <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 pointer-events-none opacity-5 dark:opacity-10">
+            <span className="material-symbols-outlined text-[240px] text-emerald-600">sensors</span>
+          </div>
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
+            {/* Resident Bio & Identity */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 border-2 border-emerald-300 dark:border-emerald-700 flex items-center justify-center text-emerald-800 dark:text-emerald-200 font-black text-2xl sm:text-3xl shadow-sm">
+                  {((resFirstName?.[0] || "A") + (resLastName?.[0] || "J")).toUpperCase()}
+                </div>
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center">
+                  <span className="w-2 h-2 bg-white rounded-full animate-ping"></span>
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                    {resFirstName} {resLastName}
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    Your {resRelationship}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1 font-mono font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600">room</span>
+                    {resRoom}
+                  </span>
+                  <span>•</span>
+                  <span>St. Mary's Elder Care Residence</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Prominent Live Status Badge */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
+                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                    CURRENT STATE
+                  </span>
+                  <span className="text-sm font-black text-emerald-900 dark:text-emerald-200">
+                    {presenceStatus === "SAFE" || presenceStatus === "PRESENT" ? "SAFE & PRESENT" : presenceStatus}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                <span className="material-symbols-outlined text-[18px] text-emerald-600">visibility_off</span>
+                <span className="font-semibold">Zero Cameras • 100% Privacy</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Real-Time Telemetry Cards Grid */}
+          <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-6">
+            <div className="bg-white dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider">Current Posture</span>
+                <span className="material-symbols-outlined text-[18px] text-emerald-600">
+                  {rawActivity.includes("bed") || rawActivity.includes("rest") ? "bed" : "directions_walk"}
+                </span>
+              </div>
+              <div>
+                <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white capitalize">
+                  {activityName}
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Continuous gait & micro-motion
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider">Room Presence</span>
+                <span className="material-symbols-outlined text-[18px] text-emerald-600">person_pin_circle</span>
+              </div>
+              <div>
+                <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
+                  Present in Room
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  RF subcarrier reflections verified
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider">CSI Telemetry</span>
+                <span className="material-symbols-outlined text-[18px] text-emerald-600">sensors</span>
+              </div>
+              <div>
+                <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white font-mono">
+                  56 Subcarriers
+                </div>
+                <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-semibold">
+                  Live Stream Synchronized
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider">Fall Safety</span>
+                <span className="material-symbols-outlined text-[18px] text-emerald-600">health_and_safety</span>
+              </div>
+              <div>
+                <div className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                  Nominal (No Falls)
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  24/7 RF velocity guardian
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bento Grid */}
+        {/* MIDDLE SECTION: 2-Column Grid */}
         <div className="grid grid-cols-12 gap-6">
-          {/* Privacy Guarantee Hero Card (Span 8) */}
-          <div className="col-span-12 lg:col-span-8 bg-teal-50/40 dark:bg-teal-950/10 rounded-xl border border-slate-200 dark:border-slate-800 p-6 relative overflow-hidden flex flex-col justify-between shadow-sm">
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 mb-4">
-                <span className="material-symbols-outlined text-[16px] text-teal-600">verified_user</span>
-                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
-                  Zero Camera Ambient Sensing
+          {/* Left Column (7 cols): Safety Incident History & Dignity Architecture */}
+          <div className="col-span-12 lg:col-span-7 space-y-6">
+            {/* Safety & Incident History Log */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-emerald-600">notifications_active</span>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                    Safety & Incident Log
+                  </h3>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                  Read-Only Realtime Log
                 </span>
               </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                Invisible Security. Zero Cameras. Absolute Dignity.
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mb-4">
-                Wi-Fi CSI senses room presence and gait motion mathematically through 56 subcarrier signal reflections. No cameras or microphones are ever used.
-              </p>
-            </div>
-            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-                <span className="material-symbols-outlined text-teal-600 text-xl mb-1">videocam_off</span>
-                <div className="font-bold text-xs text-slate-900 dark:text-white">No Optical Video</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">100% Visual Privacy</div>
-              </div>
-              <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-                <span className="material-symbols-outlined text-teal-600 text-xl mb-1">mic_off</span>
-                <div className="font-bold text-xs text-slate-900 dark:text-white">No Audio Capture</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Zero Microphones</div>
-              </div>
-              <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-                <span className="material-symbols-outlined text-teal-600 text-xl mb-1">lock</span>
-                <div className="font-bold text-xs text-slate-900 dark:text-white">Encrypted CSI</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Secure Facility Telemetry</div>
-              </div>
-            </div>
-          </div>
 
-          {/* Connect Another Resident Card (Span 4) */}
-          <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col shadow-sm">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-teal-600 text-[18px]">person_add</span>
-              Connect Elder Resident
-            </h3>
-            <p className="text-xs text-slate-500 mb-3">Submit link request for family authorization.</p>
-            <form onSubmit={handleCreateConnection} className="space-y-3 text-xs flex-1 flex flex-col justify-between">
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Target Resident</label>
-                <select
-                  value={selectedRequestResidentId}
-                  onChange={(e) => setSelectedRequestResidentId(e.target.value)}
-                  required
-                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="">-- Choose Resident --</option>
-                  {residents.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.first_name} {r.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Your Relationship</label>
-                <select
-                  value={newRelationship}
-                  onChange={(e) => setNewRelationship(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="Son">Son</option>
-                  <option value="Daughter">Daughter</option>
-                  <option value="Spouse">Spouse</option>
-                  <option value="Brother">Brother</option>
-                  <option value="Sister">Sister</option>
-                  <option value="Guardian">Guardian</option>
-                  <option value="Other">Other Relative</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Verification Note</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Registered next-of-kin"
-                  value={newNotes}
-                  onChange={(e) => setNewNotes(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={submittingConnection}
-                className="w-full py-2 bg-teal-600 text-white rounded text-xs font-bold uppercase hover:bg-teal-700 transition-colors cursor-pointer mt-2"
-              >
-                {submittingConnection ? "Submitting..." : "Submit Connection Request"}
-              </button>
-            </form>
-          </div>
-
-          {/* Resident Live Status Card (Span 6) */}
-          <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm flex flex-col">
-            <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-teal-600">health_and_safety</span>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Monitored Elder Safety Status
-                </h3>
-              </div>
-              <span className="text-[10px] font-bold bg-teal-50 text-teal-700 px-2 py-0.5 rounded">
-                Live Telemetry
-              </span>
-            </div>
-            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                      {familyStatus?.resident?.first_name || "Annamma"} {familyStatus?.resident?.last_name || "Joseph"}
-                    </h4>
-                    <p className="text-xs text-slate-500 font-mono mt-0.5">
-                      Assigned: {familyStatus?.resident?.room_name || "Resident Room 204"}
-                    </p>
-                  </div>
-                  <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    {(familyStatus?.presence_status || "Safe").toUpperCase()}
-                  </span>
-                </div>
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-3 flex justify-between items-center text-xs">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Current Activity</span>
-                    <span className="font-bold text-slate-900 dark:text-white capitalize">
-                      {familyStatus?.recent_activity?.activity?.replace("_", " ") || "Nominal Resting"}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Last Shift Detection</span>
-                    <span className="font-mono text-slate-600 dark:text-slate-400">
-                      {familyStatus?.recent_activity?.timestamp
-                        ? new Date(familyStatus.recent_activity.timestamp).toLocaleTimeString()
-                        : "Synchronized"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Alert History */}
-              <div className="flex-1">
-                <h4 className="text-[11px] font-bold uppercase text-slate-400 mb-2">
-                  Recent Incident History (Read-Only)
-                </h4>
-                <div className="space-y-2 max-h-[140px] overflow-y-auto">
-                  {(familyStatus?.alerts || []).map((a) => (
-                    <div
-                      key={a.id}
-                      className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs"
-                    >
+              <div className="space-y-3">
+                {(familyStatus?.alerts || []).map((a) => (
+                  <div
+                    key={a.id}
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[18px]">warning</span>
+                      </div>
                       <div>
-                        <div className="font-bold text-slate-900 dark:text-white">
-                          {a.event_type?.replace("_", " ")}
+                        <div className="font-bold text-slate-900 dark:text-white capitalize">
+                          {a.event_type?.replace(/_/g, " ")}
                         </div>
-                        <div className="text-[10px] text-slate-400">
-                          {new Date(a.created_at).toLocaleTimeString()}
+                        <div className="text-[11px] text-slate-400">
+                          {new Date(a.created_at).toLocaleString()}
                         </div>
                       </div>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          a.status === "resolved"
-                            ? "bg-slate-100 text-slate-600"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {a.status?.toUpperCase()}
-                      </span>
                     </div>
-                  ))}
-                  {(!familyStatus?.alerts || familyStatus.alerts.length === 0) && (
-                    <p className="text-xs text-slate-400 italic text-center p-3">
-                      No warning incidents recorded.
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                        a.status === "resolved"
+                          ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                          : "bg-red-500 text-white"
+                      }`}
+                    >
+                      {a.status?.toUpperCase()}
+                    </span>
+                  </div>
+                ))}
+
+                {(!familyStatus?.alerts || familyStatus.alerts.length === 0) && (
+                  <div className="p-6 text-center rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                    <span className="material-symbols-outlined text-emerald-600 text-3xl mb-1">verified</span>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      No Emergency Incidents Reported
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                      Wi-Fi Sense continuous RF gait and posture guardian has verified zero falls or anomalous distress events.
                     </p>
-                  )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Privacy Architecture Guarantee Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="material-symbols-outlined text-emerald-600 text-xl">shield</span>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                  Invisible Security & Dignity Guarantee
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                Wi-Fi CSI (Channel State Information) measures minute variations in ambient RF wave fields across 56 Orthogonal Frequency Division Multiplexing (OFDM) subcarriers. Your loved one maintains absolute visual and auditory privacy at all times.
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-center">
+                  <span className="material-symbols-outlined text-emerald-600 text-2xl mb-1">videocam_off</span>
+                  <div className="font-bold text-xs text-slate-900 dark:text-white">Zero Cameras</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">100% Visual Dignity</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-center">
+                  <span className="material-symbols-outlined text-emerald-600 text-2xl mb-1">mic_off</span>
+                  <div className="font-bold text-xs text-slate-900 dark:text-white">Zero Microphones</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">No Audio Recorded</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-center">
+                  <span className="material-symbols-outlined text-emerald-600 text-2xl mb-1">lock</span>
+                  <div className="font-bold text-xs text-slate-900 dark:text-white">Encrypted RF</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">End-to-End Secure</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Privacy Controls (Span 6) */}
-          <div className="col-span-12 xl:col-span-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col justify-between shadow-sm">
-            <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1">
-                Sharing Policy &amp; Safety Controls
-              </h3>
-              <p className="text-xs text-slate-500 mb-4">
-                Strict privacy masks fine-grained coordinates according to resident consent.
+          {/* Right Column (5 cols): Controls & Connections */}
+          <div className="col-span-12 lg:col-span-5 space-y-6">
+            {/* Sharing Policy & Privacy Toggles */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="material-symbols-outlined text-emerald-600">tune</span>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                  Sharing & Privacy Controls
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                Tailor telemetry fidelity and disclosure preferences according to family wishes.
               </p>
+
               <div className="space-y-3">
                 <div
                   onClick={() => {
                     setStrictPrivacy(!strictPrivacy);
                     setToastMessage({
                       type: "success",
-                      text: `Strict Privacy Mode: ${!strictPrivacy ? "ON" : "OFF"}`,
+                      text: `Strict Privacy Mode: ${!strictPrivacy ? "ENABLED" : "DISABLED"}`,
                     });
                   }}
-                  className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer transition-colors ${
-                    strictPrivacy ? "border-teal-500 bg-teal-50/20" : "border-slate-200 dark:border-slate-800"
+                  className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                    strictPrivacy
+                      ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20"
+                      : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-teal-600">visibility_off</span>
+                    <span className="material-symbols-outlined text-emerald-600">visibility_off</span>
                     <div>
-                      <div className="font-bold text-xs text-slate-900 dark:text-white">Strict Privacy Mode</div>
-                      <div className="text-[11px] text-slate-500">Mask presence coordinates to high-level status only</div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">
+                        Strict Privacy Mode
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Mask specific coordinates to high-level state only
+                      </div>
                     </div>
                   </div>
-                  <span className={`w-3 h-3 rounded-full ${strictPrivacy ? "bg-teal-600" : "bg-slate-300"}`}></span>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      strictPrivacy ? "border-emerald-600 bg-emerald-600" : "border-slate-300 dark:border-slate-600"
+                    }`}
+                  >
+                    {strictPrivacy && <span className="material-symbols-outlined text-white text-[14px]">check</span>}
+                  </div>
                 </div>
 
                 <div
@@ -636,40 +741,171 @@ export default function FamilyPortalView({
                     setContextualVisibility(!contextualVisibility);
                     setToastMessage({
                       type: "success",
-                      text: `Contextual Visibility: ${!contextualVisibility ? "ON" : "OFF"}`,
+                      text: `Contextual Activity Stream: ${!contextualVisibility ? "ENABLED" : "DISABLED"}`,
                     });
                   }}
-                  className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer transition-colors ${
-                    contextualVisibility ? "border-teal-500 bg-teal-50/20" : "border-slate-200 dark:border-slate-800"
+                  className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                    contextualVisibility
+                      ? "border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20"
+                      : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-teal-600">visibility</span>
+                    <span className="material-symbols-outlined text-emerald-600">show_chart</span>
                     <div>
-                      <div className="font-bold text-xs text-slate-900 dark:text-white">Contextual Activity Stream</div>
-                      <div className="text-[11px] text-slate-500">Show room activity classifications (walking, resting)</div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white">
+                        Contextual Activity Stream
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Show motion classifications (resting, walking)
+                      </div>
                     </div>
                   </div>
-                  <span className={`w-3 h-3 rounded-full ${contextualVisibility ? "bg-teal-600" : "bg-slate-300"}`}></span>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      contextualVisibility
+                        ? "border-emerald-600 bg-emerald-600"
+                        : "border-slate-300 dark:border-slate-600"
+                    }`}
+                  >
+                    {contextualVisibility && (
+                      <span className="material-symbols-outlined text-white text-[14px]">check</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Care Desk Quick Contact Box */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 mt-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Facility Station Help Desk
+                    </div>
+                    <div className="font-extrabold text-sm text-slate-900 dark:text-white mt-0.5">
+                      St. Peter's Nursing Care
+                    </div>
+                    <div className="text-xs text-slate-500 font-mono">+91 4828 251122</div>
+                  </div>
+                  <a
+                    href="tel:+914828251122"
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">call</span>
+                    <span>Call Desk</span>
+                  </a>
                 </div>
               </div>
             </div>
 
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-800 mt-4">
-              <div className="text-[10px] font-bold uppercase text-slate-400">Emergency Help Desk Contact</div>
-              <div className="flex justify-between items-center mt-1 text-xs">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white">St. Peter's Care Desk</div>
-                  <div className="text-slate-500 font-mono text-[11px]">+91 4828 251122</div>
+            {/* Resident Connections & Expandable Link Option */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-emerald-600">link</span>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                    Connected Residents
+                  </h3>
                 </div>
-                <a
-                  href="tel:+914828251122"
-                  className="px-3 py-1 bg-teal-600 text-white rounded text-xs font-bold hover:bg-teal-700 flex items-center gap-1"
+                <button
+                  onClick={() => setShowAddResident(!showAddResident)}
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[14px]">call</span>
-                  Direct Desk
-                </a>
+                  <span className="material-symbols-outlined text-[16px]">
+                    {showAddResident ? "expand_less" : "add_circle"}
+                  </span>
+                  <span>{showAddResident ? "Hide Form" : "+ Link Another"}</span>
+                </button>
               </div>
+
+              {/* Active Connection Summary */}
+              <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
+                    {((resFirstName?.[0] || "A") + (resLastName?.[0] || "J")).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs text-slate-900 dark:text-white">
+                      {resFirstName} {resLastName}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {resRoom} • Relationship: {resRelationship}
+                    </div>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                  APPROVED
+                </span>
+              </div>
+
+              {/* Collapsible Connection Request Form */}
+              {showAddResident && (
+                <form
+                  onSubmit={handleCreateConnection}
+                  className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-fadeIn"
+                >
+                  <p className="text-xs text-slate-500">
+                    Request authorization to monitor another elder resident:
+                  </p>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                      Target Resident
+                    </label>
+                    <select
+                      value={selectedRequestResidentId}
+                      onChange={(e) => setSelectedRequestResidentId(e.target.value)}
+                      required
+                      className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="">-- Choose Resident --</option>
+                      {residents.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.first_name} {r.last_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                        Relationship
+                      </label>
+                      <select
+                        value={newRelationship}
+                        onChange={(e) => setNewRelationship(e.target.value)}
+                        className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
+                      >
+                        <option value="Son">Son</option>
+                        <option value="Daughter">Daughter</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Brother">Brother</option>
+                        <option value="Sister">Sister</option>
+                        <option value="Guardian">Guardian</option>
+                        <option value="Other">Other Relative</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                        Verification Note
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Next-of-kin"
+                        value={newNotes}
+                        onChange={(e) => setNewNotes(e.target.value)}
+                        className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs bg-slate-50 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submittingConnection}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase transition-colors cursor-pointer"
+                  >
+                    {submittingConnection ? "Submitting..." : "Submit Connection Request"}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>

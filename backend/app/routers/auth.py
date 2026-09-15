@@ -1,10 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
+from typing import List, Optional
+from datetime import datetime
+
 from app.core.database import get_session
-from app.core.security import hash_password, verify_password, create_access_token, decode_access_token
-from app.models.entities import User, UserRole, Role, Organization, Building, Floor, Room
-from app.schemas.schemas import UserRegister, UserLogin, Token, UserOut, RoleAssignment
+from app.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+    create_refresh_token,
+    verify_and_rotate_refresh_token,
+    revoke_access_token,
+    revoke_all_user_tokens
+)
+from app.core.limiter import rate_limit
+from app.core.audit import record_audit_event
+from app.models.entities import User, UserRole, Role, Organization, Building, Floor, Room, AuditLog
+from app.schemas.schemas import (
+    UserRegister,
+    UserLogin,
+    Token,
+    UserOut,
+    RoleAssignment,
+    TokenRefreshRequest,
+    LogoutRequest,
+    AuditLogOut
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -40,8 +63,17 @@ def seed_roles_if_empty(session: Session):
             session.add(new_role)
     session.commit()
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegister, session: Session = Depends(get_session)):
+@router.post(
+    "/register",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60, bucket="auth_register"))]
+)
+def register(
+    user_data: UserRegister,
+    request: Request,
+    session: Session = Depends(get_session)
+):
     """Self-service registration. Always creates an unprivileged account;
     privileged roles and scopes are granted by an administrator via /auth/assign-role."""
     seed_roles_if_empty(session)
@@ -49,6 +81,15 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
     statement = select(User).where(User.email == user_data.email)
     existing_user = session.exec(statement).first()
     if existing_user:
+        record_audit_event(
+            session=session,
+            what_action="AUTH_REGISTER_FAILED",
+            resource_type="USER",
+            result="FAILURE",
+            who_email=user_data.email,
+            details={"reason": "Email already exists"},
+            request=request
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email address already exists."
@@ -63,6 +104,15 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
 
     # Disallow self-registering as system_admin (only one root platform admin permitted)
     if user_data.role == "system_admin":
+        record_audit_event(
+            session=session,
+            what_action="AUTH_REGISTER_DENIED",
+            resource_type="USER",
+            result="DENIED",
+            who_email=user_data.email,
+            details={"reason": "Attempted self-registration as system_admin"},
+            request=request
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="System Administrator accounts cannot be self-registered. Only one global platform administrator is permitted."
@@ -81,6 +131,7 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
         rm = session.get(Room, user_data.room_id)
         if not rm:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+
     hashed_pwd = hash_password(user_data.password)
     user = User(
         email=user_data.email,
@@ -100,6 +151,17 @@ def register(user_data: UserRegister, session: Session = Depends(get_session)):
     session.add(user_role)
     session.commit()
     session.refresh(user)
+
+    record_audit_event(
+        session=session,
+        what_action="AUTH_USER_REGISTERED",
+        resource_type="USER",
+        resource_id=user.id,
+        result="SUCCESS",
+        who_user_id=user.id,
+        who_email=user.email,
+        request=request
+    )
 
     return user
 
@@ -142,20 +204,48 @@ def get_user_role_and_context(user: User, session: Session):
 
     return role_name, app_context, False
 
-@router.post("/login", response_model=Token)
-def login(login_data: UserLogin, session: Session = Depends(get_session)):
+@router.post(
+    "/login",
+    response_model=Token,
+    dependencies=[Depends(rate_limit(max_requests=15, window_seconds=60, bucket="auth_login"))]
+)
+def login(
+    login_data: UserLogin,
+    request: Request,
+    session: Session = Depends(get_session)
+):
     seed_roles_if_empty(session)
 
     # Fetch user
     statement = select(User).where(User.email == login_data.email)
     user = session.exec(statement).first()
     if not user or not verify_password(login_data.password, user.password_hash):
+        record_audit_event(
+            session=session,
+            what_action="AUTH_LOGIN_FAILED",
+            resource_type="USER",
+            result="FAILURE",
+            who_email=login_data.email,
+            details={"reason": "Invalid email or password"},
+            request=request
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password."
         )
 
     if not user.is_active:
+        record_audit_event(
+            session=session,
+            what_action="AUTH_LOGIN_DENIED",
+            resource_type="USER",
+            resource_id=user.id,
+            result="DENIED",
+            who_user_id=user.id,
+            who_email=user.email,
+            details={"reason": "Account deactivated"},
+            request=request
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User account is deactivated."
@@ -164,16 +254,130 @@ def login(login_data: UserLogin, session: Session = Depends(get_session)):
     # Fetch user's role and application context deterministically
     role_name, app_context, is_sysadmin = get_user_role_and_context(user, session)
 
-    # Generate JWT
+    # Generate Access JWT and Rotating Refresh Token
     token = create_access_token(subject=user.id, role=role_name)
+    raw_refresh_token, _ = create_refresh_token(user_id=user.id, session=session)
+
+    # Record successful login audit event
+    record_audit_event(
+        session=session,
+        what_action="AUTH_LOGIN_SUCCESS",
+        resource_type="USER",
+        resource_id=user.id,
+        result="SUCCESS",
+        who_user_id=user.id,
+        who_email=user.email,
+        details={"role": role_name, "context": app_context},
+        request=request
+    )
+
     return Token(
         access_token=token,
         token_type="bearer",
         role=role_name,
         application_context=app_context,
         is_system_admin=is_sysadmin,
+        refresh_token=raw_refresh_token,
         user=UserOut.from_orm(user)
     )
+
+@router.post(
+    "/refresh",
+    response_model=Token,
+    dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60, bucket="auth_refresh"))]
+)
+def refresh_token_endpoint(
+    refresh_data: TokenRefreshRequest,
+    request: Request,
+    session: Session = Depends(get_session)
+):
+    """
+    Exchanges a valid refresh token for a new access token and a newly rotated refresh token.
+    Enforces single-use rotation and reuse detection.
+    """
+    try:
+        user, new_refresh_token, _ = verify_and_rotate_refresh_token(refresh_data.refresh_token, session)
+    except ValueError as e:
+        record_audit_event(
+            session=session,
+            what_action="AUTH_TOKEN_REFRESH_FAILED",
+            resource_type="TOKEN",
+            result="FAILURE",
+            details={"error": str(e)},
+            request=request
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    role_name, app_context, is_sysadmin = get_user_role_and_context(user, session)
+    new_access_token = create_access_token(subject=user.id, role=role_name)
+
+    record_audit_event(
+        session=session,
+        what_action="AUTH_TOKEN_REFRESH_SUCCESS",
+        resource_type="TOKEN",
+        result="SUCCESS",
+        who_user_id=user.id,
+        who_email=user.email,
+        request=request
+    )
+
+    return Token(
+        access_token=new_access_token,
+        token_type="bearer",
+        role=role_name,
+        application_context=app_context,
+        is_system_admin=is_sysadmin,
+        refresh_token=new_refresh_token,
+        user=UserOut.from_orm(user)
+    )
+
+@router.post("/logout")
+def logout(
+    request: Request,
+    logout_data: Optional[LogoutRequest] = None,
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session)
+):
+    """
+    Revokes the current access token and associated refresh tokens server-side.
+    Subsequent calls with this access token will receive HTTP 401 Unauthorized.
+    """
+    current_user = get_current_user(token=token, session=session)
+
+    # Blacklist current access token
+    revoke_access_token(token, session=session, reason="user_logout")
+
+    # Invalidate refresh token if provided, or revoke all active refresh tokens for user
+    if logout_data and logout_data.refresh_token:
+        try:
+            from app.core.security import hash_token
+            from app.models.entities import RefreshToken
+            th = hash_token(logout_data.refresh_token)
+            db_rt = session.exec(select(RefreshToken).where(RefreshToken.token_hash == th)).first()
+            if db_rt:
+                db_rt.revoked_at = datetime.utcnow()
+                session.add(db_rt)
+                session.commit()
+        except Exception:
+            pass
+    else:
+        revoke_all_user_tokens(current_user.id, session=session, reason="user_logout")
+
+    record_audit_event(
+        session=session,
+        what_action="AUTH_LOGOUT",
+        resource_type="USER",
+        resource_id=current_user.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        request=request
+    )
+
+    return {"message": "Logged out successfully. Tokens have been revoked."}
 
 @router.get("/me", response_model=Token)
 def get_auth_me(
@@ -193,7 +397,8 @@ def get_auth_me(
 
 # Dependency to fetch the active authenticated user
 def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)) -> User:
-    payload = decode_access_token(token)
+    # Validate token and verify it has not been revoked server-side
+    payload = decode_access_token(token, session=session)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -258,7 +463,9 @@ def get_user_scopes(user: User):
 @router.post("/assign-role", response_model=UserOut, dependencies=[Depends(require_roles(["system_admin"]))])
 def assign_role(
     assignment: RoleAssignment,
-    session: Session = Depends(get_session)
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
     seed_roles_if_empty(session)
 
@@ -322,4 +529,41 @@ def assign_role(
     ))
     session.commit()
     session.refresh(target_user)
+
+    # Invalidate active refresh tokens for the target user so privilege change is enforced immediately
+    revoke_all_user_tokens(target_user.id, session=session, reason="role_reassigned")
+
+    # Record structured audit log
+    record_audit_event(
+        session=session,
+        what_action="ROLE_ASSIGNED",
+        resource_type="USER",
+        resource_id=target_user.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        details={
+            "target_user_email": target_user.email,
+            "new_role": assignment.role,
+            "organization_id": assignment.organization_id,
+            "building_id": assignment.building_id,
+            "room_id": assignment.room_id
+        },
+        request=request
+    )
+
     return target_user
+
+@router.get("/audit-logs", response_model=List[AuditLogOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin"]))])
+def list_audit_logs(
+    limit: int = 100,
+    offset: int = 0,
+    action: Optional[str] = None,
+    session: Session = Depends(get_session)
+):
+    """Returns paginated audit logs for system governance and compliance monitoring."""
+    stmt = select(AuditLog)
+    if action:
+        stmt = stmt.where(AuditLog.what_action == action)
+    stmt = stmt.order_by(AuditLog.created_at.desc()).offset(offset).limit(min(limit, 500))
+    return session.exec(stmt).all()

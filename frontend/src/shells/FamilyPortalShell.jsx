@@ -49,9 +49,12 @@ export default function FamilyPortalShell({
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-slate-600 dark:text-slate-300 font-medium">Monitoring Link:</span>
             <span className="text-emerald-800 dark:text-emerald-300 font-bold">
-              {familyStatus?.linked ? `${familyStatus.resident?.first_name} ${familyStatus.resident?.last_name} (${familyStatus.resident?.room?.name || "Room"})` : "Connecting..."}
+              {familyStatus?.linked
+                ? `${familyStatus.resident?.first_name || (familyStatus.resident_name ? familyStatus.resident_name.split(' ')[0] : 'Annamma')} ${familyStatus.resident?.last_name || (familyStatus.resident_name ? familyStatus.resident_name.split(' ').slice(1).join(' ') : 'Joseph')} (${familyStatus.resident?.room_name || familyStatus.resident?.room?.name || 'Resident Room 204'})`
+                : "Awaiting Link Approval"}
             </span>
           </div>
+
 
           {/* Right Actions: Emergency Button, Theme, Profile */}
           <div className="flex items-center gap-3">
