@@ -20,8 +20,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     conn = op.get_bind()
-    # Ensure role 7 ("family_member") exists in roles table
-    conn.execute(sa.text("INSERT OR IGNORE INTO roles (id, name) VALUES (7, 'family_member')"))
+    # Ensure role 7 ("family_member") exists in roles table portably across SQLite, PostgreSQL, etc.
+    exists = conn.execute(sa.text("SELECT 1 FROM roles WHERE id = 7")).scalar()
+    if not exists:
+        conn.execute(sa.text("INSERT INTO roles (id, name) VALUES (7, 'family_member')"))
     # Migrate all user_roles assignments from role_id 6 (legacy emergency_contact login) to role_id 7 (family_member)
     conn.execute(sa.text("UPDATE user_roles SET role_id = 7 WHERE role_id = 6"))
 
