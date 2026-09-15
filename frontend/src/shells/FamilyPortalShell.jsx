@@ -24,8 +24,8 @@ export default function FamilyPortalShell({
   return (
     <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-all duration-300">
       {/* Streamlined Top Navigation Bar for Family Members (NO sidebar) */}
-      <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-emerald-100 dark:border-slate-800 sticky top-0 z-40 px-6 py-3.5 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-emerald-100 dark:border-slate-800 sticky top-0 z-40 px-6 py-3 shadow-xs">
+        <div className="w-full flex items-center justify-between">
           {/* Brand Header */}
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-xs font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
@@ -153,7 +153,7 @@ export default function FamilyPortalShell({
       </header>
 
       {/* Family Member Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
+      <main className="flex-1 w-full px-6 lg:px-8 py-6">
         {children}
       </main>
     </div>
