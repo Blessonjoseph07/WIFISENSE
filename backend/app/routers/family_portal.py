@@ -29,7 +29,7 @@ def submit_family_connection(
     current_user: User = Depends(get_current_user)
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["family_member", "emergency_contact"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "family_member" or app_context == "CORPORATE"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only registered family members in elder-care context can request resident connections."
@@ -110,7 +110,7 @@ def list_family_connections(
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
     scopes = get_user_scopes(current_user)
 
-    if role_name in ["family_member", "emergency_contact"]:
+    if role_name == "family_member":
         conns = session.exec(select(FamilyConnection).where(FamilyConnection.family_user_id == current_user.id)).all()
     else:
         # Facility Manager / Admin view
@@ -227,7 +227,7 @@ def list_family_subscriptions(
     current_user: User = Depends(get_current_user)
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if role_name in ["family_member", "emergency_contact"]:
+    if role_name == "family_member":
         return session.exec(select(FamilySubscription).where(FamilySubscription.family_user_id == current_user.id)).all()
     
     if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
@@ -272,7 +272,7 @@ def get_linked_resident_status(
     current_user: User = Depends(get_current_user)
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["family_member", "emergency_contact"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "family_member" or app_context == "CORPORATE"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Resident status is only accessible by authorized family members in ELDER_CARE organizations."

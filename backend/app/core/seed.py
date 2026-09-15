@@ -16,7 +16,6 @@ ROLE_MAPPING = {
     "facility_manager": 3,
     "caregiver": 4,
     "corporate_staff": 5,
-    "emergency_contact": 6,
     "family_member": 7
 }
 
@@ -908,7 +907,7 @@ def seed_database(session: Session, force: bool = False):
         session.refresh(u)
         session.add(UserRole(
             user_id=u.id,
-            role_id=ROLE_MAPPING["emergency_contact"],
+            role_id=ROLE_MAPPING["family_member"],
             organization_id=org_lab.id
         ))
 

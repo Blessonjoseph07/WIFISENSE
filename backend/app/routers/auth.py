@@ -39,11 +39,10 @@ ROLE_MAPPING = {
     "facility_manager": 3,
     "caregiver": 4,
     "corporate_staff": 5,
-    "emergency_contact": 6,
     "family_member": 7
 }
 
-DEFAULT_REGISTRATION_ROLE = "emergency_contact"
+DEFAULT_REGISTRATION_ROLE = "family_member"
 
 ROLE_NAMES = {
     1: "system_admin",
@@ -51,7 +50,7 @@ ROLE_NAMES = {
     3: "facility_manager",
     4: "caregiver",
     5: "corporate_staff",
-    6: "emergency_contact",
+    6: "emergency_contact",  # Legacy role retired; retained in lookup for negative authorization verification
     7: "family_member"
 }
 
@@ -171,7 +170,7 @@ def get_user_role_and_context(user: User, session: Session):
     user_roles = session.exec(role_statement).all()
 
     if not user_roles:
-        return "emergency_contact", "ELDER_CARE", False
+        return "family_member", "ELDER_CARE", False
 
     # Check if system_admin
     for ur in user_roles:
@@ -194,7 +193,7 @@ def get_user_role_and_context(user: User, session: Session):
 
     # Pin role and application_context to the single deterministic UserRole row
     primary_role_map = user_roles[0]
-    role_name = ROLE_NAMES.get(primary_role_map.role_id, "emergency_contact")
+    role_name = ROLE_NAMES.get(primary_role_map.role_id, "family_member")
 
     if primary_role_map.organization_id:
         org = session.get(Organization, primary_role_map.organization_id)
