@@ -22,9 +22,9 @@ export default function FamilyPortalShell({
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-all duration-300">
+    <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen w-full flex-1 flex flex-col transition-all duration-300">
       {/* Streamlined Top Navigation Bar for Family Members (NO sidebar) */}
-      <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-emerald-100 dark:border-slate-800 sticky top-0 z-40 px-6 py-3 shadow-xs">
+      <header className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-emerald-100 dark:border-slate-800 sticky top-0 z-40 px-6 py-3 shadow-xs">
         <div className="w-full flex items-center justify-between">
           {/* Brand Header */}
           <div className="flex items-center gap-3">

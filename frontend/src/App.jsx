@@ -1412,7 +1412,7 @@ export default function App() {
   }
 
   return (
-    <div className={`bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex transition-all duration-300 ${themeClass} relative`}>
+    <div className={`bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen w-full flex flex-col transition-all duration-300 ${themeClass} relative`}>
       {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
       
       {/* Toast Notification */}
@@ -1426,7 +1426,7 @@ export default function App() {
       )}
 
       {renderAppShell(
-        <div className="space-y-6">
+        <div className="space-y-6 w-full">
           {/* Global Fall Alert Banner */}
           {activeFallAlert && role !== "emergency_contact" && (
             <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 rounded-xl flex items-center justify-between pulse-animation relative z-25">
