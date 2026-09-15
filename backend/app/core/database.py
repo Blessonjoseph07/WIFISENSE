@@ -1,41 +1,25 @@
-from sqlmodel import create_engine, SQLModel, Session
-from app.core.config import settings
+import os
+from sqlmodel import create_engine, Session
+from alembic import command
+from alembic.config import Config
+from app.core.config import BASE_DIR, settings
 
 # For SQLite, connect_args={"check_same_thread": False} is required
 connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(settings.DATABASE_URL, echo=False, connect_args=connect_args)
 
-from sqlalchemy import text
+def run_migrations():
+    """Apply all pending database migrations up to head via Alembic."""
+    ini_path = os.path.join(BASE_DIR, "alembic.ini")
+    alembic_cfg = Config(ini_path)
+    alembic_cfg.set_main_option("script_location", os.path.join(BASE_DIR, "alembic"))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+    command.upgrade(alembic_cfg, "head")
 
 def init_db():
-    SQLModel.metadata.create_all(engine)
-    with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE devices ADD COLUMN hardware_token VARCHAR"))
-            conn.commit()
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE rooms ADD COLUMN classification VARCHAR"))
-            conn.commit()
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE residents ADD COLUMN resident_status VARCHAR DEFAULT 'Active'"))
-            conn.commit()
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE sensing_events ADD COLUMN signal_quality INTEGER DEFAULT 94"))
-            conn.commit()
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE sensing_events ADD COLUMN event_type VARCHAR DEFAULT 'SensingTelemetry'"))
-            conn.commit()
-        except Exception:
-            pass
+    """Authoritative schema management entry point: runs Alembic migrations."""
+    run_migrations()
 
 def get_session():
     # Set expire_on_commit=False globally as per project requirements
