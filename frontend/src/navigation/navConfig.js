@@ -126,9 +126,9 @@ const MATRIX = {
       theme: "care"
     },
     emergency_contact: {
-      allowedViews: ["family", "profile"],
-      defaultView: "family",
-      badgeText: "CARE • Family Portal",
+      allowedViews: [],
+      defaultView: "profile",
+      badgeText: "CARE • Legacy Contact (Retired)",
       theme: "care"
     }
   },
