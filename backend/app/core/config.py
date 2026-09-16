@@ -23,6 +23,14 @@ class Settings:
     BOOTSTRAP_ADMIN_EMAIL: str = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "")
     BOOTSTRAP_ADMIN_PASSWORD: str = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
 
+    # SMTP Configuration for Alert Notifications
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "127.0.0.1")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "1025"))  # Default to MailHog/Mailpit for local dev
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "alerts@wifisense.com")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
     def __init__(self):
         self.ENVIRONMENT = os.getenv("ENVIRONMENT", self.ENVIRONMENT)
         self.DATABASE_URL = os.getenv("DATABASE_URL", self.DATABASE_URL)
