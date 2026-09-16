@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlmodel import Session, select
 from datetime import datetime
 from typing import Dict, Any, List
@@ -6,6 +6,7 @@ from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
 from app.models.entities import SensingDevice, Room, Floor, Building, SensingEvent, ActivityType, Alert, RoomCalibration
 from app.schemas.schemas import SensingEventSimulate
+from app.services.notifications import process_alert_notifications
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
 STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
@@ -81,6 +82,7 @@ def seed_activity_types_if_empty(session: Session):
 @router.post("/simulate-event", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(STAFF_ROLES))])
 def simulate_event(
     event_data: SensingEventSimulate,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
 ):
@@ -151,6 +153,13 @@ def simulate_event(
         session.add(db_alert)
         session.commit()
         session.refresh(db_alert)
+        
+        background_tasks.add_task(
+            process_alert_notifications,
+            alert_id=db_alert.id,
+            room_id=room.id,
+            alert_msg=alert_msg
+        )
 
         notification_details = {
             "channel": "dashboard_ws_push",
