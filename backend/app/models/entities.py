@@ -377,6 +377,10 @@ class AlertAcknowledgement(SQLModel, table=True):
 
     alert: Alert = Relationship(back_populates="acknowledgement")
 
+    @property
+    def who_user_id(self) -> Optional[str]:
+        return self.user_id
+
 # ============================================================================
 # 5. SECURITY, TOKENS & AUDIT LOGGING (PHASE 1 FOUNDATION)
 # ============================================================================

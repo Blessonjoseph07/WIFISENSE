@@ -13,9 +13,9 @@ export default function EmergencyFallModal({
   const [dismissedAlertId, setDismissedAlertId] = useState(null);
 
   const isCareOps =
-    appContext === "ELDER_CARE" &&
-    !isSystemAdmin &&
-    (role === "caregiver" || role === "organization_admin" || role === "facility_manager");
+    (appContext === "ELDER_CARE" || isSystemAdmin || role === "system_admin") &&
+    role !== "family_member" &&
+    role !== "corporate_staff";
 
   const fetchActiveEmergency = async () => {
     if (!authToken) return;
@@ -141,12 +141,10 @@ export default function EmergencyFallModal({
 
         {/* Role Responsibility Notice for System Admin */}
         {isSystemAdmin && (
-          <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/40 px-5 py-2.5 flex items-center gap-2 text-xs text-amber-900 dark:text-amber-200 font-medium">
-            <span className="material-symbols-outlined text-amber-600 text-[18px]">info</span>
+          <div className="bg-violet-50 dark:bg-violet-950/40 border-b border-violet-200 dark:border-violet-900/40 px-5 py-2.5 flex items-center gap-2 text-xs text-violet-900 dark:text-violet-200 font-medium">
+            <span className="material-symbols-outlined text-violet-600 text-[18px]">admin_panel_settings</span>
             <span>
-              <strong>Supervisory Monitor View:</strong> On-duty Caregiver &amp; Elder Care Facility
-              Manager have active operational responsibility to dispatch assistance and resolve this
-              incident.
+              <strong>Global Administrator Intervention:</strong> You have platform-wide authority to acknowledge, coordinate response, and resolve this elder-care incident.
             </span>
           </div>
         )}

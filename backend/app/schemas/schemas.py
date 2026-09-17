@@ -249,6 +249,32 @@ class AlertOut(BaseModel):
 class AlertResolve(BaseModel):
     resolution_notes: str
 
+class AlertAcknowledgementOut(BaseModel):
+    id: str
+    alert_id: str
+    user_id: Optional[str] = None
+    who_user_id: Optional[str] = None
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    acknowledged_at: datetime
+    resolved_at: Optional[datetime] = None
+    resolution_notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class AlertDetailOut(AlertOut):
+    room_name: Optional[str] = None
+    floor_number: Optional[int] = None
+    building_name: Optional[str] = None
+    organization_id: Optional[str] = None
+    organization_name: Optional[str] = None
+    organization_type: Optional[str] = None
+    resident_id: Optional[str] = None
+    resident_name: Optional[str] = None
+    acknowledgement: Optional[AlertAcknowledgementOut] = None
+    emergency_contact: Optional[Dict[str, Any]] = None
+
 # ============================================================================
 # 5. ANALYTICS SCHEMAS
 # ============================================================================
