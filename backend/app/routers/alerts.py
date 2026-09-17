@@ -11,6 +11,7 @@ from app.core.audit import record_audit_event
 router = APIRouter(prefix="/alerts", tags=["Alert Engine"])
 
 STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
+CARE_RESPONDER_ROLES = ["organization_admin", "facility_manager", "caregiver"]
 
 def get_scoped_alert_query(scopes):
     stmt = select(Alert)
@@ -178,7 +179,7 @@ def get_alert_detail(
         emergency_contact=emergency_contact
     )
 
-@router.patch("/{alert_id}/acknowledge", response_model=AlertOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
+@router.patch("/{alert_id}/acknowledge", response_model=AlertOut, dependencies=[Depends(require_roles(CARE_RESPONDER_ROLES))])
 def acknowledge_alert(
     alert_id: str,
     session: Session = Depends(get_session),
@@ -235,7 +236,7 @@ def acknowledge_alert(
 
     return alert
 
-@router.patch("/{alert_id}/responding", response_model=AlertOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
+@router.patch("/{alert_id}/responding", response_model=AlertOut, dependencies=[Depends(require_roles(CARE_RESPONDER_ROLES))])
 def mark_alert_responding(
     alert_id: str,
     session: Session = Depends(get_session),
@@ -288,7 +289,7 @@ def mark_alert_responding(
 
     return alert
 
-@router.patch("/{alert_id}/resolve", response_model=AlertOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
+@router.patch("/{alert_id}/resolve", response_model=AlertOut, dependencies=[Depends(require_roles(CARE_RESPONDER_ROLES))])
 def resolve_alert(
     alert_id: str,
     resolution_data: AlertResolve,

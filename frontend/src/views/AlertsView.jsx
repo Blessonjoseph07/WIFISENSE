@@ -6,8 +6,17 @@ export default function AlertsView({
   handleAcknowledge = () => {},
   setShowResolveModal = () => {},
   authToken = "",
-  API_BASE = "http://127.0.0.1:8000"
+  API_BASE = "http://127.0.0.1:8000",
+  role = "",
+  isSystemAdmin = false,
+  appContext = "",
 }) {
+  const isCareOps =
+    appContext === "ELDER_CARE" &&
+    !isSystemAdmin &&
+    role !== "system_admin" &&
+    (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
+
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -157,20 +166,29 @@ export default function AlertsView({
                             >
                               Details
                             </button>
-                            {alert.status === "new" && (
-                              <button
-                                onClick={() => handleAcknowledge(alert.id)}
-                                className="px-2.5 py-1 text-teal-650 dark:text-teal-400 border border-teal-500/40 hover:bg-teal-50 dark:hover:bg-teal-950/30 rounded font-semibold cursor-pointer text-xs transition-colors"
-                              >
-                                Acknowledge
-                              </button>
+                            {isCareOps ? (
+                              <>
+                                {alert.status === "new" && (
+                                  <button
+                                    onClick={() => handleAcknowledge(alert.id)}
+                                    className="px-2.5 py-1 text-teal-650 dark:text-teal-400 border border-teal-500/40 hover:bg-teal-50 dark:hover:bg-teal-950/30 rounded font-semibold cursor-pointer text-xs transition-colors"
+                                  >
+                                    Acknowledge
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => setShowResolveModal(alert.id)}
+                                  className="px-2.5 py-1 bg-teal-600 text-white rounded text-xs font-semibold hover:bg-teal-700 transition-colors cursor-pointer shadow-xs"
+                                >
+                                  Resolve
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px] text-teal-600 dark:text-teal-400">visibility</span>
+                                Oversight
+                              </span>
                             )}
-                            <button
-                              onClick={() => setShowResolveModal(alert.id)}
-                              className="px-2.5 py-1 bg-teal-600 text-white rounded text-xs font-semibold hover:bg-teal-700 transition-colors cursor-pointer shadow-xs"
-                            >
-                              Resolve
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -395,31 +413,38 @@ export default function AlertsView({
               >
                 Close
               </button>
-              <div className="flex gap-2">
-                {selectedDetail.status === "new" && (
-                  <button
-                    onClick={async () => {
-                      await handleAcknowledge(selectedDetail.id);
-                      setSelectedDetail((prev) => ({ ...prev, status: "acknowledged" }));
-                    }}
-                    className="px-3 py-2 border border-teal-500 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 rounded-lg text-xs font-bold uppercase transition cursor-pointer"
-                  >
-                    Acknowledge
-                  </button>
-                )}
-                {selectedDetail.status !== "resolved" && (
-                  <button
-                    onClick={() => {
-                      const id = selectedDetail.id;
-                      setSelectedDetail(null);
-                      setShowResolveModal(id);
-                    }}
-                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold uppercase transition cursor-pointer shadow-sm"
-                  >
-                    Resolve Incident
-                  </button>
-                )}
-              </div>
+              {isCareOps ? (
+                <div className="flex gap-2">
+                  {selectedDetail.status === "new" && (
+                    <button
+                      onClick={async () => {
+                        await handleAcknowledge(selectedDetail.id);
+                        setSelectedDetail((prev) => ({ ...prev, status: "acknowledged" }));
+                      }}
+                      className="px-3 py-2 border border-teal-500 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30 rounded-lg text-xs font-bold uppercase transition cursor-pointer"
+                    >
+                      Acknowledge
+                    </button>
+                  )}
+                  {selectedDetail.status !== "resolved" && (
+                    <button
+                      onClick={() => {
+                        const id = selectedDetail.id;
+                        setSelectedDetail(null);
+                        setShowResolveModal(id);
+                      }}
+                      className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold uppercase transition cursor-pointer shadow-sm"
+                    >
+                      Resolve Incident
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold">
+                  <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">visibility</span>
+                  <span>GLOBAL OVERSIGHT — Monitoring incident response</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

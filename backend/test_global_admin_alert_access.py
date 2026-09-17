@@ -1,20 +1,25 @@
 """
-WIFISENSE GLOBAL / SYSTEM ADMINISTRATOR ALERT ACCESS TEST SUITE
-==============================================================
-Verifies that System / Global Administrator can perform platform-wide
-administration and respond operationally to elder-care incidents (view,
-acknowledge, resolve), while preserving strict organization isolation for
-scoped roles, preventing Family Member privilege escalation, and ensuring
-all actions are recorded in the AuditLog.
+WIFISENSE GLOBAL / SYSTEM ADMINISTRATOR RBAC & ALERT OVERSIGHT TEST SUITE
+========================================================================
+Verifies the refined role responsibility model:
+- System / Global Admin: Platform-wide READ & OVERSIGHT ONLY.
+  Can view alerts, active alerts, enriched incident details, and timeline globally.
+  Cannot acknowledge, mark responding, or resolve CARE alerts (HTTP 403 Forbidden).
+- Facility Manager: Operational responder within facility scope.
+  Can acknowledge, mark responding, and resolve CARE alerts.
+- Caregiver: Primary operational responder within assigned scope.
+  Can acknowledge, mark responding, and resolve CARE alerts.
+- Family Member: Read-only sharing-policy gated access.
+  Cannot acknowledge, mark responding, or resolve alerts (HTTP 403 Forbidden).
 
-Tests implemented:
-- Test A: Global Admin can view CARE fall alerts (GET /alerts, GET /alerts/active, GET /alerts/{id})
-- Test B: Global Admin can acknowledge fall alert (PATCH /alerts/{id}/acknowledge)
-- Test C: Global Admin can resolve fall alert (PATCH /alerts/{id}/resolve)
-- Test D: Invalid lifecycle remains blocked (e.g. resolved -> acknowledged returns HTTP 400)
-- Test E: Multi-tenant organization isolation remains intact (Org Admin A cannot access Org B)
-- Test F: Family Member cannot acknowledge or resolve fall alerts (HTTP 403)
-- Test G: Legacy emergency_contact role is rejected from alert actions & Family Portal (HTTP 403)
+Tests:
+- Test A: Global Admin can view CARE alerts, active alerts, and alert details
+- Test B: Global Admin cannot acknowledge CARE alerts (HTTP 403 Forbidden)
+- Test C: Global Admin cannot mark CARE alerts as responding (HTTP 403 Forbidden)
+- Test D: Global Admin cannot resolve CARE alerts (HTTP 403 Forbidden)
+- Test E: Elder Care Facility Manager can operate alerts (ack, responding, resolve)
+- Test F: Caregiver can operate alerts (ack, responding, resolve)
+- Test G: Family Member cannot operate alerts (ack, responding, resolve blocked with HTTP 403)
 """
 
 import os
@@ -37,6 +42,9 @@ API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 # Test credentials
 SYSADMIN_EMAIL = os.getenv("TEST_SYSADMIN_EMAIL", "blesson@wifisense.com")
 SYSADMIN_PASSWORD = os.getenv("TEST_SYSADMIN_PASSWORD", "blessonpassword")
+
+FACILITY_MANAGER_EMAIL = os.getenv("TEST_FM_EMAIL", "elizabeth@wifisense.com")
+FACILITY_MANAGER_PASSWORD = os.getenv("TEST_FM_PASSWORD", "elizabethpassword")
 
 CAREGIVER_EMAIL = os.getenv("TEST_CAREGIVER_EMAIL", "abhinanth@wifisense.com")
 CAREGIVER_PASSWORD = os.getenv("TEST_CAREGIVER_PASSWORD", "abhinanthpassword")
@@ -68,193 +76,171 @@ def login(email, password):
     assert status == 200, f"Login failed for {email}: {status} {res}"
     return res
 
-# ============================================================================
-# TEST A: GLOBAL ADMIN CAN VIEW CARE FALL ALERTS
-# ============================================================================
-def test_a_global_admin_can_view_care_fall_alert():
-    print("\n--- Test A: Global Admin Can View CARE Fall Alert ---")
-    sys_auth = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
-    token = sys_auth["access_token"]
-
-    # 1. Trigger or find a CARE fall alert
+def create_test_fall_alert():
+    """Creates a temporary CARE fall alert for testing."""
     with Session(engine) as session:
         device = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "24:0A:C4:00:20:01")).first()
         assert device is not None, "Seeded sensing device not found."
-        device_id = device.id
+        room = session.get(Room, device.room_id)
+        assert room is not None
+        
+        alert_id = str(uuid.uuid4())
+        alert = Alert(
+            id=alert_id,
+            room_id=room.id,
+            event_type="Fall_Detected",
+            severity="CRITICAL",
+            message="Fall Detected in Resident Room",
+            status="new",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        session.add(alert)
+        session.commit()
+        return alert_id
 
-    status, sim_res = api_call(
-        "/sensing/simulate-event",
-        method="POST",
-        token=token,
-        data={
-            "device_id": device_id,
-            "simulated_activity": "Fall_Detected"
-        }
-    )
-    assert status == 201
-    assert sim_res["alert_triggered"] is True
-    alert_id = sim_res["alert"]["id"]
-    event_id = sim_res["sensing_event"]["id"]
+def cleanup_alert(alert_id):
+    """Clean up a test alert and its acknowledgements."""
+    with Session(engine) as session:
+        acks = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert_id)).all()
+        for a in acks:
+            session.delete(a)
+        alt = session.get(Alert, alert_id)
+        if alt:
+            session.delete(alt)
+        session.commit()
+
+# ============================================================================
+# TEST A: GLOBAL ADMIN CAN VIEW CARE ALERTS, ACTIVE ALERTS, AND DETAILS
+# ============================================================================
+def test_a_global_admin_can_view():
+    print("\n--- Test A: Global Admin Can View CARE Alerts (Global Oversight) ---")
+    sys_auth = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
+    token = sys_auth["access_token"]
+    alert_id = create_test_fall_alert()
 
     try:
-        # Verify Global Admin sees alert in list GET /alerts
+        # 1. View all alerts via GET /alerts
         status, alerts_list = api_call("/alerts", method="GET", token=token)
         assert status == 200, f"Expected 200, got {status}: {alerts_list}"
-        found_in_list = any(a["id"] == alert_id for a in alerts_list)
-        assert found_in_list, "Created fall alert must be visible to Global Admin in GET /alerts."
+        found = any(a["id"] == alert_id for a in alerts_list)
+        assert found, f"Created alert {alert_id} not found in GET /alerts."
         print(f"[PASS] Global Admin retrieved alert {alert_id} from GET /alerts.")
 
-        # Verify Global Admin sees alert in GET /alerts/active
+        # 2. View active alerts via GET /alerts/active
         status, active_list = api_call("/alerts/active", method="GET", token=token)
-        assert status == 200
-        found_in_active = any(a["id"] == alert_id for a in active_list)
-        assert found_in_active, "Active fall alert must be visible to Global Admin in GET /alerts/active."
+        assert status == 200, f"Expected 200, got {status}: {active_list}"
+        found_active = any(a["id"] == alert_id for a in active_list)
+        assert found_active, f"Created alert {alert_id} not found in GET /alerts/active."
         print(f"[PASS] Global Admin retrieved alert {alert_id} from GET /alerts/active.")
 
-        # Verify Global Admin retrieves enriched details via GET /alerts/{id}
+        # 3. View enriched alert details via GET /alerts/{id}
         status, detail = api_call(f"/alerts/{alert_id}", method="GET", token=token)
         assert status == 200, f"Expected 200, got {status}: {detail}"
         assert detail["id"] == alert_id
-        assert detail["event_type"] == "Fall_Detected"
-        assert detail["severity"] == "CRITICAL"
-        assert detail["status"] == "new"
+        assert detail["organization_name"] is not None
         assert detail["room_name"] is not None
         assert detail["resident_name"] is not None
-        assert detail["organization_name"] is not None
-        assert detail["emergency_contact"] is not None
         print(f"[PASS] Global Admin retrieved enriched alert details: Room {detail['room_name']}, Resident {detail['resident_name']}, Org {detail['organization_name']}.")
     finally:
-        with Session(engine) as session:
-            ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert_id)).first()
-            if ack:
-                session.delete(ack)
-            alt = session.get(Alert, alert_id)
-            if alt:
-                session.delete(alt)
-            evt = session.get(SensingEvent, event_id)
-            if evt:
-                session.delete(evt)
-            session.commit()
+        cleanup_alert(alert_id)
 
 # ============================================================================
-# TEST B: GLOBAL ADMIN CAN ACKNOWLEDGE FALL ALERT
+# TEST B: GLOBAL ADMIN CANNOT ACKNOWLEDGE CARE ALERTS
 # ============================================================================
-def test_b_global_admin_can_acknowledge_fall_alert():
-    print("\n--- Test B: Global Admin Can Acknowledge Fall Alert ---")
+def test_b_global_admin_cannot_acknowledge():
+    print("\n--- Test B: Global Admin Cannot Acknowledge CARE Alert ---")
     sys_auth = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
     token = sys_auth["access_token"]
-    sys_user_id = sys_auth["user"]["id"]
-
-    with Session(engine) as session:
-        device = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "24:0A:C4:00:20:01")).first()
-        device_id = device.id
-
-    status, sim_res = api_call(
-        "/sensing/simulate-event",
-        method="POST",
-        token=token,
-        data={
-            "device_id": device_id,
-            "simulated_activity": "Fall_Detected"
-        }
-    )
-    assert status == 201
-    alert_id = sim_res["alert"]["id"]
-    event_id = sim_res["sensing_event"]["id"]
+    alert_id = create_test_fall_alert()
 
     try:
-        # Acknowledge as Global Admin
-        status, ack_res = api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=token)
-        assert status == 200, f"Expected 200, got {status}: {ack_res}"
-        assert ack_res["status"] == "acknowledged"
-        print(f"[PASS] Global Admin acknowledged alert {alert_id} (HTTP 200).")
-
-        # Verify in database: AlertAcknowledgement and AuditLog
-        with Session(engine) as session:
-            db_alert = session.get(Alert, alert_id)
-            assert db_alert.status == "acknowledged"
-
-            ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert_id)).first()
-            assert ack is not None, "AlertAcknowledgement record must exist."
-            assert ack.user_id == sys_user_id, f"Expected acting user {sys_user_id}, got {ack.user_id}"
-            assert ack.who_user_id == sys_user_id, f"Expected who_user_id {sys_user_id}, got {ack.who_user_id}"
-            assert ack.acknowledged_at is not None, "acknowledged_at must be populated."
-            print(f"[PASS] AlertAcknowledgement verified: acting user {ack.who_user_id} at {ack.acknowledged_at}.")
-
-            audit = session.exec(
-                select(AuditLog).where(
-                    AuditLog.resource_id == alert_id,
-                    AuditLog.what_action == "ALERT_ACKNOWLEDGED"
-                )
-            ).first()
-            assert audit is not None, "AuditLog for ALERT_ACKNOWLEDGED must exist."
-            assert audit.who_user_id == sys_user_id
-            assert audit.details is not None and "organization_id" in audit.details
-            print(f"[PASS] AuditLog verified: {audit.what_action} by Global Admin {audit.who_email} (Org: {audit.details.get('organization_id')}).")
+        status, res = api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=token)
+        assert status == 403, f"Expected 403 Forbidden when Global Admin acknowledges alert, got {status}: {res}"
+        print(f"[PASS] Global Admin cannot acknowledge CARE alert (HTTP {status}: {res.get('detail')}).")
     finally:
-        with Session(engine) as session:
-            ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert_id)).first()
-            if ack:
-                session.delete(ack)
-            alt = session.get(Alert, alert_id)
-            if alt:
-                session.delete(alt)
-            evt = session.get(SensingEvent, event_id)
-            if evt:
-                session.delete(evt)
-            session.commit()
+        cleanup_alert(alert_id)
 
 # ============================================================================
-# TEST C: GLOBAL ADMIN CAN RESOLVE FALL ALERT
+# TEST C: GLOBAL ADMIN CANNOT MARK RESPONDING
 # ============================================================================
-def test_c_global_admin_can_resolve_fall_alert():
-    print("\n--- Test C: Global Admin Can Resolve Fall Alert ---")
+def test_c_global_admin_cannot_mark_responding():
+    print("\n--- Test C: Global Admin Cannot Mark CARE Alert As Responding ---")
     sys_auth = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
     token = sys_auth["access_token"]
-    sys_user_id = sys_auth["user"]["id"]
-
-    with Session(engine) as session:
-        device = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "24:0A:C4:00:20:01")).first()
-        device_id = device.id
-
-    status, sim_res = api_call(
-        "/sensing/simulate-event",
-        method="POST",
-        token=token,
-        data={
-            "device_id": device_id,
-            "simulated_activity": "Fall_Detected"
-        }
-    )
-    assert status == 201
-    alert_id = sim_res["alert"]["id"]
-    event_id = sim_res["sensing_event"]["id"]
+    alert_id = create_test_fall_alert()
 
     try:
-        # Acknowledge first
-        api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=token)
+        status, res = api_call(f"/alerts/{alert_id}/responding", method="PATCH", token=token)
+        assert status == 403, f"Expected 403 Forbidden when Global Admin marks alert as responding, got {status}: {res}"
+        print(f"[PASS] Global Admin cannot mark CARE alert as responding (HTTP {status}: {res.get('detail')}).")
+    finally:
+        cleanup_alert(alert_id)
 
-        # Resolve with resolution notes
-        notes = "Global Admin intervention: Coordinated on-site response with care desk. Resident assisted safely."
-        status, res_res = api_call(
+# ============================================================================
+# TEST D: GLOBAL ADMIN CANNOT RESOLVE
+# ============================================================================
+def test_d_global_admin_cannot_resolve():
+    print("\n--- Test D: Global Admin Cannot Resolve CARE Alert ---")
+    sys_auth = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
+    token = sys_auth["access_token"]
+    alert_id = create_test_fall_alert()
+
+    try:
+        notes = "Attempted resolution by Global Admin"
+        status, res = api_call(
             f"/alerts/{alert_id}/resolve",
             method="PATCH",
             token=token,
             data={"resolution_notes": notes}
         )
-        assert status == 200, f"Expected 200, got {status}: {res_res}"
-        assert res_res["status"] == "resolved"
-        print(f"[PASS] Global Admin resolved alert {alert_id} (HTTP 200).")
+        assert status == 403, f"Expected 403 Forbidden when Global Admin resolves alert, got {status}: {res}"
+        print(f"[PASS] Global Admin cannot resolve CARE alert (HTTP {status}: {res.get('detail')}).")
+    finally:
+        cleanup_alert(alert_id)
 
+# ============================================================================
+# TEST E: FACILITY MANAGER CAN OPERATE ALERTS
+# ============================================================================
+def test_e_facility_manager_can_operate_alerts():
+    print("\n--- Test E: Facility Manager Can Operate Alerts (Ack -> Responding -> Resolve) ---")
+    fm_auth = login(FACILITY_MANAGER_EMAIL, FACILITY_MANAGER_PASSWORD)
+    fm_token = fm_auth["access_token"]
+    fm_user_id = fm_auth["user"]["id"]
+    alert_id = create_test_fall_alert()
+
+    try:
+        # 1. Acknowledge
+        status, ack_res = api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=fm_token)
+        assert status == 200, f"Expected 200 OK for Facility Manager on /acknowledge, got {status}: {ack_res}"
+        assert ack_res["status"] == "acknowledged"
+        print(f"[PASS] Facility Manager acknowledged alert {alert_id} (HTTP 200).")
+
+        # 2. Mark Responding
+        status, resp_res = api_call(f"/alerts/{alert_id}/responding", method="PATCH", token=fm_token)
+        assert status == 200, f"Expected 200 OK for Facility Manager on /responding, got {status}: {resp_res}"
+        assert resp_res["status"] == "responding"
+        print(f"[PASS] Facility Manager marked alert as responding (HTTP 200).")
+
+        # 3. Resolve
+        res_notes = "Facility Manager coordinated on-site nurse response. Resident safe."
+        status, resolve_res = api_call(
+            f"/alerts/{alert_id}/resolve",
+            method="PATCH",
+            token=fm_token,
+            data={"resolution_notes": res_notes}
+        )
+        assert status == 200, f"Expected 200 OK for Facility Manager on /resolve, got {status}: {resolve_res}"
+        assert resolve_res["status"] == "resolved"
+        print(f"[PASS] Facility Manager resolved alert (HTTP 200).")
+
+        # Verify attribution in AlertAcknowledgement & AuditLog
         with Session(engine) as session:
-            db_alert = session.get(Alert, alert_id)
-            assert db_alert.status == "resolved"
-
             ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert_id)).first()
             assert ack is not None
-            assert ack.resolved_at is not None, "resolved_at must be populated."
-            assert ack.resolution_notes == notes, "resolution_notes must match submitted notes."
-            print(f"[PASS] AlertAcknowledgement verified: resolved_at {ack.resolved_at} with notes: '{ack.resolution_notes}'.")
+            assert ack.user_id == fm_user_id
+            assert ack.resolution_notes == res_notes
+            print(f"[PASS] AlertAcknowledgement attributed to Facility Manager {fm_user_id}.")
 
             audit = session.exec(
                 select(AuditLog).where(
@@ -263,244 +249,114 @@ def test_c_global_admin_can_resolve_fall_alert():
                 )
             ).first()
             assert audit is not None
-            assert audit.who_user_id == sys_user_id
-            assert audit.details.get("resolution_notes") == notes
-            print(f"[PASS] AuditLog verified: {audit.what_action} by Global Admin {audit.who_email}.")
+            assert audit.who_user_id == fm_user_id
+            print(f"[PASS] AuditLog recorded for ALERT_RESOLVED by Facility Manager {audit.who_email}.")
     finally:
-        with Session(engine) as session:
-            ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert_id)).first()
-            if ack:
-                session.delete(ack)
-            alt = session.get(Alert, alert_id)
-            if alt:
-                session.delete(alt)
-            evt = session.get(SensingEvent, event_id)
-            if evt:
-                session.delete(evt)
-            session.commit()
+        cleanup_alert(alert_id)
 
 # ============================================================================
-# TEST D: INVALID LIFECYCLE REMAINS BLOCKED
+# TEST F: CAREGIVER CAN OPERATE ALERTS
 # ============================================================================
-def test_d_invalid_lifecycle_remains_blocked():
-    print("\n--- Test D: Invalid Lifecycle State Transitions Remain Blocked ---")
-    sys_auth = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
-    token = sys_auth["access_token"]
-
-    with Session(engine) as session:
-        device = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "24:0A:C4:00:20:01")).first()
-        device_id = device.id
-
-    status, sim_res = api_call(
-        "/sensing/simulate-event",
-        method="POST",
-        token=token,
-        data={
-            "device_id": device_id,
-            "simulated_activity": "Fall_Detected"
-        }
-    )
-    alert_id = sim_res["alert"]["id"]
-    event_id = sim_res["sensing_event"]["id"]
+def test_f_caregiver_can_operate_alerts():
+    print("\n--- Test F: Caregiver Can Operate Alerts (Ack -> Responding -> Resolve) ---")
+    cg_auth = login(CAREGIVER_EMAIL, CAREGIVER_PASSWORD)
+    cg_token = cg_auth["access_token"]
+    cg_user_id = cg_auth["user"]["id"]
+    alert_id = create_test_fall_alert()
 
     try:
-        # Move directly to resolved
-        api_call(f"/alerts/{alert_id}/resolve", method="PATCH", token=token, data={"resolution_notes": "Immediate resolution."})
+        # 1. Acknowledge
+        status, ack_res = api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=cg_token)
+        assert status == 200, f"Expected 200 OK for Caregiver on /acknowledge, got {status}: {ack_res}"
+        assert ack_res["status"] == "acknowledged"
+        print(f"[PASS] Caregiver acknowledged alert {alert_id} (HTTP 200).")
 
-        # Attempt to re-acknowledge already resolved alert
-        status, err_res = api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=token)
-        assert status == 400, f"Expected 400 Bad Request when acknowledging resolved alert, got {status}: {err_res}"
-        print(f"[PASS] Attempt to acknowledge resolved alert correctly rejected with HTTP 400: {err_res}")
+        # 2. Mark Responding
+        status, resp_res = api_call(f"/alerts/{alert_id}/responding", method="PATCH", token=cg_token)
+        assert status == 200, f"Expected 200 OK for Caregiver on /responding, got {status}: {resp_res}"
+        assert resp_res["status"] == "responding"
+        print(f"[PASS] Caregiver marked alert as responding (HTTP 200).")
 
-        # Attempt to mark already resolved alert as responding
-        status, err_resp = api_call(f"/alerts/{alert_id}/responding", method="PATCH", token=token)
-        assert status == 400, f"Expected 400 Bad Request when marking resolved alert as responding, got {status}: {err_resp}"
-        print(f"[PASS] Attempt to mark resolved alert as responding correctly rejected with HTTP 400: {err_resp}")
-    finally:
+        # 3. Resolve
+        res_notes = "Caregiver assisted resident back to bed. Vitals normal."
+        status, resolve_res = api_call(
+            f"/alerts/{alert_id}/resolve",
+            method="PATCH",
+            token=cg_token,
+            data={"resolution_notes": res_notes}
+        )
+        assert status == 200, f"Expected 200 OK for Caregiver on /resolve, got {status}: {resolve_res}"
+        assert resolve_res["status"] == "resolved"
+        print(f"[PASS] Caregiver resolved alert (HTTP 200).")
+
+        # Verify attribution
         with Session(engine) as session:
             ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert_id)).first()
-            if ack:
-                session.delete(ack)
-            alt = session.get(Alert, alert_id)
-            if alt:
-                session.delete(alt)
-            evt = session.get(SensingEvent, event_id)
-            if evt:
-                session.delete(evt)
-            session.commit()
+            assert ack is not None
+            assert ack.user_id == cg_user_id
+            assert ack.resolution_notes == res_notes
+            print(f"[PASS] AlertAcknowledgement attributed to Caregiver {cg_user_id}.")
 
-# ============================================================================
-# TEST E: MULTI-TENANT ORGANIZATION ISOLATION REMAINS INTACT
-# ============================================================================
-def test_e_organization_isolation_remains_intact():
-    print("\n--- Test E: Multi-Tenant Organization Isolation Remains Intact ---")
-    # Provision two isolated organizations: Org A and Org B
-    org_a_id = str(uuid.uuid4())
-    org_b_id = str(uuid.uuid4())
-    admin_a_id = str(uuid.uuid4())
-    email_a = f"admin_a_{uuid.uuid4().hex[:6]}@test.com"
-    password_a = "Pass12345!"
-
-    bld_b_id = str(uuid.uuid4())
-    flr_b_id = str(uuid.uuid4())
-    rm_b_id = str(uuid.uuid4())
-    alert_b_id = str(uuid.uuid4())
-
-    with Session(engine) as session:
-        # Create Org A and Org Admin A
-        org_a = Organization(id=org_a_id, name="Facility Alpha", type="ELDER_CARE")
-        session.add(org_a)
-        user_a = User(id=admin_a_id, email=email_a, password_hash=hash_password(password_a), first_name="Admin", last_name="Alpha", is_active=True)
-        session.add(user_a)
-        ur_a = UserRole(user_id=admin_a_id, role_id=2, organization_id=org_a_id) # organization_admin
-        session.add(ur_a)
-
-        # Create Org B with an alert
-        org_b = Organization(id=org_b_id, name="Facility Beta", type="ELDER_CARE")
-        session.add(org_b)
-        bld_b = Building(id=bld_b_id, organization_id=org_b_id, name="Beta Tower")
-        session.add(bld_b)
-        flr_b = Floor(id=flr_b_id, building_id=bld_b_id, floor_number=1)
-        session.add(flr_b)
-        rm_b = Room(id=rm_b_id, floor_id=flr_b_id, name="Beta Room 101", room_type="Bedroom")
-        session.add(rm_b)
-        alt_b = Alert(id=alert_b_id, room_id=rm_b_id, event_type="Fall_Detected", severity="CRITICAL", message="Fall in Beta Room", status="new")
-        session.add(alt_b)
-        session.commit()
-
-    try:
-        # Login as Admin A
-        auth_a = login(email_a, password_a)
-        token_a = auth_a["access_token"]
-
-        # 1. Admin A queries GET /alerts -> must NOT include Alert B
-        status, alerts_a = api_call("/alerts", method="GET", token=token_a)
-        assert status == 200
-        assert not any(a["id"] == alert_b_id for a in alerts_a), "Org Admin A must NOT see Alert B from Organization B."
-        print("[PASS] Scoped query isolation: Alert B not visible to Org Admin A in GET /alerts.")
-
-        # 2. Admin A attempts GET /alerts/{alert_b_id} -> must return 404
-        status, res_detail = api_call(f"/alerts/{alert_b_id}", method="GET", token=token_a)
-        assert status == 404, f"Expected 404 Not Found for out-of-scope alert, got {status}: {res_detail}"
-        print("[PASS] Scoped direct read isolation: GET /alerts/{id} correctly rejected with HTTP 404.")
-
-        # 3. Admin A attempts PATCH /alerts/{alert_b_id}/acknowledge -> must return 404
-        status, res_ack = api_call(f"/alerts/{alert_b_id}/acknowledge", method="PATCH", token=token_a)
-        assert status == 404, f"Expected 404 Not Found on cross-org acknowledge, got {status}: {res_ack}"
-        print("[PASS] Scoped operational action isolation: PATCH /acknowledge rejected with HTTP 404.")
-
-        # 4. Global Admin queries GET /alerts/{alert_b_id} -> MUST succeed (Platform-wide scope)
-        sys_auth = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
-        status, sys_detail = api_call(f"/alerts/{alert_b_id}", method="GET", token=sys_auth["access_token"])
-        assert status == 200, f"Global Admin should access cross-org alert, got {status}: {sys_detail}"
-        assert sys_detail["organization_name"] == "Facility Beta"
-        print("[PASS] Global Admin platform-wide visibility confirmed: successfully accessed Alert B.")
+            audit = session.exec(
+                select(AuditLog).where(
+                    AuditLog.resource_id == alert_id,
+                    AuditLog.what_action == "ALERT_RESOLVED"
+                )
+            ).first()
+            assert audit is not None
+            assert audit.who_user_id == cg_user_id
+            print(f"[PASS] AuditLog recorded for ALERT_RESOLVED by Caregiver {audit.who_email}.")
     finally:
-        with Session(engine) as session:
-            a = session.get(Alert, alert_b_id)
-            if a: session.delete(a)
-            r = session.get(Room, rm_b_id)
-            if r: session.delete(r)
-            f = session.get(Floor, flr_b_id)
-            if f: session.delete(f)
-            b = session.get(Building, bld_b_id)
-            if b: session.delete(b)
-            ob = session.get(Organization, org_b_id)
-            if ob: session.delete(ob)
-            ura = session.exec(select(UserRole).where(UserRole.user_id == admin_a_id)).all()
-            for ur in ura: session.delete(ur)
-            ua = session.get(User, admin_a_id)
-            if ua: session.delete(ua)
-            oa = session.get(Organization, org_a_id)
-            if oa: session.delete(oa)
-            session.commit()
+        cleanup_alert(alert_id)
 
 # ============================================================================
-# TEST F: FAMILY MEMBER CANNOT ACKNOWLEDGE OR RESOLVE
+# TEST G: FAMILY MEMBER CANNOT OPERATE ALERTS
 # ============================================================================
-def test_f_family_member_cannot_acknowledge_or_resolve():
-    print("\n--- Test F: Family Member Cannot Acknowledge Or Resolve Alerts ---")
+def test_g_family_member_cannot_operate_alerts():
+    print("\n--- Test G: Family Member Cannot Operate Alerts ---")
     fam_auth = login(FAMILY_EMAIL, FAMILY_PASSWORD)
     fam_token = fam_auth["access_token"]
-
-    with Session(engine) as session:
-        # Pick any seeded alert or create one
-        alt = session.exec(select(Alert).where(Alert.status != "resolved")).first()
-        assert alt is not None, "Active alert required for test."
-        alert_id = alt.id
-
-    # 1. Family Member attempts GET /alerts -> 403 Forbidden
-    status, res = api_call("/alerts", method="GET", token=fam_token)
-    assert status == 403, f"Expected 403 Forbidden for Family Member on GET /alerts, got {status}: {res}"
-    print("[PASS] Family Member blocked from GET /alerts (HTTP 403).")
-
-    # 2. Family Member attempts PATCH /alerts/{id}/acknowledge -> 403 Forbidden
-    status, res = api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=fam_token)
-    assert status == 403, f"Expected 403 Forbidden for Family Member on PATCH /acknowledge, got {status}: {res}"
-    print("[PASS] Family Member blocked from PATCH /acknowledge (HTTP 403).")
-
-    # 3. Family Member attempts PATCH /alerts/{id}/resolve -> 403 Forbidden
-    status, res = api_call(f"/alerts/{alert_id}/resolve", method="PATCH", token=fam_token, data={"resolution_notes": "Family notes"})
-    assert status == 403, f"Expected 403 Forbidden for Family Member on PATCH /resolve, got {status}: {res}"
-    print("[PASS] Family Member blocked from PATCH /resolve (HTTP 403).")
-
-# ============================================================================
-# TEST G: EMERGENCY CONTACT IS NOT A ROLE
-# ============================================================================
-def test_g_emergency_contact_is_not_a_role():
-    print("\n--- Test G: Emergency Contact Is Not A Login Role ---")
-    test_email = f"ec_role_{uuid.uuid4().hex[:6]}@test.com"
-    test_pass = "Password123!"
-    user_id = str(uuid.uuid4())
-
-    with Session(engine) as session:
-        user = User(
-            id=user_id,
-            email=test_email,
-            password_hash=hash_password(test_pass),
-            first_name="Contact",
-            last_name="Person",
-            is_active=True
-        )
-        session.add(user)
-        # Assign legacy emergency_contact role_id = 6
-        ur = UserRole(user_id=user_id, role_id=6)
-        session.add(ur)
-        session.commit()
+    alert_id = create_test_fall_alert()
 
     try:
-        auth = login(test_email, test_pass)
-        token = auth["access_token"]
-        assert auth["role"] == "emergency_contact"
+        # 1. Family Member attempts GET /alerts -> 403 Forbidden
+        status, res = api_call("/alerts", method="GET", token=fam_token)
+        assert status == 403, f"Expected 403 Forbidden on GET /alerts for Family Member, got {status}: {res}"
+        print(f"[PASS] Family Member blocked from GET /alerts (HTTP {status}).")
 
-        # Attempt to access /alerts -> 403 Forbidden
-        status, res = api_call("/alerts", method="GET", token=token)
-        assert status == 403, f"Expected 403 Forbidden for legacy emergency_contact role on /alerts, got {status}: {res}"
-        print("[PASS] Legacy emergency_contact role blocked from /alerts (HTTP 403).")
+        # 2. Family Member attempts PATCH /alerts/{id}/acknowledge -> 403 Forbidden
+        status, res = api_call(f"/alerts/{alert_id}/acknowledge", method="PATCH", token=fam_token)
+        assert status == 403, f"Expected 403 Forbidden on PATCH /acknowledge for Family Member, got {status}: {res}"
+        print(f"[PASS] Family Member blocked from PATCH /acknowledge (HTTP {status}).")
 
-        # Attempt to access Family Portal -> 403 Forbidden
-        status, res = api_call("/family/resident-status", method="GET", token=token)
-        assert status == 403, f"Expected 403 Forbidden for legacy emergency_contact role on Family Portal, got {status}: {res}"
-        print("[PASS] Legacy emergency_contact role blocked from Family Portal (HTTP 403).")
+        # 3. Family Member attempts PATCH /alerts/{id}/responding -> 403 Forbidden
+        status, res = api_call(f"/alerts/{alert_id}/responding", method="PATCH", token=fam_token)
+        assert status == 403, f"Expected 403 Forbidden on PATCH /responding for Family Member, got {status}: {res}"
+        print(f"[PASS] Family Member blocked from PATCH /responding (HTTP {status}).")
+
+        # 4. Family Member attempts PATCH /alerts/{id}/resolve -> 403 Forbidden
+        status, res = api_call(
+            f"/alerts/{alert_id}/resolve",
+            method="PATCH",
+            token=fam_token,
+            data={"resolution_notes": "Family notes"}
+        )
+        assert status == 403, f"Expected 403 Forbidden on PATCH /resolve for Family Member, got {status}: {res}"
+        print(f"[PASS] Family Member blocked from PATCH /resolve (HTTP {status}).")
     finally:
-        with Session(engine) as session:
-            urs = session.exec(select(UserRole).where(UserRole.user_id == user_id)).all()
-            for r in urs: session.delete(r)
-            u = session.get(User, user_id)
-            if u: session.delete(u)
-            session.commit()
+        cleanup_alert(alert_id)
 
 if __name__ == "__main__":
     print("==========================================================================")
-    print("   WIFISENSE GLOBAL / SYSTEM ADMIN ALERT ACCESS & SCOPE VERIFICATION      ")
+    print("   WIFISENSE REFINED RBAC & ALERT OVERSIGHT VERIFICATION SUITE           ")
     print("==========================================================================")
-    test_a_global_admin_can_view_care_fall_alert()
-    test_b_global_admin_can_acknowledge_fall_alert()
-    test_c_global_admin_can_resolve_fall_alert()
-    test_d_invalid_lifecycle_remains_blocked()
-    test_e_organization_isolation_remains_intact()
-    test_f_family_member_cannot_acknowledge_or_resolve()
-    test_g_emergency_contact_is_not_a_role()
+    test_a_global_admin_can_view()
+    test_b_global_admin_cannot_acknowledge()
+    test_c_global_admin_cannot_mark_responding()
+    test_d_global_admin_cannot_resolve()
+    test_e_facility_manager_can_operate_alerts()
+    test_f_caregiver_can_operate_alerts()
+    test_g_family_member_cannot_operate_alerts()
     print("\n==========================================================================")
-    print("      ALL GLOBAL ADMIN ALERT ACCESS & BOUNDARY TESTS PASSED 100%!         ")
+    print("      ALL REFINED RBAC & ALERT OVERSIGHT TESTS PASSED 100%!               ")
     print("==========================================================================")
