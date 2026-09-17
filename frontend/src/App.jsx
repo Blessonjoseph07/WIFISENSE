@@ -1689,6 +1689,9 @@ export default function App() {
               setShowResolveModal={setShowResolveModal}
               authToken={token}
               API_BASE={API_BASE}
+              role={role}
+              isSystemAdmin={isSystemAdmin}
+              appContext={appContext}
             />
           )}
 

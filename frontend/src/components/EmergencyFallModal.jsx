@@ -13,9 +13,10 @@ export default function EmergencyFallModal({
   const [dismissedAlertId, setDismissedAlertId] = useState(null);
 
   const isCareOps =
-    (appContext === "ELDER_CARE" || isSystemAdmin || role === "system_admin") &&
-    role !== "family_member" &&
-    role !== "corporate_staff";
+    appContext === "ELDER_CARE" &&
+    !isSystemAdmin &&
+    role !== "system_admin" &&
+    (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
 
   const fetchActiveEmergency = async () => {
     if (!authToken) return;
@@ -140,11 +141,16 @@ export default function EmergencyFallModal({
         </div>
 
         {/* Role Responsibility Notice for System Admin */}
-        {isSystemAdmin && (
-          <div className="bg-violet-50 dark:bg-violet-950/40 border-b border-violet-200 dark:border-violet-900/40 px-5 py-2.5 flex items-center gap-2 text-xs text-violet-900 dark:text-violet-200 font-medium">
-            <span className="material-symbols-outlined text-violet-600 text-[18px]">admin_panel_settings</span>
-            <span>
-              <strong>Global Administrator Intervention:</strong> You have platform-wide authority to acknowledge, coordinate response, and resolve this elder-care incident.
+        {(isSystemAdmin || role === "system_admin") && (
+          <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/40 px-5 py-2.5 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 font-medium">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-600 text-[18px]">visibility</span>
+              <span>
+                <strong>GLOBAL OVERSIGHT:</strong> Monitoring incident response in real time. On-site facility staff and caregivers are responsible for immediate operational dispatch.
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0">
+              Oversight Mode
             </span>
           </div>
         )}
@@ -299,13 +305,19 @@ export default function EmergencyFallModal({
                 Resolve Emergency
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleDismiss}
-                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-lg text-sm font-bold shadow-sm transition cursor-pointer"
-              >
-                Close Monitoring View
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold">
+                  <span className="material-symbols-outlined text-sm text-teal-600 dark:text-teal-400">visibility</span>
+                  <span>GLOBAL OVERSIGHT — Monitoring incident response</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDismiss}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-lg text-sm font-bold shadow-sm transition cursor-pointer"
+                >
+                  Close Monitoring View
+                </button>
+              </div>
             )}
           </div>
         </div>

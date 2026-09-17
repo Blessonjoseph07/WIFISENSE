@@ -83,20 +83,16 @@ export default function SysAdminView({
                   </div>
                   <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{alt.message}</div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {alt.status === "new" && (
-                    <button
-                      onClick={() => handleAcknowledge(alt.id)}
-                      className="px-2.5 py-1 text-xs border border-teal-500/50 text-teal-650 dark:text-teal-400 rounded hover:bg-teal-50 dark:hover:bg-teal-950/40 font-semibold cursor-pointer transition-colors"
-                    >
-                      Ack
-                    </button>
-                  )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                    <span className="material-symbols-outlined text-[15px] text-teal-600 dark:text-teal-400">visibility</span>
+                    Oversight
+                  </span>
                   <button
-                    onClick={() => setShowResolveModal(alt.id)}
-                    className="px-2.5 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700 font-semibold cursor-pointer transition-colors"
+                    onClick={() => setCurrentView("alerts")}
+                    className="px-2.5 py-1 text-xs border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded font-semibold cursor-pointer transition-colors"
                   >
-                    Resolve
+                    Details
                   </button>
                 </div>
               </div>
