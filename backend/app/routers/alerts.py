@@ -4,8 +4,8 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
-from app.models.entities import Alert, AlertAcknowledgement, Room, Floor, Building, Resident, EmergencyContact, SensingEvent, ActivityType
-from app.schemas.schemas import AlertOut, AlertResolve
+from app.models.entities import Alert, AlertAcknowledgement, Room, Floor, Building, Resident, EmergencyContact, SensingEvent, ActivityType, Organization, User
+from app.schemas.schemas import AlertOut, AlertResolve, AlertDetailOut, AlertAcknowledgementOut
 from app.core.audit import record_audit_event
 
 router = APIRouter(prefix="/alerts", tags=["Alert Engine"])
@@ -107,6 +107,77 @@ def get_active_fall_emergency(
         }
     }
 
+@router.get("/{alert_id}", response_model=AlertDetailOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_alert_detail(
+    alert_id: str,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    scopes = get_user_scopes(current_user)
+    stmt = get_scoped_alert_query(scopes).where(Alert.id == alert_id)
+    alert = session.exec(stmt).first()
+    
+    if not alert:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found or access denied.")
+
+    room = session.get(Room, alert.room_id)
+    flr = session.get(Floor, room.floor_id) if room else None
+    bld = session.get(Building, flr.building_id) if flr else None
+    org = session.get(Organization, bld.organization_id) if bld else None
+    resident = session.exec(select(Resident).where(Resident.room_id == alert.room_id)).first() if room else None
+
+    ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert.id)).first()
+    ack_out = None
+    if ack:
+        ack_user = session.get(User, ack.user_id) if ack.user_id else None
+        ack_out = AlertAcknowledgementOut(
+            id=ack.id,
+            alert_id=ack.alert_id,
+            user_id=ack.user_id,
+            who_user_id=ack.user_id,
+            user_email=ack_user.email if ack_user else None,
+            user_name=f"{ack_user.first_name} {ack_user.last_name}" if ack_user else None,
+            acknowledged_at=ack.acknowledged_at,
+            resolved_at=ack.resolved_at,
+            resolution_notes=ack.resolution_notes
+        )
+
+    emergency_contact = None
+    if resident:
+        contacts = session.exec(
+            select(EmergencyContact).where(EmergencyContact.resident_id == resident.id).order_by(EmergencyContact.priority)
+        ).all()
+        if contacts:
+            primary = contacts[0]
+            emergency_contact = {
+                "name": primary.name,
+                "relationship": primary.relationship,
+                "phone": primary.phone,
+                "priority": primary.priority
+            }
+
+    return AlertDetailOut(
+        id=alert.id,
+        alert_configuration_id=getattr(alert, "alert_configuration_id", None),
+        room_id=alert.room_id,
+        event_type=alert.event_type,
+        severity=alert.severity,
+        message=alert.message,
+        status=alert.status,
+        created_at=alert.created_at,
+        updated_at=alert.updated_at,
+        room_name=room.name if room else None,
+        floor_number=flr.floor_number if flr else None,
+        building_name=bld.name if bld else None,
+        organization_id=org.id if org else None,
+        organization_name=org.name if org else None,
+        organization_type=org.type if org else None,
+        resident_id=resident.id if resident else None,
+        resident_name=f"{resident.first_name} {resident.last_name}" if resident else None,
+        acknowledgement=ack_out,
+        emergency_contact=emergency_contact
+    )
+
 @router.patch("/{alert_id}/acknowledge", response_model=AlertOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
 def acknowledge_alert(
     alert_id: str,
@@ -143,6 +214,10 @@ def acknowledge_alert(
     session.commit()
     session.refresh(alert)
 
+    room = session.get(Room, alert.room_id)
+    flr = session.get(Floor, room.floor_id) if room else None
+    bld = session.get(Building, flr.building_id) if flr else None
+
     record_audit_event(
         session=session,
         what_action="ALERT_ACKNOWLEDGED",
@@ -151,7 +226,11 @@ def acknowledge_alert(
         result="SUCCESS",
         who_user_id=current_user.id,
         who_email=current_user.email,
-        details={"status": alert.status, "room_id": alert.room_id}
+        details={
+            "status": alert.status,
+            "room_id": alert.room_id,
+            "organization_id": bld.organization_id if bld else None
+        }
     )
 
     return alert
@@ -188,6 +267,10 @@ def mark_alert_responding(
     session.commit()
     session.refresh(alert)
 
+    room = session.get(Room, alert.room_id)
+    flr = session.get(Floor, room.floor_id) if room else None
+    bld = session.get(Building, flr.building_id) if flr else None
+
     record_audit_event(
         session=session,
         what_action="ALERT_RESPONDING",
@@ -196,7 +279,11 @@ def mark_alert_responding(
         result="SUCCESS",
         who_user_id=current_user.id,
         who_email=current_user.email,
-        details={"status": alert.status, "room_id": alert.room_id}
+        details={
+            "status": alert.status,
+            "room_id": alert.room_id,
+            "organization_id": bld.organization_id if bld else None
+        }
     )
 
     return alert
@@ -239,6 +326,10 @@ def resolve_alert(
     session.commit()
     session.refresh(alert)
 
+    room = session.get(Room, alert.room_id)
+    flr = session.get(Floor, room.floor_id) if room else None
+    bld = session.get(Building, flr.building_id) if flr else None
+
     record_audit_event(
         session=session,
         what_action="ALERT_RESOLVED",
@@ -247,7 +338,12 @@ def resolve_alert(
         result="SUCCESS",
         who_user_id=current_user.id,
         who_email=current_user.email,
-        details={"status": alert.status, "room_id": alert.room_id, "resolution_notes": resolution_data.resolution_notes}
+        details={
+            "status": alert.status,
+            "room_id": alert.room_id,
+            "organization_id": bld.organization_id if bld else None,
+            "resolution_notes": resolution_data.resolution_notes
+        }
     )
 
     return alert

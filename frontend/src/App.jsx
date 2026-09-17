@@ -1557,6 +1557,10 @@ export default function App() {
               setIsRegistering={setIsRegistering}
               exportPersonnelCSV={exportPersonnelCSV}
               activePersonnel={activePersonnel}
+              alerts={alerts}
+              setCurrentView={setCurrentView}
+              handleAcknowledge={handleAcknowledge}
+              setShowResolveModal={setShowResolveModal}
             />
           )}
 
@@ -1683,6 +1687,8 @@ export default function App() {
               rooms={rooms}
               handleAcknowledge={handleAcknowledge}
               setShowResolveModal={setShowResolveModal}
+              authToken={token}
+              API_BASE={API_BASE}
             />
           )}
 
@@ -2136,11 +2142,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Real-time CSI Emergency Fall Protocol Modal (Auto-pops for Elder Caregiver & Facility Manager) */}
+      {/* Real-time CSI Emergency Fall Protocol Modal (Auto-pops for Global Admin, Elder Caregiver, Org Admin & Facility Manager) */}
       {token &&
-        appContext === "ELDER_CARE" &&
-        !isSystemAdmin &&
-        (role === "caregiver" || role === "organization_admin" || role === "facility_manager") && (
+        (isSystemAdmin ||
+          role === "system_admin" ||
+          (appContext === "ELDER_CARE" &&
+            (role === "caregiver" || role === "organization_admin" || role === "facility_manager"))) && (
           <EmergencyFallModal
             authToken={token}
             role={role}

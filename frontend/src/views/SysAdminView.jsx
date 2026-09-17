@@ -4,7 +4,13 @@ export default function SysAdminView({
   setIsRegistering = () => {},
   exportPersonnelCSV = () => {},
   activePersonnel = [],
+  alerts = [],
+  setCurrentView = () => {},
+  handleAcknowledge = () => {},
+  setShowResolveModal = () => {},
 }) {
+  const activeAlerts = alerts.filter((a) => a.status !== "resolved");
+
   return (
     <div className="flex flex-col gap-gutter text-left">
       {/* Page Header */}
@@ -13,23 +19,91 @@ export default function SysAdminView({
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-label-caps text-label-caps mb-2">
             <span>System Config</span>
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-            <span className="text-teal-650 font-bold">User Management</span>
+            <span className="text-teal-650 font-bold">Platform Administration</span>
           </div>
           <h1 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold">
-            User Administration
+            System Administrator Console
           </h1>
           <p className="text-slate-500 dark:text-slate-400 font-body-md text-body-md mt-1">
-            Manage institutional access, role scopes, and system permissions.
+            Global governance, multi-tenant monitoring, and operational incident response.
           </p>
         </div>
-        <button
-          onClick={() => setIsRegistering(true)}
-          className="bg-teal-600 text-white px-5 py-2.5 rounded-lg font-label-caps text-label-caps hover:bg-teal-700 transition-colors flex items-center gap-2 self-start md:self-auto shadow-sm font-semibold cursor-pointer"
-        >
-          <span className="material-symbols-outlined">person_add</span>
-          Add New User
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCurrentView("alerts")}
+            className="border border-red-300 dark:border-red-900/50 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg font-label-caps text-label-caps hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors flex items-center gap-1.5 font-semibold cursor-pointer shadow-xs"
+          >
+            <span className="material-symbols-outlined text-[18px]">history</span>
+            Incident Queue ({activeAlerts.length})
+          </button>
+          <button
+            onClick={() => setIsRegistering(true)}
+            className="bg-teal-600 text-white px-4 py-2 rounded-lg font-label-caps text-label-caps hover:bg-teal-700 transition-colors flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
+            Add New User
+          </button>
+        </div>
       </div>
+
+      {/* Active Incidents Banner / Operational Triage */}
+      {activeAlerts.length > 0 && (
+        <div className="bg-red-50/70 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+              <h3 className="font-bold text-sm text-red-900 dark:text-red-200 uppercase tracking-wide flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[18px] text-red-600">emergency</span>
+                Active Critical Incidents ({activeAlerts.length})
+              </h3>
+            </div>
+            <button
+              onClick={() => setCurrentView("alerts")}
+              className="text-xs text-red-700 dark:text-red-300 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              View All In Incident Console <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {activeAlerts.slice(0, 4).map((alt) => (
+              <div
+                key={alt.id}
+                className="bg-white dark:bg-slate-900 border border-red-100 dark:border-red-950/60 p-3 rounded-lg flex items-center justify-between gap-3 shadow-xs"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      {alt.event_type.replace(/_/g, " ")}
+                    </span>
+                    <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                      alt.status === "new" ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300" : "bg-blue-100 text-blue-800"
+                    }`}>
+                      {alt.status}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{alt.message}</div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {alt.status === "new" && (
+                    <button
+                      onClick={() => handleAcknowledge(alt.id)}
+                      className="px-2.5 py-1 text-xs border border-teal-500/50 text-teal-650 dark:text-teal-400 rounded hover:bg-teal-50 dark:hover:bg-teal-950/40 font-semibold cursor-pointer transition-colors"
+                    >
+                      Ack
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowResolveModal(alt.id)}
+                    className="px-2.5 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700 font-semibold cursor-pointer transition-colors"
+                  >
+                    Resolve
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Bento Grid Layout for Content */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-gutter">
