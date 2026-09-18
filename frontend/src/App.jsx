@@ -33,17 +33,44 @@ import EmergencyFallModal from "./components/EmergencyFallModal";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function App() {
-  // Loading & Pre-Entry Screen State
-  const [isLoading, setIsLoading] = useState(true);
+  // Loading & Pre-Entry Screen State (only runs ONCE upon initial boot, never on refreshes)
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      if (sessionStorage.getItem("wifisense_booted") === "true") {
+        return false;
+      }
+      if (localStorage.getItem("token")) {
+        sessionStorage.setItem("wifisense_booted", "true");
+        return false;
+      }
+    } catch (_) {}
+    return true;
+  });
+
   const handleLoadingComplete = useCallback(() => {
+    try {
+      sessionStorage.setItem("wifisense_booted", "true");
+    } catch (_) {}
     setIsLoading(false);
   }, []);
 
   // Authentication State
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [showSplash, setShowSplash] = useState(!localStorage.getItem("token"));
-  const [hasSeenElderSplash, setHasSeenElderSplash] = useState(false);
-  const [hasSeenCorporateSplash, setHasSeenCorporateSplash] = useState(false);
+  const [hasSeenElderSplash, setHasSeenElderSplash] = useState(() => {
+    try {
+      return sessionStorage.getItem("has_seen_elder_splash") === "true";
+    } catch (_) {
+      return false;
+    }
+  });
+  const [hasSeenCorporateSplash, setHasSeenCorporateSplash] = useState(() => {
+    try {
+      return sessionStorage.getItem("has_seen_corporate_splash") === "true";
+    } catch (_) {
+      return false;
+    }
+  });
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
   const [role, setRole] = useState(localStorage.getItem("role") || "");
   const [appContext, setAppContext] = useState(localStorage.getItem("application_context") || "");
@@ -571,6 +598,10 @@ export default function App() {
       setRole(data.role);
       setAppContext(data.application_context);
       setIsSystemAdmin(Boolean(data.is_system_admin));
+      try {
+        sessionStorage.setItem("wifisense_booted", "true");
+      } catch (_) {}
+      setIsLoading(false);
       setHasSeenElderSplash(false);
       setHasSeenCorporateSplash(false);
       
@@ -614,6 +645,10 @@ export default function App() {
     localStorage.removeItem("role");
     localStorage.removeItem("application_context");
     localStorage.removeItem("is_system_admin");
+    try {
+      sessionStorage.removeItem("has_seen_elder_splash");
+      sessionStorage.removeItem("has_seen_corporate_splash");
+    } catch (_) {}
     setToken("");
     setUser(null);
     setRole("");
@@ -1399,21 +1434,34 @@ export default function App() {
   const themeClass = appContext === "CORPORATE" ? "theme-corporate" : "theme-elder-care";
 
   if (appContext === "ELDER_CARE" && !hasSeenElderSplash) {
-    return <ElderCareSplash onContinue={() => setHasSeenElderSplash(true)} />;
+    return (
+      <ElderCareSplash
+        onContinue={() => {
+          try {
+            sessionStorage.setItem("has_seen_elder_splash", "true");
+          } catch (_) {}
+          setHasSeenElderSplash(true);
+        }}
+      />
+    );
   }
 
   if (appContext === "CORPORATE" && !hasSeenCorporateSplash) {
     return (
       <CorporateSplash 
         user={user} 
-        onContinue={() => setHasSeenCorporateSplash(true)} 
+        onContinue={() => {
+          try {
+            sessionStorage.setItem("has_seen_corporate_splash", "true");
+          } catch (_) {}
+          setHasSeenCorporateSplash(true);
+        }} 
       />
     );
   }
 
   return (
     <div className={`bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen w-full flex flex-col transition-all duration-300 ${themeClass} relative`}>
-      {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
       
       {/* Toast Notification */}
       {toastMessage && (
