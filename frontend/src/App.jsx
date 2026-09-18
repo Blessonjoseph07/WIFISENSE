@@ -1478,8 +1478,39 @@ export default function App() {
 
       {renderAppShell(
         <div className="space-y-6 w-full">
-          {/* Global Fall Alert Banner */}
-          {activeFallAlert && role !== "family_member" && (
+          {/* Subtle Global Oversight Banner for System Admin */}
+          {activeFallAlert && isSysAdmin && (
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-3 rounded-xl flex items-center justify-between shadow-xs relative z-25">
+              <div className="flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0"></span>
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-lg shrink-0">visibility</span>
+                <div className="text-left font-sans">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white tracking-wide">
+                      GLOBAL OVERSIGHT — Monitoring incident response
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 uppercase">
+                      Active Event
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                    {activeFallAlert.message}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentView("alerts")}
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0"
+              >
+                <span>View Incident Console</span>
+                <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+              </button>
+            </div>
+          )}
+
+          {/* Operational Emergency Banner for Elder Care Responders Only */}
+          {activeFallAlert && isCareOps && (
             <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 rounded-xl flex items-center justify-between pulse-animation relative z-25">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-red-500 text-2xl fill">warning</span>
@@ -1489,36 +1520,18 @@ export default function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {isCareOps ? (
-                  <>
-                    <button
-                      onClick={() => handleAcknowledge(activeFallAlert.id)}
-                      className="px-3 py-1.5 border border-red-500 text-red-600 dark:text-red-400 rounded text-xs font-bold uppercase hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
-                    >
-                      Acknowledge
-                    </button>
-                    <button
-                      onClick={() => setShowResolveModal(activeFallAlert.id)}
-                      className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold uppercase hover:opacity-90 shadow cursor-pointer"
-                    >
-                      Resolve
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100/90 dark:bg-red-950/70 border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-bold tracking-wide">
-                      <span className="material-symbols-outlined text-sm text-red-600 dark:text-red-400">visibility</span>
-                      <span>GLOBAL OVERSIGHT — Monitoring incident response</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentView("alerts")}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded text-xs font-bold uppercase transition cursor-pointer"
-                    >
-                      Inspect Details
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={() => handleAcknowledge(activeFallAlert.id)}
+                  className="px-3 py-1.5 border border-red-500 text-red-600 dark:text-red-400 rounded text-xs font-bold uppercase hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
+                >
+                  Acknowledge
+                </button>
+                <button
+                  onClick={() => setShowResolveModal(activeFallAlert.id)}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold uppercase hover:opacity-90 shadow cursor-pointer"
+                >
+                  Resolve
+                </button>
               </div>
             </div>
           )}
@@ -1627,9 +1640,11 @@ export default function App() {
               exportPersonnelCSV={exportPersonnelCSV}
               activePersonnel={activePersonnel}
               alerts={alerts}
+              rooms={rooms}
+              buildings={buildings}
+              floors={floors}
+              organizations={organizations}
               setCurrentView={setCurrentView}
-              handleAcknowledge={handleAcknowledge}
-              setShowResolveModal={setShowResolveModal}
             />
           )}
 
@@ -1754,6 +1769,10 @@ export default function App() {
             <AlertsView
               alerts={alerts}
               rooms={rooms}
+              floors={floors}
+              buildings={buildings}
+              organizations={organizations}
+              residents={residents}
               handleAcknowledge={handleAcknowledge}
               setShowResolveModal={setShowResolveModal}
               authToken={token}
@@ -2214,12 +2233,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Real-time CSI Emergency Fall Protocol Modal (Auto-pops for Global Admin, Elder Caregiver, Org Admin & Facility Manager) */}
+      {/* Real-time CSI Emergency Fall Protocol Modal (Auto-pops for Elder Care Responders ONLY) */}
       {token &&
-        (isSystemAdmin ||
-          role === "system_admin" ||
-          (appContext === "ELDER_CARE" &&
-            (role === "caregiver" || role === "organization_admin" || role === "facility_manager"))) && (
+        !isSysAdmin &&
+        appContext === "ELDER_CARE" &&
+        (role === "caregiver" || role === "organization_admin" || role === "facility_manager") && (
           <EmergencyFallModal
             authToken={token}
             role={role}

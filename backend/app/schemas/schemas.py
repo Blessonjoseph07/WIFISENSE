@@ -242,6 +242,13 @@ class AlertOut(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    room_name: Optional[str] = None
+    floor_number: Optional[int] = None
+    building_name: Optional[str] = None
+    organization_id: Optional[str] = None
+    organization_name: Optional[str] = None
+    organization_type: Optional[str] = None
+    resident_name: Optional[str] = None
 
     class Config:
         from_attributes = True

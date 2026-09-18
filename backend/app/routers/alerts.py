@@ -23,6 +23,49 @@ def get_scoped_alert_query(scopes):
         ))
     return stmt
 
+def enrich_alerts(alerts: List[Alert], session: Session) -> List[AlertOut]:
+    if not alerts:
+        return []
+    
+    rooms_map = {r.id: r for r in session.exec(select(Room)).all()}
+    floors_map = {f.id: f for f in session.exec(select(Floor)).all()}
+    blds_map = {b.id: b for b in session.exec(select(Building)).all()}
+    orgs_map = {o.id: o for o in session.exec(select(Organization)).all()}
+    residents_map = {res.room_id: res for res in session.exec(select(Resident)).all()}
+    
+    out = []
+    for alert in alerts:
+        room = rooms_map.get(alert.room_id)
+        flr = floors_map.get(room.floor_id) if room else None
+        bld = blds_map.get(flr.building_id) if flr else None
+        org = orgs_map.get(bld.organization_id) if bld else None
+        
+        resident_name = None
+        if org and org.type == "ELDER_CARE" and room:
+            resident = residents_map.get(room.id)
+            if resident:
+                resident_name = f"{resident.first_name} {resident.last_name}"
+                
+        out.append(AlertOut(
+            id=alert.id,
+            alert_configuration_id=getattr(alert, "alert_configuration_id", None),
+            room_id=alert.room_id,
+            event_type=alert.event_type,
+            severity=alert.severity,
+            message=alert.message,
+            status=alert.status,
+            created_at=alert.created_at,
+            updated_at=alert.updated_at,
+            room_name=room.name if room else None,
+            floor_number=flr.floor_number if flr else None,
+            building_name=bld.name if bld else None,
+            organization_id=org.id if org else None,
+            organization_name=org.name if org else None,
+            organization_type=org.type if org else None,
+            resident_name=resident_name
+        ))
+    return out
+
 @router.get("", response_model=List[AlertOut], dependencies=[Depends(require_roles(STAFF_ROLES))])
 def list_alerts(
     session: Session = Depends(get_session),
@@ -30,7 +73,8 @@ def list_alerts(
 ):
     scopes = get_user_scopes(current_user)
     stmt = get_scoped_alert_query(scopes).order_by(Alert.created_at.desc())
-    return session.exec(stmt).all()
+    alerts = session.exec(stmt).all()
+    return enrich_alerts(alerts, session)
 
 @router.get("/active", response_model=List[AlertOut], dependencies=[Depends(require_roles(STAFF_ROLES))])
 def list_active_alerts(
@@ -39,7 +83,8 @@ def list_active_alerts(
 ):
     scopes = get_user_scopes(current_user)
     stmt = get_scoped_alert_query(scopes).where(Alert.status.in_(["new", "acknowledged", "responding"])).order_by(Alert.created_at.desc())
-    return session.exec(stmt).all()
+    alerts = session.exec(stmt).all()
+    return enrich_alerts(alerts, session)
 
 # ============================================================================
 # EMERGENCY FALL PROTOCOL DYNAMIC DATA REFRESH (PHASE 5 & 5A)
@@ -125,7 +170,11 @@ def get_alert_detail(
     flr = session.get(Floor, room.floor_id) if room else None
     bld = session.get(Building, flr.building_id) if flr else None
     org = session.get(Organization, bld.organization_id) if bld else None
-    resident = session.exec(select(Resident).where(Resident.room_id == alert.room_id)).first() if room else None
+    
+    # Resident & emergency contacts ONLY for ELDER_CARE:
+    resident = None
+    if org and org.type == "ELDER_CARE" and room:
+        resident = session.exec(select(Resident).where(Resident.room_id == alert.room_id)).first()
 
     ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert.id)).first()
     ack_out = None
