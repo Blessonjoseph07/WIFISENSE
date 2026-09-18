@@ -25,7 +25,7 @@ export default function SysAdminView({
             System Administrator Console
           </h1>
           <p className="text-slate-500 dark:text-slate-400 font-body-md text-body-md mt-1">
-            Global governance, multi-tenant monitoring, and operational incident response.
+            Global governance, multi-tenant monitoring, and incident oversight.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -246,7 +246,10 @@ export default function SysAdminView({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {[
                     { cap: "Real-time CSI Telemetry", admin: true, mgr: true, staff: true },
-                    { cap: "Fall & Safety Alert Triage", admin: true, mgr: true, staff: true },
+                    { cap: "Acknowledge CARE Incident", admin: false, mgr: true, staff: true },
+                    { cap: "Mark Responding / Dispatch", admin: false, mgr: true, staff: true },
+                    { cap: "Resolve CARE Incident", admin: false, mgr: true, staff: true },
+                    { cap: "Incident Details & Audit Visibility", admin: true, mgr: true, staff: true },
                     { cap: "Facility & Room Hierarchy", admin: true, mgr: true, staff: false },
                     { cap: "Hardware Node Provisioning", admin: true, mgr: true, staff: false },
                     { cap: "RBAC & User Assignments", admin: true, mgr: false, staff: false },

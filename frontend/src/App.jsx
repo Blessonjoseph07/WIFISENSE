@@ -76,6 +76,9 @@ export default function App() {
   const [appContext, setAppContext] = useState(localStorage.getItem("application_context") || "");
   const [isSystemAdmin, setIsSystemAdmin] = useState(localStorage.getItem("is_system_admin") === "true");
   
+  const isSysAdmin = Boolean(isSystemAdmin || role === "system_admin");
+  const isCareOps = appContext === "ELDER_CARE" && !isSysAdmin && (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
+  
   // Navigation State & Browser History Management
   const [currentView, _setCurrentView] = useState(() => {
     const savedRole = localStorage.getItem("role") || "";
@@ -1485,19 +1488,37 @@ export default function App() {
                   <p className="text-sm font-semibold">{activeFallAlert.message}</p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleAcknowledge(activeFallAlert.id)}
-                  className="px-3 py-1.5 border border-red-500 text-red-600 dark:text-red-400 rounded text-xs font-bold uppercase hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
-                >
-                  Acknowledge
-                </button>
-                <button
-                  onClick={() => setShowResolveModal(activeFallAlert.id)}
-                  className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold uppercase hover:opacity-90 shadow cursor-pointer"
-                >
-                  Resolve
-                </button>
+              <div className="flex items-center gap-2">
+                {isCareOps ? (
+                  <>
+                    <button
+                      onClick={() => handleAcknowledge(activeFallAlert.id)}
+                      className="px-3 py-1.5 border border-red-500 text-red-600 dark:text-red-400 rounded text-xs font-bold uppercase hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
+                    >
+                      Acknowledge
+                    </button>
+                    <button
+                      onClick={() => setShowResolveModal(activeFallAlert.id)}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold uppercase hover:opacity-90 shadow cursor-pointer"
+                    >
+                      Resolve
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100/90 dark:bg-red-950/70 border border-red-300 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-bold tracking-wide">
+                      <span className="material-symbols-outlined text-sm text-red-600 dark:text-red-400">visibility</span>
+                      <span>GLOBAL OVERSIGHT — Monitoring incident response</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentView("alerts")}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded text-xs font-bold uppercase transition cursor-pointer"
+                    >
+                      Inspect Details
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -2155,7 +2176,7 @@ export default function App() {
       )}
 
       {/* 7. Resolve Alert Modal */}
-      {showResolveModal && (
+      {showResolveModal && isCareOps && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
             <h3 className="font-bold text-headline-sm mb-2 text-red-600 font-semibold">Resolve Incident Alert</h3>

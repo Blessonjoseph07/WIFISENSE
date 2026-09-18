@@ -60,7 +60,7 @@ export default function AlertsView({
             Alert & Incident Management
           </h2>
           <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 mt-1">
-            Monitor platform-wide incidents, inspect context, and execute operational intervention.
+            Monitor platform-wide incidents, inspect telemetry context, and maintain operational oversight.
           </p>
         </div>
         <div className="text-body-md font-body-md text-slate-500 flex items-center gap-2">
