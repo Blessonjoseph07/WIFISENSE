@@ -28,6 +28,11 @@ export default function OccupancyView({
 }) {
   const isCare = appContext === "ELDER_CARE" || appContext === "CARE";
   const isSpace = appContext === "CORPORATE" || appContext === "SPACE";
+  const isSysAdmin = Boolean(isSystemAdmin || role === "system_admin");
+  const isCareOps =
+    isCare &&
+    !isSysAdmin &&
+    (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
 
   // Strict context filtering: separate CARE vs SPACE rooms
   const contextRooms = rooms.filter((rm) => {
@@ -876,19 +881,28 @@ export default function OccupancyView({
               <p className="text-xs text-rose-900 dark:text-rose-200 font-medium">
                 {activeRoomAlerts[0].message}
               </p>
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => handleAcknowledge(activeRoomAlerts[0].id)}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 rounded-lg text-xs font-bold hover:bg-rose-50"
-                >
-                  Acknowledge Alert
-                </button>
-                <button
-                  onClick={() => setShowResolveModal(activeRoomAlerts[0].id)}
-                  className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 shadow-sm"
-                >
-                  Resolve Alert
-                </button>
+              <div className="flex items-center gap-2 pt-2">
+                {isCareOps ? (
+                  <>
+                    <button
+                      onClick={() => handleAcknowledge(activeRoomAlerts[0].id)}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 rounded-lg text-xs font-bold hover:bg-rose-50 cursor-pointer"
+                    >
+                      Acknowledge Alert
+                    </button>
+                    <button
+                      onClick={() => setShowResolveModal(activeRoomAlerts[0].id)}
+                      className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 shadow-sm cursor-pointer"
+                    >
+                      Resolve Alert
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 text-xs font-semibold">
+                    <span className="material-symbols-outlined text-sm text-rose-600 dark:text-rose-400">visibility</span>
+                    <span>GLOBAL OVERSIGHT — Monitoring incident response</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
