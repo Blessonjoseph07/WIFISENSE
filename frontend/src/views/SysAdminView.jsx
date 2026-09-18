@@ -5,11 +5,34 @@ export default function SysAdminView({
   exportPersonnelCSV = () => {},
   activePersonnel = [],
   alerts = [],
+  rooms = [],
+  buildings = [],
+  floors = [],
+  organizations = [],
   setCurrentView = () => {},
-  handleAcknowledge = () => {},
-  setShowResolveModal = () => {},
 }) {
   const activeAlerts = alerts.filter((a) => a.status !== "resolved");
+
+  const getIncidentContext = (alt) => {
+    if (alt.organization_type) {
+      return {
+        type: alt.organization_type,
+        orgName: alt.organization_name || "Facility",
+        roomName: alt.room_name || "Assigned Room",
+        residentName: alt.resident_name || null,
+      };
+    }
+    const room = rooms.find((r) => r.id === alt.room_id);
+    const floor = floors.find((f) => f.id === room?.floor_id);
+    const bld = buildings.find((b) => b.id === floor?.building_id);
+    const org = organizations.find((o) => o.id === bld?.organization_id);
+    return {
+      type: org?.type || "ELDER_CARE",
+      orgName: org?.name || "Facility",
+      roomName: room?.name || "Assigned Room",
+      residentName: alt.resident_name || null,
+    };
+  };
 
   return (
     <div className="flex flex-col gap-gutter text-left">
@@ -65,38 +88,86 @@ export default function SysAdminView({
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {activeAlerts.slice(0, 4).map((alt) => (
-              <div
-                key={alt.id}
-                className="bg-white dark:bg-slate-900 border border-red-100 dark:border-red-950/60 p-3 rounded-lg flex items-center justify-between gap-3 shadow-xs"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      {alt.event_type.replace(/_/g, " ")}
-                    </span>
-                    <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
-                      alt.status === "new" ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300" : "bg-blue-100 text-blue-800"
-                    }`}>
-                      {alt.status}
-                    </span>
+            {activeAlerts.slice(0, 6).map((alt) => {
+              const ctx = getIncidentContext(alt);
+              const isElder = ctx.type === "ELDER_CARE";
+              return (
+                <div
+                  key={alt.id}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl flex items-center justify-between gap-3 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                >
+                  <div className="space-y-1 text-left">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
+                          isElder
+                            ? "bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
+                            : "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                        }`}
+                      >
+                        {isElder ? "ELDER CARE" : "CORPORATE"}
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        {alt.event_type.replace(/_/g, " ")}
+                      </span>
+                      <span
+                        className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                          alt.severity === "CRITICAL"
+                            ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                        }`}
+                      >
+                        {alt.severity}
+                      </span>
+                      <span
+                        className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                          alt.status === "new"
+                            ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                            : alt.status === "responding"
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {alt.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-700 dark:text-slate-300">
+                      {isElder ? (
+                        <span>
+                          {ctx.residentName ? (
+                            <span className="font-bold text-slate-900 dark:text-white">
+                              {ctx.residentName} •{" "}
+                            </span>
+                          ) : null}
+                          <span className="font-semibold">{ctx.roomName}</span>
+                          <span className="text-slate-400 text-[11px]"> ({ctx.orgName})</span>
+                        </span>
+                      ) : (
+                        <span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {ctx.orgName}
+                          </span>{" "}
+                          • <span className="font-semibold">{ctx.roomName}</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 line-clamp-1">{alt.message}</div>
                   </div>
-                  <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{alt.message}</div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                      <span className="material-symbols-outlined text-[15px] text-teal-600 dark:text-teal-400">visibility</span>
+                      Oversight
+                    </span>
+                    <button
+                      onClick={() => setCurrentView("alerts")}
+                      className="px-2.5 py-1 text-xs border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded font-semibold cursor-pointer transition-colors"
+                    >
+                      Details
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-                    <span className="material-symbols-outlined text-[15px] text-teal-600 dark:text-teal-400">visibility</span>
-                    Oversight
-                  </span>
-                  <button
-                    onClick={() => setCurrentView("alerts")}
-                    className="px-2.5 py-1 text-xs border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded font-semibold cursor-pointer transition-colors"
-                  >
-                    Details
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
