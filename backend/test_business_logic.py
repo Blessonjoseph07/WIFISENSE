@@ -2,9 +2,14 @@ import json
 import urllib.request
 import urllib.error
 import time
+import uuid
 from sqlmodel import Session, select
 from app.core.database import engine
-from app.models.entities import AuditLog, Alert, SensingDevice, Room, Resident, FamilyConnection, FamilySubscription, SharingPolicy, User, SensingEvent
+from app.models.entities import (
+    AuditLog, Alert, SensingDevice, Room, Resident, FamilyConnection,
+    FamilySubscription, SharingPolicy, User, SensingEvent,
+    Organization, Building, Floor, ActivityType
+)
 from app.services.notifications import process_alert_notifications, send_alert_email
 
 API_BASE = "http://127.0.0.1:8000"
@@ -214,6 +219,271 @@ def test_unit_send_alert_email_graceful_error_handling():
         session.commit()
         print("[PASS] send_alert_email handled exception cleanly and created audit log.")
 
+def test_occupancy_summary_care_corporate_split():
+    """
+    Test 4: Verify Occupancy Summary CARE vs. CORPORATE split:
+    - Creates one ELDER_CARE organization and one CORPORATE organization.
+    - Creates rooms in both organizations (one occupied, one vacant in each).
+    - Verifies breakdown object splits total_rooms, occupied_rooms, vacant_rooms, occupancy_rate into ELDER_CARE and CORPORATE.
+    - Verifies combined totals match the sum of both buckets.
+    - Verifies organization_type field is present in occupied_room_details.
+    """
+    print("\n--- Test 4: Occupancy Summary CARE vs. CORPORATE Split ---")
+    
+    auth_data = login("blesson@wifisense.com", "blessonpassword")
+    token = auth_data["access_token"]
+    
+    care_org_id = str(uuid.uuid4())
+    care_bld_id = str(uuid.uuid4())
+    care_flr_id = str(uuid.uuid4())
+    care_rm1_id = str(uuid.uuid4())
+    care_rm2_id = str(uuid.uuid4())
+    
+    corp_org_id = str(uuid.uuid4())
+    corp_bld_id = str(uuid.uuid4())
+    corp_flr_id = str(uuid.uuid4())
+    corp_rm1_id = str(uuid.uuid4())
+    corp_rm2_id = str(uuid.uuid4())
+    
+    evt_care_id = str(uuid.uuid4())
+    evt_corp_id = str(uuid.uuid4())
+
+    try:
+        with Session(engine) as session:
+            # Care hierarchy
+            care_org = Organization(id=care_org_id, name=f"Test Care Facility Analytics {uuid.uuid4().hex[:6]}", type="ELDER_CARE")
+            care_bld = Building(id=care_bld_id, organization_id=care_org_id, name="Care Building Analytics")
+            care_flr = Floor(id=care_flr_id, building_id=care_bld_id, floor_number=1)
+            care_rm1 = Room(id=care_rm1_id, floor_id=care_flr_id, name="Care Suite 101", room_type="resident_room")
+            care_rm2 = Room(id=care_rm2_id, floor_id=care_flr_id, name="Care Suite 102", room_type="resident_room")
+            
+            # Corporate hierarchy
+            corp_org = Organization(id=corp_org_id, name=f"Test Corporate Facility Analytics {uuid.uuid4().hex[:6]}", type="CORPORATE")
+            corp_bld = Building(id=corp_bld_id, organization_id=corp_org_id, name="Corp Building Analytics")
+            corp_flr = Floor(id=corp_flr_id, building_id=corp_bld_id, floor_number=1)
+            corp_rm1 = Room(id=corp_rm1_id, floor_id=corp_flr_id, name="Corp Office 101", room_type="meeting_room")
+            corp_rm2 = Room(id=corp_rm2_id, floor_id=corp_flr_id, name="Corp Office 102", room_type="conference_room")
+            
+            session.add_all([care_org, care_bld, care_flr, care_rm1, care_rm2, corp_org, corp_bld, corp_flr, corp_rm1, corp_rm2])
+            session.commit()
+        
+        # Locate a device for foreign key
+        device = session.exec(select(SensingDevice)).first()
+        dev_id = device.id if device else "dev_ec_101"
+
+        # Active occupancy events (care_rm1 occupied, corp_rm1 occupied)
+        act = session.exec(select(ActivityType).where(ActivityType.name != "Empty")).first()
+        act_id = act.id if act else 1
+        
+        evt_care = SensingEvent(
+            device_id=dev_id,
+            room_id=care_rm1_id,
+            inferred_activity_id=act_id,
+            model_confidence=0.95,
+            rssi=-45,
+            extracted_features={"motion_energy": 0.8}
+        )
+        evt_corp = SensingEvent(
+            device_id=dev_id,
+            room_id=corp_rm1_id,
+            inferred_activity_id=act_id,
+            model_confidence=0.91,
+            rssi=-48,
+            extracted_features={"motion_energy": 0.7}
+        )
+        session.add_all([evt_care, evt_corp])
+        session.commit()
+
+        status, res = api_call("/analytics/occupancy-summary", method="GET", token=token)
+        assert status == 200, f"Expected 200, got {status}: {res}"
+        
+        # 1. Check breakdown presence and structure
+        assert "breakdown" in res, "Missing 'breakdown' in occupancy summary response."
+        breakdown = res["breakdown"]
+        assert "ELDER_CARE" in breakdown, "Missing 'ELDER_CARE' in occupancy breakdown."
+        assert "CORPORATE" in breakdown, "Missing 'CORPORATE' in occupancy breakdown."
+        
+        care_b = breakdown["ELDER_CARE"]
+        corp_b = breakdown["CORPORATE"]
+        
+        print(f"[PASS] Top-level breakdown verified (ELDER_CARE: {care_b}, CORPORATE: {corp_b})")
+        
+        # 2. Check breakdown numbers reflect created rooms
+        assert care_b["total_rooms"] >= 2
+        assert care_b["occupied_rooms"] >= 1
+        assert care_b["vacant_rooms"] >= 1
+        assert care_b["occupancy_rate"] > 0.0
+        
+        assert corp_b["total_rooms"] >= 2
+        assert corp_b["occupied_rooms"] >= 1
+        assert corp_b["vacant_rooms"] >= 1
+        assert corp_b["occupancy_rate"] > 0.0
+        print("[PASS] Breakdown numbers accurately reflect created Care and Corporate rooms.")
+        
+        # 3. Check combined totals match the sum of both buckets
+        assert res["total_rooms"] == care_b["total_rooms"] + corp_b["total_rooms"], \
+            f"Total rooms ({res['total_rooms']}) != Care ({care_b['total_rooms']}) + Corp ({corp_b['total_rooms']})"
+        assert res["occupied_rooms"] == care_b["occupied_rooms"] + corp_b["occupied_rooms"], \
+            f"Occupied rooms ({res['occupied_rooms']}) != Care ({care_b['occupied_rooms']}) + Corp ({corp_b['occupied_rooms']})"
+        assert res["vacant_rooms"] == care_b["vacant_rooms"] + corp_b["vacant_rooms"], \
+            f"Vacant rooms ({res['vacant_rooms']}) != Care ({care_b['vacant_rooms']}) + Corp ({corp_b['vacant_rooms']})"
+        print(f"[PASS] Combined totals match the sum of both buckets ({res['total_rooms']} rooms = {care_b['total_rooms']} Care + {corp_b['total_rooms']} Corp).")
+        
+        # 4. Check organization_type in occupied_room_details
+        details = res["occupied_room_details"]
+        care_rm_detail = next((d for d in details if d["room_id"] == care_rm1_id), None)
+        corp_rm_detail = next((d for d in details if d["room_id"] == corp_rm1_id), None)
+        assert care_rm_detail is not None, "Care room not found in occupied_room_details."
+        assert care_rm_detail.get("organization_type") == "ELDER_CARE", f"Expected ELDER_CARE, got {care_rm_detail.get('organization_type')}"
+        assert corp_rm_detail is not None, "Corp room not found in occupied_room_details."
+        assert corp_rm_detail.get("organization_type") == "CORPORATE", f"Expected CORPORATE, got {corp_rm_detail.get('organization_type')}"
+        print("[PASS] organization_type resolved and verified in occupied_room_details.")
+
+    finally:
+        with Session(engine) as session:
+            evts = session.exec(select(SensingEvent).where(SensingEvent.room_id.in_([care_rm1_id, care_rm2_id, corp_rm1_id, corp_rm2_id]))).all()
+            for e in evts:
+                session.delete(e)
+            for rid in [care_rm1_id, care_rm2_id, corp_rm1_id, corp_rm2_id]:
+                r = session.get(Room, rid)
+                if r:
+                    session.delete(r)
+            for fid in [care_flr_id, corp_flr_id]:
+                f = session.get(Floor, fid)
+                if f:
+                    session.delete(f)
+            for bid in [care_bld_id, corp_bld_id]:
+                b = session.get(Building, bid)
+                if b:
+                    session.delete(b)
+            for oid in [care_org_id, corp_org_id]:
+                o = session.get(Organization, oid)
+                if o:
+                    session.delete(o)
+            session.commit()
+            print("[PASS] Cleaned up occupancy test organizations, rooms, and events.")
+
+def test_alert_summary_care_corporate_split():
+    """
+    Test 5: Verify Alert Summary CARE vs. CORPORATE split:
+    - Creates one ELDER_CARE organization and one CORPORATE organization.
+    - Creates alerts in both organizations with varied statuses and severities.
+    - Verifies breakdown object splits total_alerts, status_counts, severity_counts into ELDER_CARE and CORPORATE.
+    - Verifies combined totals match the sum of both buckets.
+    """
+    print("\n--- Test 5: Alert Summary CARE vs. CORPORATE Split ---")
+    
+    auth_data = login("blesson@wifisense.com", "blessonpassword")
+    token = auth_data["access_token"]
+    
+    care_org_id = str(uuid.uuid4())
+    care_bld_id = str(uuid.uuid4())
+    care_flr_id = str(uuid.uuid4())
+    care_rm_id = str(uuid.uuid4())
+    
+    corp_org_id = str(uuid.uuid4())
+    corp_bld_id = str(uuid.uuid4())
+    corp_flr_id = str(uuid.uuid4())
+    corp_rm_id = str(uuid.uuid4())
+    
+    alt_care1_id = str(uuid.uuid4())
+    alt_care2_id = str(uuid.uuid4())
+    alt_corp1_id = str(uuid.uuid4())
+    alt_corp2_id = str(uuid.uuid4())
+
+    try:
+        with Session(engine) as session:
+            care_org = Organization(id=care_org_id, name=f"Care Alert Analytics Org {uuid.uuid4().hex[:6]}", type="ELDER_CARE")
+            care_bld = Building(id=care_bld_id, organization_id=care_org_id, name="Care Alert Building")
+            care_flr = Floor(id=care_flr_id, building_id=care_bld_id, floor_number=1)
+            care_rm = Room(id=care_rm_id, floor_id=care_flr_id, name="Care Alert Room", room_type="resident_room")
+            
+            corp_org = Organization(id=corp_org_id, name=f"Corp Alert Analytics Org {uuid.uuid4().hex[:6]}", type="CORPORATE")
+            corp_bld = Building(id=corp_bld_id, organization_id=corp_org_id, name="Corp Alert Building")
+            corp_flr = Floor(id=corp_flr_id, building_id=corp_bld_id, floor_number=1)
+            corp_rm = Room(id=corp_rm_id, floor_id=corp_flr_id, name="Corp Alert Room", room_type="conference_room")
+            
+            session.add_all([care_org, care_bld, care_flr, care_rm, corp_org, corp_bld, corp_flr, corp_rm])
+            session.commit()
+            
+            alt_care1 = Alert(id=alt_care1_id, room_id=care_rm_id, event_type="Fall_Detected", severity="CRITICAL", status="new", message="Care Fall")
+            alt_care2 = Alert(id=alt_care2_id, room_id=care_rm_id, event_type="Prolonged_Inactivity", severity="HIGH", status="acknowledged", message="Care Inactivity")
+            
+            alt_corp1 = Alert(id=alt_corp1_id, room_id=corp_rm_id, event_type="Unexpected_Occupancy", severity="MEDIUM", status="new", message="Corp Occupancy")
+            alt_corp2 = Alert(id=alt_corp2_id, room_id=corp_rm_id, event_type="After_Hours_Motion", severity="LOW", status="resolved", message="Corp Motion")
+            
+            session.add_all([alt_care1, alt_care2, alt_corp1, alt_corp2])
+            session.commit()
+
+        status, res = api_call("/analytics/alert-summary", method="GET", token=token)
+        assert status == 200, f"Expected 200, got {status}: {res}"
+        
+        # 1. Check breakdown presence and structure
+        assert "breakdown" in res, "Missing 'breakdown' in alert summary response."
+        breakdown = res["breakdown"]
+        assert "ELDER_CARE" in breakdown, "Missing 'ELDER_CARE' in alert breakdown."
+        assert "CORPORATE" in breakdown, "Missing 'CORPORATE' in alert breakdown."
+        
+        care_b = breakdown["ELDER_CARE"]
+        corp_b = breakdown["CORPORATE"]
+        
+        print(f"[PASS] Top-level alert breakdown verified (ELDER_CARE: {care_b}, CORPORATE: {corp_b})")
+        
+        # 2. Check breakdown numbers reflect created alerts
+        assert care_b["total_alerts"] >= 2
+        assert care_b["status_counts"]["new"] >= 1
+        assert care_b["status_counts"]["acknowledged"] >= 1
+        assert care_b["severity_counts"]["CRITICAL"] >= 1
+        assert care_b["severity_counts"]["HIGH"] >= 1
+        
+        assert corp_b["total_alerts"] >= 2
+        assert corp_b["status_counts"]["new"] >= 1
+        assert corp_b["status_counts"]["resolved"] >= 1
+        assert corp_b["severity_counts"]["MEDIUM"] >= 1
+        assert corp_b["severity_counts"]["LOW"] >= 1
+        print("[PASS] Breakdown numbers accurately reflect created Care and Corporate alerts.")
+        
+        # 3. Check combined totals match the sum of both buckets
+        assert res["total_alerts"] == care_b["total_alerts"] + corp_b["total_alerts"], \
+            f"Total alerts ({res['total_alerts']}) != Care ({care_b['total_alerts']}) + Corp ({corp_b['total_alerts']})"
+        
+        for st in ["new", "acknowledged", "resolved"]:
+            expected_sum = care_b["status_counts"].get(st, 0) + corp_b["status_counts"].get(st, 0)
+            actual = res["status_counts"].get(st, 0)
+            assert actual == expected_sum, f"Status count for {st}: {actual} != {expected_sum}"
+            
+        for sev in ["LOW", "MEDIUM", "HIGH", "CRITICAL"]:
+            expected_sum = care_b["severity_counts"].get(sev, 0) + corp_b["severity_counts"].get(sev, 0)
+            actual = res["severity_counts"].get(sev, 0)
+            assert actual == expected_sum, f"Severity count for {sev}: {actual} != {expected_sum}"
+            
+        print(f"[PASS] Combined alert totals and counts match the sum of both buckets ({res['total_alerts']} total alerts).")
+
+    finally:
+        with Session(engine) as session:
+            for aid in [alt_care1_id, alt_care2_id, alt_corp1_id, alt_corp2_id]:
+                a = session.get(Alert, aid)
+                if a:
+                    session.delete(a)
+            for rid in [care_rm_id, corp_rm_id]:
+                r = session.get(Room, rid)
+                if r:
+                    session.delete(r)
+            for fid in [care_flr_id, corp_flr_id]:
+                f = session.get(Floor, fid)
+                if f:
+                    session.delete(f)
+            for bid in [care_bld_id, corp_bld_id]:
+                b = session.get(Building, bid)
+                if b:
+                    session.delete(b)
+            for oid in [care_org_id, corp_org_id]:
+                o = session.get(Organization, oid)
+                if o:
+                    session.delete(o)
+            session.commit()
+            print("[PASS] Cleaned up alert test organizations, rooms, and alerts.")
+
 if __name__ == "__main__":
     print("==================================================")
     print("      WIFISENSE ALERT NOTIFICATION TEST SUITE     ")
@@ -221,6 +491,8 @@ if __name__ == "__main__":
     test_alert_notification_e2e()
     test_sharing_policy_gating()
     test_unit_send_alert_email_graceful_error_handling()
+    test_occupancy_summary_care_corporate_split()
+    test_alert_summary_care_corporate_split()
     print("\n==================================================")
-    print("       ALL ALERT NOTIFICATION TESTS PASSED        ")
+    print("         ALL BUSINESS LOGIC TESTS PASSED          ")
     print("==================================================")
