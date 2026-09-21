@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SharingPolicyManager from "../components/SharingPolicyManager";
 
 export default function OrgAdminView({
@@ -11,10 +11,16 @@ export default function OrgAdminView({
   onUpdateSharingPolicy = async () => {},
   canEditPolicies = false,
   userRole = "",
-  initialTab = "policies",
+  initialTab = "organizations",
   isLoading = false
 }) {
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState(initialTab || "organizations");
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const pendingRequestsCount = accessRequests.filter((r) => r.status === "pending").length;
 
