@@ -90,6 +90,12 @@ export const VIEW_DEFINITIONS = {
     icon: "person",
     description: "Manage your profile and account settings"
   },
+  sharing_policies: {
+    id: "sharing_policies",
+    label: "Sharing Policies",
+    icon: "verified_user",
+    description: "Elder care family data sharing and privacy policy settings"
+  },
   family: {
     id: "family",
     label: "Family Portal",
@@ -108,13 +114,13 @@ const MATRIX = {
       theme: "care"
     },
     facility_manager: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Facility Manager",
       theme: "care"
     },
     organization_admin: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Org Administrator",
       theme: "care"
@@ -154,7 +160,7 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SYSTEM]: {
     system_admin: {
-      allowedViews: ["sysadmin", "orgadmin", "devices", "alerts", "analytics", "assets", "occupancy", "dashboard", "profile"],
+      allowedViews: ["sysadmin", "orgadmin", "sharing_policies", "devices", "alerts", "analytics", "assets", "occupancy", "dashboard", "profile"],
       defaultView: "sysadmin",
       badgeText: "SYSTEM CONSOLE",
       theme: "system"

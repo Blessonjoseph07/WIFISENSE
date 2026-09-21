@@ -128,6 +128,7 @@ export default function App() {
   const [familyStatus, setFamilyStatus] = useState(null);
   const [accessRequests, setAccessRequests] = useState([]);
   const [selectedRequestResidentId, setSelectedRequestResidentId] = useState("");
+  const [sharingPolicies, setSharingPolicies] = useState([]);
   
   // Collapsible Buildings state inside Facility Hierarchy widget
   const [expandedBuildings, setExpandedBuildings] = useState({});
@@ -474,6 +475,21 @@ export default function App() {
         }
       }
 
+      // Fetch sharing policies for elder-care org_admin, facility_manager, or system_admin
+      if (
+        (isSystemAdmin || role === "system_admin" || role === "organization_admin" || role === "facility_manager") &&
+        appContext !== "CORPORATE"
+      ) {
+        try {
+          const spRes = await fetch(`${API_BASE}/sharing-policies`, { headers });
+          if (spRes.ok) {
+            setSharingPolicies(await spRes.json());
+          }
+        } catch (e) {
+          console.error("Error fetching sharing policies:", e);
+        }
+      }
+
       // 1. Fetch Analytics Summary
       const occRes = await fetch(`${API_BASE}/analytics/occupancy-summary`, { headers });
       if (occRes.ok) {
@@ -809,6 +825,30 @@ export default function App() {
       fetchAllData();
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleUpdateSharingPolicy = async (policyId, updatedFields) => {
+    try {
+      const res = await fetch(`${API_BASE}/sharing-policies/${policyId}`, {
+        method: "PUT",
+        headers: getHeaders(),
+        body: JSON.stringify(updatedFields)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSharingPolicies((prev) => prev.map((p) => (p.id === policyId ? updated : p)));
+        setToastMessage({ type: "success", text: "Sharing policy updated successfully." });
+        return updated;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        const detail = err.detail || "Failed to update sharing policy.";
+        setToastMessage({ type: "error", text: detail });
+        throw new Error(detail);
+      }
+    } catch (err) {
+      console.error("Update sharing policy error:", err);
+      throw err;
     }
   };
 
@@ -1619,15 +1659,21 @@ export default function App() {
           )}
 
           {/* ============================================================================
-            4. ORG ADMIN DASHBOARD
+            4. ORG ADMIN & SHARING POLICIES DASHBOARD
           ============================================================================ */}
-          {currentView === "orgadmin" && isViewAllowed("orgadmin", appContext, role, isSystemAdmin) && (
+          {(currentView === "orgadmin" || currentView === "sharing_policies") &&
+            isViewAllowed(currentView, appContext, role, isSystemAdmin) && (
             <OrgAdminView
               setShowAddOrgModal={setShowAddOrgModal}
               organizations={organizations}
               accessRequests={accessRequests}
               residents={residents}
               handleReviewRequest={handleReviewRequest}
+              sharingPolicies={sharingPolicies}
+              onUpdateSharingPolicy={handleUpdateSharingPolicy}
+              canEditPolicies={isSystemAdmin || role === "system_admin" || role === "organization_admin"}
+              userRole={role}
+              initialTab={currentView === "sharing_policies" ? "policies" : "policies"}
             />
           )}
 
