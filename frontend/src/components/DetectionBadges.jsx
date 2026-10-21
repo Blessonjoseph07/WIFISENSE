@@ -16,17 +16,26 @@ const LEVEL_STYLE = {
 };
 
 const SOURCE_META = {
-  simulated: { label: "Simulated", cls: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900", icon: "science" },
-  dataset: { label: "Dataset replay", cls: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900", icon: "history" },
-  live: { label: "Live CSI", cls: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900", icon: "sensors" },
+  simulated: { label: "DEMO", cls: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900", icon: "science", hint: "Demo / preview data. Not a measurement from any hardware." },
+  dataset: { label: "DATASET REPLAY", cls: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900", icon: "history", hint: "Recorded CSI replayed through the pipeline. Not current sensing." },
+  live: { label: "LIVE HARDWARE", cls: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900", icon: "sensors", hint: "Packets from an authenticated ESP32 device." },
 };
 
 const chip = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide";
 
 const titleCase = (s) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : "");
 
-export function ConfidenceBadge({ level = "UNKNOWN", confidence = null }) {
+export function ConfidenceBadge({ level = "UNKNOWN", confidence = null, source = "simulated" }) {
   const pct = confidence === null || confidence === undefined ? null : Math.round(confidence * 100);
+  // Model output (dataset replay / live) is an UNCALIBRATED score. High / Medium / Low would imply a reliability the
+  // model has not shown (about 0.69 balanced accuracy on unseen people), so only the number is shown, in a neutral colour.
+  if (source === "dataset" || source === "live") {
+    return (
+      <span className={`${chip} ${LEVEL_STYLE.UNKNOWN}`} title="Score of the model for the class it chose. Uncalibrated: not a probability.">
+        {pct === null ? "Score unknown" : `Model score ${pct}%`} · uncalibrated
+      </span>
+    );
+  }
   return (
     <span className={`${chip} ${LEVEL_STYLE[level] || LEVEL_STYLE.UNKNOWN}`} title="Detection confidence">
       {level === "UNKNOWN" ? "Confidence unknown" : `${titleCase(level)} confidence${pct !== null ? ` · ${pct}%` : ""}`}
@@ -45,7 +54,7 @@ export function SignalBadge({ level = "UNKNOWN", quality = null }) {
 export function SourceBadge({ source = "simulated" }) {
   const meta = SOURCE_META[source] || SOURCE_META.simulated;
   return (
-    <span className={`${chip} ${meta.cls}`} title="Where this data came from">
+    <span className={`${chip} ${meta.cls}`} title={meta.hint}>
       <span className="material-symbols-outlined text-[12px]">{meta.icon}</span>
       {meta.label}
     </span>
@@ -75,7 +84,7 @@ export function DetectionChips({ alert }) {
   return (
     <div className="flex flex-wrap gap-1 mt-1">
       <SourceBadge source={alert.source} />
-      <ConfidenceBadge level={alert.confidence_level} confidence={alert.confidence} />
+      <ConfidenceBadge level={alert.confidence_level} confidence={alert.confidence} source={alert.source} />
       <SignalBadge level={alert.signal_level} quality={alert.signal_quality} />
       <VerificationChip alert={alert} />
     </div>
@@ -215,3 +224,30 @@ export function VerificationPanel({ alert, canVerify, authToken, API_BASE, onVer
     </div>
   );
 }
+
+
+/**
+ * Detection status in plain words. Model output (dataset / live) is never called "Reliable": the model was measured at
+ * about 0.69 balanced accuracy on people it had never seen. "Reliable" is only used for DEMO preview values.
+ */
+export function detectionStatus(item) {
+  const confidence = item.confidence_level;
+  const model = item.source === "dataset" || item.source === "live";
+  const possibleFall = item.activity === "Possible_Fall" || (!model && item.requires_verification);
+  if (possibleFall) return { label: "Needs verification", tone: "MEDIUM" };
+  if (model) return { label: "Uncertain", tone: "UNKNOWN" };
+  if (confidence === "HIGH" && item.signal_level === "GOOD") return { label: "Reliable (demo)", tone: "HIGH" };
+  if (confidence === "UNKNOWN") return { label: "Uncertain", tone: "UNKNOWN" };
+  return { label: confidence === "LOW" || item.signal_level === "POOR" ? "Needs verification" : "Uncertain", tone: confidence === "LOW" ? "LOW" : "MEDIUM" };
+}
+
+export function StatusChip({ item }) {
+  const st = detectionStatus(item);
+  return <span className={`${chip} ${LEVEL_STYLE[st.tone] || LEVEL_STYLE.UNKNOWN}`}>{st.label}</span>;
+}
+
+export const ACTIVITY_LABEL = {
+  Possible_Fall: "Possible fall",
+  No_Fall_Pattern: "No fall pattern",
+  Fall_Detected: "Fall (demo)",
+};

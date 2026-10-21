@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { SourceBadge } from "../components/DetectionBadges";
 
 export default function DevicesView({
   devices = [],
@@ -59,8 +60,27 @@ export default function DevicesView({
     }
   }, [isElderCareOnly, isCorporateOnly, nodeFilter, setNodeFilter]);
 
-  const isOnline = (dev) =>
-    dev.device_status === "ONLINE" || dev.status === "ONLINE" || !dev.status;
+  // A node counts as online only if the backend says ONLINE AND it was actually heard from recently.
+  // (This used to fall back to "online" whenever a field was missing, so every device looked online.)
+  const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+  const lastSeenMs = (dev) => {
+    if (!dev.last_seen_at) return null;
+    const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(dev.last_seen_at) ? dev.last_seen_at : `${dev.last_seen_at}Z`;
+    const t = new Date(iso).getTime();
+    return Number.isNaN(t) ? null : t;
+  };
+  const isOnline = (dev) => {
+    const seen = lastSeenMs(dev);
+    return dev.device_status === "ONLINE" && seen !== null && Date.now() - seen <= ONLINE_WINDOW_MS;
+  };
+  const lastSeenText = (dev) => {
+    const seen = lastSeenMs(dev);
+    if (seen === null) return "Never seen";
+    const secs = Math.max(0, Math.round((Date.now() - seen) / 1000));
+    if (secs < 90) return `Last packet ${secs}s ago`;
+    if (secs < 5400) return `Last packet ${Math.round(secs / 60)} min ago`;
+    return `Last packet ${new Date(seen).toLocaleString()}`;
+  };
 
   // Compute displayed list according to domain permissions
   let displayedDevices = [];
@@ -179,7 +199,7 @@ export default function DevicesView({
               <div className="text-2xl font-black text-slate-900 dark:text-white">
                 {careDevices.filter(isOnline).length}
               </div>
-              <div className="text-[11px] text-slate-400 mt-1">Normal CSI RF telemetry</div>
+              <div className="text-[11px] text-slate-400 mt-1">Heard from in the last 5 minutes</div>
             </div>
 
             <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -257,7 +277,7 @@ export default function DevicesView({
               <div className="text-2xl font-black text-slate-900 dark:text-white">
                 {corpDevices.filter(isOnline).length}
               </div>
-              <div className="text-[11px] text-slate-400 mt-1">Live space telemetry</div>
+              <div className="text-[11px] text-slate-400 mt-1">Heard from in the last 5 minutes</div>
             </div>
 
             <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -568,11 +588,10 @@ export default function DevicesView({
                           ></span>
                           {isNodeOnline ? "ONLINE" : "OFFLINE"}
                         </span>
-                        {isNodeOnline && (
-                          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                            <span className="text-teal-600 dark:text-teal-400 font-bold">56 SC</span> • -47 dBm • 94% SQ
-                          </div>
-                        )}
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                          <SourceBadge source={dev.allowed_source || "live"} />
+                          <span className="font-mono">{lastSeenText(dev)}</span>
+                        </div>
                       </td>
                       <td className="p-4 text-right">
                         <button
