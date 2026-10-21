@@ -7,7 +7,8 @@ export const BACKEND_ROLES = [
   "caregiver",
   "corporate_staff",
   "emergency_contact",
-  "family_member"
+  "family_member",
+  "doctor"
 ];
 
 export const APP_CONTEXTS = {
@@ -96,6 +97,18 @@ export const VIEW_DEFINITIONS = {
     icon: "verified_user",
     description: "Elder care family data sharing and privacy policy settings"
   },
+  doctor: {
+    id: "doctor",
+    label: "Medical Portal",
+    icon: "stethoscope",
+    description: "Assigned residents, medical records, consultations and fall alerts"
+  },
+  providers: {
+    id: "providers",
+    label: "Medical Providers",
+    icon: "medical_services",
+    description: "Approve doctors and assign the residents they may see"
+  },
   family: {
     id: "family",
     label: "Family Portal",
@@ -114,15 +127,21 @@ const MATRIX = {
       theme: "care"
     },
     facility_manager: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Facility Manager",
       theme: "care"
     },
     organization_admin: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Org Administrator",
+      theme: "care"
+    },
+    doctor: {
+      allowedViews: ["doctor"],
+      defaultView: "doctor",
+      badgeText: "CARE • Medical Provider",
       theme: "care"
     },
     family_member: {
@@ -160,7 +179,7 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SYSTEM]: {
     system_admin: {
-      allowedViews: ["sysadmin", "orgadmin", "sharing_policies", "devices", "alerts", "analytics", "assets", "occupancy", "dashboard", "profile"],
+      allowedViews: ["sysadmin", "orgadmin", "providers", "sharing_policies", "devices", "alerts", "analytics", "assets", "occupancy", "dashboard", "profile"],
       defaultView: "sysadmin",
       badgeText: "SYSTEM CONSOLE",
       theme: "system"

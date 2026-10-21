@@ -10,6 +10,7 @@ import CareAppShell from "./shells/CareAppShell";
 import SpaceAppShell from "./shells/SpaceAppShell";
 import SystemAdminShell from "./shells/SystemAdminShell";
 import FamilyPortalShell from "./shells/FamilyPortalShell";
+import DoctorPortalShell from "./shells/DoctorPortalShell";
 import LandingSplash from "./shells/LandingSplash";
 import ElderCareSplash from "./shells/ElderCareSplash";
 import CorporateSplash from "./shells/CorporateSplash";
@@ -27,6 +28,8 @@ import FacilityAssetsView from "./views/FacilityAssetsView";
 import DevicesView from "./views/DevicesView";
 import ResidentsView from "./views/ResidentsView";
 import AlertsView from "./views/AlertsView";
+import DoctorPortalView from "./views/DoctorPortalView";
+import MedicalProvidersView from "./views/MedicalProvidersView";
 import UserProfileView from "./views/UserProfileView";
 import EmergencyFallModal from "./components/EmergencyFallModal";
 import SharingPolicyManager from "./components/SharingPolicyManager";
@@ -449,6 +452,9 @@ export default function App() {
     if (!token) return;
     try {
       const headers = getHeaders();
+
+      // Doctors use only their own /medical/* endpoints (loaded inside the portal); every staff endpoint would 403.
+      if (role === "doctor") return;
 
       // If family member, fetch their resident's status
       if (role === "family_member") {
@@ -1431,6 +1437,19 @@ export default function App() {
       API_BASE
     };
 
+    if (role === "doctor") {
+      return (
+        <DoctorPortalShell
+          user={user}
+          handleLogout={handleLogout}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        >
+          {content}
+        </DoctorPortalShell>
+      );
+    }
+
     if (role === "family_member") {
       return (
         <FamilyPortalShell
@@ -1721,6 +1740,16 @@ export default function App() {
               setToastMessage={setToastMessage}
               fetchAllData={fetchAllData}
             />
+          )}
+
+          {/* ============================================================================
+            6b. MEDICAL PROVIDERS (organization staff) AND DOCTOR PORTAL
+          ============================================================================ */}
+          {currentView === "providers" && isViewAllowed("providers", appContext, role, isSystemAdmin) && (
+            <MedicalProvidersView authToken={token} API_BASE={API_BASE} residents={residents} />
+          )}
+          {currentView === "doctor" && isViewAllowed("doctor", appContext, role, isSystemAdmin) && (
+            <DoctorPortalView authToken={token} API_BASE={API_BASE} />
           )}
 
           {/* ============================================================================
