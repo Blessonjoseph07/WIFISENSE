@@ -286,17 +286,30 @@ class AlertDetailOut(AlertOut):
 # 5. ANALYTICS SCHEMAS
 # ============================================================================
 
+class OccupancyBreakdownBucket(BaseModel):
+    total_rooms: int = 0
+    occupied_rooms: int = 0
+    vacant_rooms: int = 0
+    occupancy_rate: float = 0.0
+
+class AlertBreakdownBucket(BaseModel):
+    total_alerts: int = 0
+    status_counts: Dict[str, int]
+    severity_counts: Dict[str, int]
+
 class OccupancySummaryOut(BaseModel):
     total_rooms: int
     occupied_rooms: int
     vacant_rooms: int
     occupancy_rate: float
     occupied_room_details: List[Dict[str, Any]]
+    breakdown: Optional[Dict[str, OccupancyBreakdownBucket]] = None
 
 class AlertSummaryOut(BaseModel):
     total_alerts: int
     status_counts: Dict[str, int]
     severity_counts: Dict[str, int]
+    breakdown: Optional[Dict[str, AlertBreakdownBucket]] = None
 
 class HealthConditionOut(BaseModel):
     id: str
