@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
@@ -108,7 +108,7 @@ def simulate_event(
             raise HTTPException(status_code=403, detail="Not authorized to simulate events for this room.")
 
     device.device_status = "ONLINE"
-    device.last_seen_at = datetime.utcnow()
+    device.last_seen_at = datetime.now(timezone.utc)
     session.add(device)
 
     activity_name = event_data.simulated_activity
@@ -121,7 +121,7 @@ def simulate_event(
     sensing_event = SensingEvent(
         device_id=device.id,
         room_id=room.id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         rssi=profile["rssi"],
         subcarrier_count=profile["subcarriers"],
         signal_quality=profile["signal_quality"],
@@ -165,7 +165,7 @@ def simulate_event(
             "channel": "dashboard_ws_push",
             "recipient_role": "caregiver",
             "message": alert_msg,
-            "timestamp": datetime.utcnow().strftime("%d %b %Y %H:%M:%S"),
+            "timestamp": datetime.now(timezone.utc).strftime("%d %b %Y %H:%M:%S"),
             "status": "SENT"
         }
 

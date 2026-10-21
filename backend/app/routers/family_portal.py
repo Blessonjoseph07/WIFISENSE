@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select, or_
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from app.core.database import get_session
@@ -64,7 +64,7 @@ def submit_family_connection(
         relationship=conn_in.relationship,
         status="pending",
         notes=conn_in.notes,
-        requested_at=datetime.utcnow()
+        requested_at=datetime.now(timezone.utc)
     )
     session.add(db_conn)
 
@@ -174,7 +174,7 @@ def review_family_connection(
 
     db_conn.status = review.status
     if review.status == "approved":
-        db_conn.approved_at = datetime.utcnow()
+        db_conn.approved_at = datetime.now(timezone.utc)
         db_conn.approved_by = current_user.id
         # Also maintain legacy user.resident_id if empty
         fam_user = session.get(User, db_conn.family_user_id)
@@ -182,13 +182,13 @@ def review_family_connection(
             fam_user.resident_id = db_conn.resident_id
             session.add(fam_user)
     elif review.status == "revoked":
-        db_conn.revoked_at = datetime.utcnow()
+        db_conn.revoked_at = datetime.now(timezone.utc)
         fam_user = session.get(User, db_conn.family_user_id)
         if fam_user and fam_user.resident_id == db_conn.resident_id:
             fam_user.resident_id = None
             session.add(fam_user)
 
-    db_conn.updated_at = datetime.utcnow()
+    db_conn.updated_at = datetime.now(timezone.utc)
     session.add(db_conn)
     session.commit()
     session.refresh(db_conn)
@@ -254,8 +254,8 @@ def update_family_subscription(
     if update_in.plan:
         sub.plan = update_in.plan
     if update_in.status == "ACTIVE" and not sub.start_date:
-        sub.start_date = datetime.utcnow()
-    sub.updated_at = datetime.utcnow()
+        sub.start_date = datetime.now(timezone.utc)
+    sub.updated_at = datetime.now(timezone.utc)
     session.add(sub)
     session.commit()
     session.refresh(sub)
@@ -428,7 +428,7 @@ def get_linked_resident_status(
         },
         "presence_status": "Present" if is_present else ("Not Detected" if share_presence else "Restricted"),
         "current_activity": activity if share_activity_detail else "Restricted by Sharing Policy",
-        "last_updated": last_update or datetime.utcnow().strftime("%H:%M:%S"),
+        "last_updated": last_update or datetime.now(timezone.utc).strftime("%H:%M:%S"),
         "recent_activity_history": recent_activity_history,
         "alerts": alerts_list,
         "facility_contact": {

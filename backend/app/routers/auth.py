@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_session
 from app.core.security import (
@@ -357,7 +357,7 @@ def logout(
             th = hash_token(logout_data.refresh_token)
             db_rt = session.exec(select(RefreshToken).where(RefreshToken.token_hash == th)).first()
             if db_rt:
-                db_rt.revoked_at = datetime.utcnow()
+                db_rt.revoked_at = datetime.now(timezone.utc)
                 session.add(db_rt)
                 session.commit()
         except Exception:
