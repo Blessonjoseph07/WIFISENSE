@@ -227,6 +227,35 @@ def test_unauthorized_roles_blocked_flow():
     assert status == 403, f"Corporate Staff PUT /sharing-policies should be 403, got {status}"
     print("[PASS] Corporate Staff blocked from both GET (403) and PUT (403).")
 
+def test_frontend_admin_navigation_routing_separation():
+    """
+    Validates that App.jsx routes 'orgadmin' to OrgAdminView and 'sharing_policies' to SharingPolicyManager
+    in distinct, uncoupled rendering branches rather than a shared compound conditional.
+    """
+    print("\n--- 5. Testing Frontend Admin Navigation Routing Separation ---")
+    app_jsx_path = REPO_ROOT / "frontend" / "src" / "App.jsx"
+    assert app_jsx_path.exists(), f"App.jsx not found at: {app_jsx_path}"
+    with open(app_jsx_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 1. Verify SharingPolicyManager is imported
+    assert "import SharingPolicyManager from" in content, "SharingPolicyManager not imported in App.jsx"
+
+    # 2. Verify compound conditional is eliminated
+    assert 'currentView === "orgadmin" || currentView === "sharing_policies"' not in content, \
+        "Coupled compound conditional still exists in App.jsx!"
+
+    # 3. Verify separate branch for orgadmin renders OrgAdminView
+    import re
+    orgadmin_branch = re.search(r'currentView === ["\']orgadmin["\'].*?<OrgAdminView', content, re.DOTALL)
+    assert orgadmin_branch is not None, "currentView === 'orgadmin' does not render <OrgAdminView"
+
+    # 4. Verify separate branch for sharing_policies renders SharingPolicyManager
+    sharing_branch = re.search(r'currentView === ["\']sharing_policies["\'].*?<SharingPolicyManager', content, re.DOTALL)
+    assert sharing_branch is not None, "currentView === 'sharing_policies' does not render <SharingPolicyManager"
+
+    print("[PASS] Navigation routing separation verified: 'orgadmin' -> OrgAdminView, 'sharing_policies' -> SharingPolicyManager.")
+
 if __name__ == "__main__":
     print("==========================================================================")
     print("  WIFISENSE SHARING POLICY FRONTEND CONFIG & API INTEGRATION TEST SUITE   ")
@@ -235,6 +264,7 @@ if __name__ == "__main__":
     test_org_admin_view_and_update_flow()
     test_facility_manager_view_only_flow()
     test_unauthorized_roles_blocked_flow()
+    test_frontend_admin_navigation_routing_separation()
     print("\n==========================================================================")
     print("           ALL SHARING POLICY INTEGRATION TESTS PASSED!                   ")
     print("==========================================================================")
