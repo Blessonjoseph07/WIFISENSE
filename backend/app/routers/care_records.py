@@ -13,6 +13,7 @@ from sqlmodel import Session, select, or_
 
 from app.core.audit import record_audit_event
 from app.core.database import get_session
+from app.core.timeutil import as_utc, utcnow
 from app.models.entities import (
     Appointment, Building, Doctor, Floor, MedicationLog, Organization,
     Prescription, Resident, Room, User,
@@ -31,17 +32,8 @@ WRITE_ROLES = ["system_admin", "organization_admin", "facility_manager"]  # doct
 SCHEDULE_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver"]  # appointments, med log
 
 
-def _to_utc_naive(dt: datetime) -> datetime:
-    """SQLite keeps naive datetimes; store everything as UTC wall-clock."""
-    if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-    return dt
-
-
-def _as_utc(dt: Optional[datetime]) -> Optional[datetime]:
-    if dt is None:
-        return None
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+_to_utc_naive = as_utc  # historical name: values are now stored as timezone-aware UTC
+_as_utc = as_utc
 
 
 def _appointment_out(appt: Appointment, session: Session) -> AppointmentOut:
@@ -229,7 +221,7 @@ def list_upcoming_appointments(
 ):
     """SCHEDULED appointments in the next `days` days, limited to residents the caller may see."""
     scopes = get_user_scopes(current_user)
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = utcnow()
     stmt = (
         select(Appointment)
         .join(Resident, Resident.id == Appointment.resident_id)
@@ -272,8 +264,8 @@ def log_medication(
     if not rx:
         raise HTTPException(status_code=404, detail="Prescription not found.")
     verify_elder_care_access(current_user, rx.resident_id, session)
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    if rx.end_date and _to_utc_naive(rx.end_date) < now:
+    now = utcnow()
+    if rx.end_date and as_utc(rx.end_date) < now:
         raise HTTPException(status_code=400, detail="Prescription has ended; no further doses can be logged.")
     log = MedicationLog(
         resident_id=rx.resident_id,

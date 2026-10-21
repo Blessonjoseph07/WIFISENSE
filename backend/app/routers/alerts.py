@@ -265,7 +265,7 @@ def verify_alert(
     now = datetime.now(timezone.utc)
     alert.verification_status = body.outcome
     alert.verified_by = current_user.id
-    alert.verified_at = now.replace(tzinfo=None)
+    alert.verified_at = now
     alert.verification_note = body.note.strip() if body.note else None
     alert.updated_at = now
     if body.outcome == "DISMISSED":
