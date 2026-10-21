@@ -411,9 +411,26 @@ class RawCsiTelemetry(SQLModel, table=True):
     csi_data: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     provenance: str = Field(default="live", nullable=False, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # NULL = not yet processed by the detector; a SensingEvent id = part of that detection window; -1 = skipped
+    # (unsupported CSI format, or too few packets to form a window).
+    event_id: Optional[int] = Field(default=None, index=True)
 
     device: Optional[SensingDevice] = Relationship()
     room: Optional[Room] = Relationship()
+
+class ReplayEvaluation(SQLModel, table=True):
+    """Ground truth for a DATASET REPLAY detection window, entered by an administrator.
+
+    It is kept apart from the packets on purpose: a device can never supply labels, so the detector's output and the
+    recorded label can be compared honestly afterwards."""
+    __tablename__ = "replay_evaluations"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    event_id: int = Field(foreign_key="sensing_events.id", unique=True, index=True, nullable=False)
+    device_id: str = Field(foreign_key="devices.id", nullable=False, index=True)
+    dataset_name: str = Field(nullable=False)
+    recorded_label: str = Field(nullable=False)
+    created_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class RoomCalibration(SQLModel, table=True):
     __tablename__ = "room_calibrations"
