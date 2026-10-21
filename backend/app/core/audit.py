@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from fastapi import Request
 from sqlmodel import Session
@@ -40,7 +40,7 @@ def record_audit_event(
             result=result,
             details=details,
             ip_address=resolved_ip,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         session.add(log_entry)
         session.commit()

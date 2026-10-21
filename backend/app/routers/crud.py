@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, or_
 from typing import List, Optional
@@ -571,7 +571,7 @@ def service_node_fault(
     report.status = payload.status
     if payload.service_notes:
         report.service_notes = payload.service_notes
-    report.updated_at = datetime.utcnow()
+    report.updated_at = datetime.now(timezone.utc)
 
     db_dev = session.get(SensingDevice, report.device_id)
     if db_dev:
@@ -719,8 +719,7 @@ def update_sharing_policy(
     for key, value in update_dict.items():
         setattr(policy, key, value)
     
-    from datetime import datetime
-    policy.updated_at = datetime.utcnow()
+    policy.updated_at = datetime.now(timezone.utc)
     session.add(policy)
     session.commit()
     session.refresh(policy)
@@ -1057,7 +1056,7 @@ def get_room_calibration(
         cal = RoomCalibration(
             room_id=room_id,
             baseline_status="VALID",
-            baseline_captured_at=datetime.utcnow(),
+            baseline_captured_at=datetime.now(timezone.utc),
             noise_floor_dbm=-88,
             baseline_rssi=-48,
             rf_similarity_pct=96.5,
@@ -1098,10 +1097,10 @@ def recalibrate_room_baseline(
     if not cal:
         cal = RoomCalibration(room_id=room_id)
     cal.baseline_status = "VALID"
-    cal.baseline_captured_at = datetime.utcnow()
+    cal.baseline_captured_at = datetime.now(timezone.utc)
     cal.rf_similarity_pct = 98.8
     cal.rf_environment_status = "NORMAL"
-    cal.updated_at = datetime.utcnow()
+    cal.updated_at = datetime.now(timezone.utc)
     session.add(cal)
     session.commit()
     session.refresh(cal)
@@ -1258,7 +1257,7 @@ def execute_room_energy_action(
         
     energy_state["last_action"] = action_in.action
     energy_state["last_action_by"] = current_user.email
-    energy_state["last_action_at"] = datetime.utcnow().isoformat()
+    energy_state["last_action_at"] = datetime.now(timezone.utc).isoformat()
     energy_state["vacant_duration_hours"] = 0.0
     
     if action_in.action in ["SHUT_OFF_AC", "SHUT_OFF_LIGHTS", "ECO_STANDBY"]:
@@ -1293,7 +1292,7 @@ def execute_room_energy_action(
     ).all()
     for alert in energy_alerts:
         alert.status = "resolved"
-        alert.updated_at = datetime.utcnow()
+        alert.updated_at = datetime.now(timezone.utc)
         session.add(alert)
         
     session.commit()

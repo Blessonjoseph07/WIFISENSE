@@ -2,7 +2,7 @@ import uuid
 import secrets
 import hashlib
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Union, Any, Optional, Tuple, Dict
 from jose import jwt, JWTError
 from sqlmodel import Session, select
@@ -33,9 +33,9 @@ def hash_token(raw_token: str) -> str:
 
 def create_access_token(subject: Union[str, Any], role: str, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     jti = str(uuid.uuid4())
     to_encode = {
@@ -43,7 +43,7 @@ def create_access_token(subject: Union[str, Any], role: str, expires_delta: Opti
         "sub": str(subject),
         "role": role,
         "jti": jti,
-        "iat": datetime.utcnow()
+        "iat": datetime.now(timezone.utc)
     }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -73,7 +73,7 @@ def decode_access_token(token: str, session: Optional[Session] = None) -> Option
         decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         # Validate that the token has not expired
         exp = decoded_token.get("exp")
-        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
+        if exp and datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
             return None
 
         # Check server-side revocation list if database session is provided
@@ -88,14 +88,14 @@ def create_refresh_token(user_id: str, session: Session) -> Tuple[str, RefreshTo
     """Generates a cryptographically secure refresh token and stores its hash in the database."""
     raw_token = secrets.token_urlsafe(64)
     token_hash = hash_token(raw_token)
-    expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     db_token = RefreshToken(
         id=str(uuid.uuid4()),
         user_id=user_id,
         token_hash=token_hash,
         expires_at=expires_at,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     session.add(db_token)
     session.commit()
@@ -120,7 +120,10 @@ def verify_and_rotate_refresh_token(raw_refresh_token: str, session: Session) ->
         revoke_all_user_tokens(db_token.user_id, session, reason="refresh_token_reuse_detected")
         raise ValueError("Refresh token reuse detected. All sessions invalidated for security.")
 
-    if db_token.expires_at < datetime.utcnow():
+    token_exp = db_token.expires_at
+    if token_exp.tzinfo is None:
+        token_exp = token_exp.replace(tzinfo=timezone.utc)
+    if token_exp < datetime.now(timezone.utc):
         raise ValueError("Refresh token has expired. Please log in again.")
 
     user = session.get(User, db_token.user_id)
@@ -130,20 +133,20 @@ def verify_and_rotate_refresh_token(raw_refresh_token: str, session: Session) ->
     # Generate new refresh token
     new_raw_token = secrets.token_urlsafe(64)
     new_token_hash = hash_token(new_raw_token)
-    new_expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    new_expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     new_db_token = RefreshToken(
         id=str(uuid.uuid4()),
         user_id=user.id,
         token_hash=new_token_hash,
         expires_at=new_expires_at,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     session.add(new_db_token)
     session.flush()
 
     # Invalidate the old refresh token and link replacement
-    db_token.revoked_at = datetime.utcnow()
+    db_token.revoked_at = datetime.now(timezone.utc)
     db_token.replaced_by_token_id = new_db_token.id
     session.add(db_token)
 
@@ -158,7 +161,7 @@ def revoke_access_token(token: str, session: Session, reason: str = "logout"):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_exp": False})
         exp = payload.get("exp")
         user_id = payload.get("sub")
-        expires_at = datetime.utcfromtimestamp(exp) if exp else datetime.utcnow() + timedelta(hours=24)
+        expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else datetime.now(timezone.utc) + timedelta(hours=24)
 
         # Record revocation for token hash
         existing = session.exec(select(TokenRevocation).where(TokenRevocation.token_identifier == token_hash)).first()
@@ -167,7 +170,7 @@ def revoke_access_token(token: str, session: Session, reason: str = "logout"):
                 id=str(uuid.uuid4()),
                 token_identifier=token_hash,
                 user_id=user_id,
-                revoked_at=datetime.utcnow(),
+                revoked_at=datetime.now(timezone.utc),
                 expires_at=expires_at,
                 reason=reason
             )
@@ -182,7 +185,7 @@ def revoke_access_token(token: str, session: Session, reason: str = "logout"):
                     id=str(uuid.uuid4()),
                     token_identifier=jti,
                     user_id=user_id,
-                    revoked_at=datetime.utcnow(),
+                    revoked_at=datetime.now(timezone.utc),
                     expires_at=expires_at,
                     reason=reason
                 )
@@ -198,6 +201,6 @@ def revoke_all_user_tokens(user_id: str, session: Session, reason: str = "securi
         select(RefreshToken).where(RefreshToken.user_id == user_id, RefreshToken.revoked_at == None)
     ).all()
     for rt in active_tokens:
-        rt.revoked_at = datetime.utcnow()
+        rt.revoked_at = datetime.now(timezone.utc)
         session.add(rt)
     session.commit()
