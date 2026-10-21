@@ -176,6 +176,8 @@ class SensingDevice(SQLModel, table=True):
     device_status: str = Field(default="OFFLINE")
     firmware_version: Optional[str] = Field(default=None)
     hardware_token: Optional[str] = Field(default=None)
+    hardware_token_hash: Optional[str] = Field(default=None, index=True)
+    allowed_source: str = Field(default="live", nullable=False)
     last_seen_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -265,6 +267,79 @@ class Prescription(SQLModel, table=True):
 
     resident: "Resident" = Relationship(back_populates="prescriptions")
 
+class Appointment(SQLModel, table=True):
+    __tablename__ = "appointments"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    doctor_id: Optional[str] = Field(default=None, foreign_key="doctors.id")
+    scheduled_at: datetime = Field(nullable=False, index=True)
+    purpose: str = Field(nullable=False)
+    status: str = Field(default="SCHEDULED", nullable=False)  # SCHEDULED, COMPLETED, CANCELLED
+    notes: Optional[str] = Field(default=None)
+    created_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MedicationLog(SQLModel, table=True):
+    __tablename__ = "medication_logs"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    prescription_id: str = Field(foreign_key="prescriptions.id", nullable=False, index=True)
+    status: str = Field(nullable=False)  # GIVEN, MISSED, REFUSED
+    administered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    administered_by: Optional[str] = Field(default=None)
+    notes: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class DoctorProfile(SQLModel, table=True):
+    """A doctor's application to one elder-care organization. Only APPROVED profiles may use the doctor portal."""
+    __tablename__ = "doctor_profiles"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(foreign_key="users.id", unique=True, nullable=False)
+    organization_id: str = Field(foreign_key="organizations.id", nullable=False, index=True)
+    clinic_name: str = Field(nullable=False)
+    specialty: str = Field(nullable=False)
+    license_number: str = Field(nullable=False)
+    status: str = Field(default="PENDING", nullable=False)  # PENDING, APPROVED, REJECTED, SUSPENDED
+    reviewed_by: Optional[str] = Field(default=None)
+    reviewed_at: Optional[datetime] = Field(default=None)
+    review_note: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class DoctorAssignment(SQLModel, table=True):
+    """Explicit doctor -> resident grant. A doctor can only see residents with an ACTIVE assignment."""
+    __tablename__ = "doctor_assignments"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    doctor_profile_id: str = Field(foreign_key="doctor_profiles.id", nullable=False, index=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    status: str = Field(default="ACTIVE", nullable=False)  # ACTIVE, REVOKED
+    assigned_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    revoked_by: Optional[str] = Field(default=None)
+    revoked_at: Optional[datetime] = Field(default=None)
+
+class Consultation(SQLModel, table=True):
+    __tablename__ = "consultations"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    doctor_profile_id: str = Field(foreign_key="doctor_profiles.id", nullable=False, index=True)
+    consulted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    reason: str = Field(nullable=False)
+    notes: Optional[str] = Field(default=None)  # doctor notes
+    follow_up_date: Optional[datetime] = Field(default=None)
+    follow_up_done: bool = Field(default=False, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Allergy(SQLModel, table=True):
+    __tablename__ = "allergies"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    allergen: str = Field(nullable=False)
+    reaction: Optional[str] = Field(default=None)
+    severity: str = Field(default="MODERATE", nullable=False)  # MILD, MODERATE, SEVERE
+    recorded_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Resident(SQLModel, table=True):
     __tablename__ = "residents"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -318,6 +393,27 @@ class SensingEvent(SQLModel, table=True):
     extracted_features: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     inferred_activity_id: int = Field(foreign_key="activity_types.id", nullable=False)
     model_confidence: float = Field(nullable=False)
+    # live | dataset | simulated. Phase 1 events come from the simulator; real classification will set "live"/"dataset".
+    source: str = Field(default="simulated", nullable=False)
+
+class RawCsiTelemetry(SQLModel, table=True):
+    __tablename__ = "raw_csi_telemetry"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    device_id: str = Field(foreign_key="devices.id", nullable=False, index=True)
+    room_id: str = Field(foreign_key="rooms.id", nullable=False, index=True)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    sequence_number: Optional[int] = Field(default=None)
+    rssi: int = Field(nullable=False)
+    noise_floor: Optional[int] = Field(default=None)
+    subcarrier_count: int = Field(default=56)
+    bandwidth_mhz: Optional[int] = Field(default=20)
+    channel: Optional[int] = Field(default=None)
+    csi_data: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    provenance: str = Field(default="live", nullable=False, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    device: Optional[SensingDevice] = Relationship()
+    room: Optional[Room] = Relationship()
 
 class RoomCalibration(SQLModel, table=True):
     __tablename__ = "room_calibrations"
@@ -362,6 +458,16 @@ class Alert(SQLModel, table=True):
     status: str = Field(default="new")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Detection evidence copied from the sensing event that raised the alert (all optional: seeded/manual alerts have none).
+    source: str = Field(default="simulated", nullable=False)  # live | dataset | simulated
+    device_id: Optional[str] = Field(default=None)
+    confidence: Optional[float] = Field(default=None)
+    signal_quality: Optional[int] = Field(default=None)
+    # Human verification of an uncertain detection (kept for future analytics).
+    verification_status: str = Field(default="UNVERIFIED", nullable=False)  # UNVERIFIED, CONFIRMED, DISMISSED
+    verified_by: Optional[str] = Field(default=None)
+    verified_at: Optional[datetime] = Field(default=None)
+    verification_note: Optional[str] = Field(default=None)
 
     room: Room = Relationship(back_populates="alerts")
     acknowledgement: Optional["AlertAcknowledgement"] = Relationship(back_populates="alert", cascade_delete=True)

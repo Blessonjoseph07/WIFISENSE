@@ -1,4 +1,5 @@
 import React from "react";
+import { SourceBadge } from "../components/DetectionBadges";
 import SubcarrierWaveformStream from "../components/SubcarrierWaveformStream";
 
 export default function CentralMonitoringView({
@@ -19,12 +20,12 @@ export default function CentralMonitoringView({
             Central Monitoring
           </h2>
           <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 mt-1">
-            Real-time floor visibility and device telemetry.
+            Floor overview. Activity and signal values on this screen are simulated for demonstration.
           </p>
         </div>
         <div className="flex items-center gap-2 text-label-caps font-label-caps text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded border border-slate-200 dark:border-slate-800">
-          <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-          System Live
+          <SourceBadge source="simulated" />
+          <span className="normal-case tracking-normal">Demonstration data, not live sensors</span>
         </div>
       </div>
 
@@ -180,12 +181,10 @@ export default function CentralMonitoringView({
                 </span>
                 Device Diagnostics
               </h3>
-              <span className="text-label-caps font-label-caps bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded text-slate-500 border border-slate-200 dark:border-slate-700">
-                ESP32-S3
-              </span>
+              <SourceBadge source="simulated" />
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
-              Real-time Channel State Information (CSI) variance monitoring for network stability.
+              Illustrative CSI diagnostics. These values are simulated and are not read from a sensor.
             </p>
 
             {/* Metrics Grid */}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ConfidenceBadge, SignalBadge, SourceBadge, VerificationPanel } from "./DetectionBadges";
 
 export default function EmergencyFallModal({
   authToken = "",
@@ -11,6 +12,7 @@ export default function EmergencyFallModal({
   const [emergencyData, setEmergencyData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dismissedAlertId, setDismissedAlertId] = useState(null);
+  const [verified, setVerified] = useState(null); // AlertDetailOut returned after staff verification
 
   const isCareOps =
     appContext === "ELDER_CARE" &&
@@ -36,7 +38,10 @@ export default function EmergencyFallModal({
           !isSessionDismissed &&
           data.status !== "resolved"
         ) {
-          setEmergencyData(data);
+          setEmergencyData((prev) => {
+            if (!prev || prev.alert_id !== data.alert_id) setVerified(null);
+            return data;
+          });
         } else if (!data.has_emergency || data.status === "resolved" || isSessionDismissed) {
           setEmergencyData(null);
         }
@@ -102,15 +107,23 @@ export default function EmergencyFallModal({
 
   if (!emergencyData) return null;
 
-  const contact = emergencyData.emergency_contact || {
-    name: "Care Desk Officer",
-    relationship: "Primary Response",
-    phone: "+91 4828 251122",
+  const contact = emergencyData.emergency_contact || null;
+  const tel = emergencyData.telemetry || {};
+  const needsVerification = !verified && emergencyData.requires_verification;
+  const panelAlert = verified || {
+    id: emergencyData.alert_id,
+    source: emergencyData.source,
+    confidence: tel.confidence === null || tel.confidence === undefined ? null : tel.confidence / 100,
+    confidence_level: tel.confidence_level,
+    signal_quality: tel.signal_quality,
+    signal_level: tel.signal_level,
+    requires_verification: emergencyData.requires_verification,
+    verification_status: emergencyData.verification_status || "UNVERIFIED",
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border-2 border-red-600 rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border-t-8 border-t-red-600 animate-scale-up">
+      <div className="bg-white dark:bg-slate-900 border-2 border-red-600 rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto border-t-8 border-t-red-600 animate-scale-up">
         {/* Header with Close [x] Button */}
         <div className="bg-red-50 dark:bg-red-950/40 p-5 flex items-center justify-between border-b border-red-200 dark:border-red-900/50">
           <div className="flex items-center gap-3">
@@ -119,10 +132,13 @@ export default function EmergencyFallModal({
             </span>
             <div>
               <h2 className="text-xl font-black text-red-600 uppercase tracking-wide">
-                EMERGENCY — FALL DETECTED
+                {needsVerification ? "POSSIBLE FALL — VERIFICATION REQUIRED" : "EMERGENCY — FALL DETECTED"}
               </h2>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Wi-Fi CSI Sensing Event • Immediate Protocol Required
+                {emergencyData.source === "simulated"
+                  ? "Simulated Wi-Fi CSI event (demonstration data)"
+                  : "Wi-Fi CSI Sensing Event"}{" "}
+                • Immediate Protocol Required
               </p>
             </div>
           </div>
@@ -180,9 +196,7 @@ export default function EmergencyFallModal({
                 DETECTED TIME
               </p>
               <p className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 mt-0.5">
-                {emergencyData.created_at
-                  ? new Date(emergencyData.created_at).toLocaleString()
-                  : "Live Active"}
+                {emergencyData.detected_at || "Time not recorded"}
               </p>
             </div>
             <div>
@@ -191,44 +205,43 @@ export default function EmergencyFallModal({
               </p>
               <p className="text-xs font-bold text-red-600 flex items-center gap-1 mt-0.5">
                 <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
-                Fall Detected
+                {needsVerification ? "Possible fall (unverified)" : "Fall Detected"}
               </p>
             </div>
           </div>
 
-          {/* CSI Telemetry Fingerprint (RuView Integration) */}
-          <div className="grid grid-cols-4 gap-2 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
-            <div>
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">
-                SIGNAL QUALITY
-              </span>
-              <span className="text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
-                {emergencyData.csi_telemetry?.signal_quality || "94%"}
-              </span>
+          {/* Detection evidence: real values copied from the detecting event; nothing is filled in when absent */}
+          <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <div className="flex flex-wrap gap-1.5">
+              <SourceBadge source={emergencyData.source} />
+              <ConfidenceBadge
+                level={tel.confidence_level}
+                confidence={tel.confidence === null || tel.confidence === undefined ? null : tel.confidence / 100}
+              />
+              <SignalBadge level={tel.signal_level} quality={tel.signal_quality} />
             </div>
-            <div>
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">
-                SUBCARRIERS
-              </span>
-              <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
-                {emergencyData.csi_telemetry?.subcarriers || "56"}
-              </span>
-            </div>
-            <div>
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">RSSI</span>
-              <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
-                {emergencyData.csi_telemetry?.rssi || "-42 dBm"}
-              </span>
-            </div>
-            <div>
-              <span className="text-[9px] font-bold uppercase text-slate-400 block">CONFIDENCE</span>
-              <span className="text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
-                {emergencyData.csi_telemetry?.confidence || "97.5%"}
-              </span>
-            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Device: <span className="font-mono">{emergencyData.device_mac || "not recorded"}</span>
+            </p>
           </div>
 
+          <VerificationPanel
+            alert={panelAlert}
+            canVerify={isCareOps}
+            authToken={authToken}
+            API_BASE="http://127.0.0.1:8000"
+            onVerified={(data) => {
+              setVerified(data);
+              onActionComplete();
+            }}
+          />
+
           {/* Primary Emergency Contact Card */}
+          {!contact ? (
+            <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs text-slate-600 dark:text-slate-300">
+              No emergency contact is on file for this resident. Add one in the resident profile.
+            </div>
+          ) : (
           <div className="border-2 border-red-200 dark:border-red-900/60 rounded-xl p-4 bg-red-50/30 dark:bg-red-950/20">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold text-red-600 uppercase flex items-center gap-1">
@@ -264,6 +277,7 @@ export default function EmergencyFallModal({
               </a>
             </div>
           </div>
+          )}
         </div>
 
         {/* Action Buttons */}
