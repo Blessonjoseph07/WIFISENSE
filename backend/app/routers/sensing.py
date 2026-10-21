@@ -1,13 +1,14 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, Request
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, Request, Query
+from sqlmodel import Session, select, or_
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Union
 from app.core.database import get_session
 from app.core.security import hash_token
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
 from app.models.entities import SensingDevice, Room, Floor, Building, SensingEvent, ActivityType, Alert, RoomCalibration, RawCsiTelemetry
-from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut
+from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut, SensingHistoryOut
+from app.core.confidence import confidence_level, signal_level, requires_verification
 from app.services.notifications import process_alert_notifications
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
@@ -272,18 +273,23 @@ def simulate_event(
     activity_id, category = ACTIVITY_MAPPING[activity_name]
     profile = DETERMINISTIC_PROFILES.get(activity_name, DETERMINISTIC_PROFILES["Presence"])
 
+    # Optional overrides let staff/tests demonstrate low-confidence handling. The event stays SIMULATED either way.
+    sim_confidence = event_data.confidence if event_data.confidence is not None else profile["confidence"]
+    sim_signal_quality = event_data.signal_quality if event_data.signal_quality is not None else profile["signal_quality"]
+
     sensing_event = SensingEvent(
         device_id=device.id,
         room_id=room.id,
         timestamp=datetime.now(timezone.utc),
         rssi=profile["rssi"],
         subcarrier_count=profile["subcarriers"],
-        signal_quality=profile["signal_quality"],
+        signal_quality=sim_signal_quality,
         event_type=profile["event_type"],
         raw_csi_payload_path=None,
         extracted_features=profile["features"],
         inferred_activity_id=activity_id,
-        model_confidence=profile["confidence"]
+        model_confidence=sim_confidence,
+        source="simulated"
     )
     session.add(sensing_event)
     session.commit()
@@ -296,13 +302,17 @@ def simulate_event(
 
     if activity_name == "Fall_Detected":
         alert_triggered = True
-        alert_msg = f"Critical Fall Detected in Room {room.name}!"
+        alert_msg = f"Critical Fall Detected in Room {room.name}! [SIMULATED]"
         db_alert = Alert(
             room_id=room.id,
             event_type="Fall_Detected",
             severity="CRITICAL",
             message=alert_msg,
-            status="new"
+            status="new",
+            source="simulated",
+            device_id=device.id,
+            confidence=sim_confidence,
+            signal_quality=sim_signal_quality
         )
         session.add(db_alert)
         session.commit()
@@ -336,6 +346,10 @@ def simulate_event(
             "rssi": sensing_event.rssi,
             "subcarrier_count": sensing_event.subcarrier_count,
             "signal_quality": sensing_event.signal_quality,
+            "signal_level": signal_level(sensing_event.signal_quality),
+            "confidence_level": confidence_level(sensing_event.model_confidence),
+            "requires_verification": requires_verification(sensing_event.model_confidence, sensing_event.signal_quality),
+            "source": sensing_event.source,
             "event_type": sensing_event.event_type,
             "extracted_features": sensing_event.extracted_features,
             "confidence": float(sensing_event.model_confidence)
@@ -350,6 +364,45 @@ def simulate_event(
         } if db_alert else None,
         "notification": notification_details
     }
+
+@router.get("/history", response_model=List[SensingHistoryOut], dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_detection_history(
+    room_id: Optional[str] = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """Recent detections with confidence, signal quality and source, limited to the caller's organization scope."""
+    scopes = get_user_scopes(current_user)
+    stmt = select(SensingEvent, ActivityType, Room).join(ActivityType, ActivityType.id == SensingEvent.inferred_activity_id).join(Room, Room.id == SensingEvent.room_id)
+    if not scopes["is_system_admin"]:
+        stmt = stmt.join(Floor, Floor.id == Room.floor_id).join(Building, Building.id == Floor.building_id).where(or_(
+            Building.organization_id.in_(list(scopes["organization_ids"])),
+            Building.id.in_(list(scopes["building_ids"])),
+            Room.id.in_(list(scopes["room_ids"]))
+        ))
+    if room_id:
+        stmt = stmt.where(SensingEvent.room_id == room_id)
+    rows = session.exec(stmt.order_by(SensingEvent.timestamp.desc()).limit(limit)).all()
+    return [
+        SensingHistoryOut(
+            id=ev.id,
+            timestamp=ev.timestamp,
+            room_id=ev.room_id,
+            room_name=rm.name,
+            device_id=ev.device_id,
+            activity=act.name,
+            category=act.category,
+            confidence=ev.model_confidence,
+            confidence_level=confidence_level(ev.model_confidence),
+            signal_quality=ev.signal_quality,
+            signal_level=signal_level(ev.signal_quality),
+            rssi=ev.rssi,
+            source=ev.source,
+            requires_verification=requires_verification(ev.model_confidence, ev.signal_quality),
+        )
+        for ev, act, rm in rows
+    ]
 
 @router.get("/devices/{device_id}/csi-telemetry", dependencies=[Depends(require_roles(STAFF_ROLES))])
 def get_device_csi_telemetry(
