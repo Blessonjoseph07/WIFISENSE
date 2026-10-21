@@ -215,6 +215,7 @@ export default function EmergencyFallModal({
             <div className="flex flex-wrap gap-1.5">
               <SourceBadge source={emergencyData.source} />
               <ConfidenceBadge
+                source={emergencyData.source}
                 level={tel.confidence_level}
                 confidence={tel.confidence === null || tel.confidence === undefined ? null : tel.confidence / 100}
               />

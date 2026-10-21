@@ -30,6 +30,7 @@ import ResidentsView from "./views/ResidentsView";
 import AlertsView from "./views/AlertsView";
 import DoctorPortalView from "./views/DoctorPortalView";
 import MedicalProvidersView from "./views/MedicalProvidersView";
+import SensingMonitorView from "./views/SensingMonitorView";
 import UserProfileView from "./views/UserProfileView";
 import EmergencyFallModal from "./components/EmergencyFallModal";
 import { SourceBadge } from "./components/DetectionBadges";
@@ -1749,6 +1750,9 @@ export default function App() {
           {/* ============================================================================
             6b. MEDICAL PROVIDERS (organization staff) AND DOCTOR PORTAL
           ============================================================================ */}
+          {currentView === "sensing" && isViewAllowed("sensing", appContext, role, isSystemAdmin) && (
+            <SensingMonitorView authToken={token} API_BASE={API_BASE} devices={devices} rooms={rooms} />
+          )}
           {currentView === "providers" && isViewAllowed("providers", appContext, role, isSystemAdmin) && (
             <MedicalProvidersView authToken={token} API_BASE={API_BASE} residents={residents} />
           )}
