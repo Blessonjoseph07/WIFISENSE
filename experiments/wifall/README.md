@@ -66,3 +66,16 @@ Fall vs not-fall, person-independent, **person-averaged balanced accuracy**:
 - Everything was measured on one room, one transmitter and close range. Accuracy on other hardware and rooms is
   **unknown** until it is measured there.
 - Ten people is a small sample: differences of about 0.03-0.05 are close to noise.
+
+## The deployed model and the replay (added with dataset replay)
+
+- `train_deployable_model.py` trains the exported random forest (`backend/app/ml/wifall_rf_v2.json`) on 9 of the 10
+  people and **holds out ID9**. ID9 was chosen before any replay result was seen (its leave-one-person-out score of
+  0.62 is below average, so it is not a flattering pick).
+- Replaying ID9's 32 clips through the running application (`tools/replay_wifall.py`) is therefore a test on a person
+  the model never saw. Pre-registered expectation from the offline fold: **16 of 16 falls flagged, 11 of 16 non-falls
+  falsely flagged** (balanced accuracy 0.656). The live replay through the API produced exactly those counts, which
+  confirms that the application's pipeline equals the experiment.
+- What the replay also shows: all 4 "sit" clips were flagged, some with scores above 0.9; and the signal-quality figure
+  is 100 for every window. The signal-quality heuristic describes the radio link, not the reliability of a detection.
+- Replaying people the model was trained on is possible (`--include-training-people`) but proves nothing about accuracy.

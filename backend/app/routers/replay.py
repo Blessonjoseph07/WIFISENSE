@@ -64,6 +64,7 @@ def replay_summary(
     visible: Dict[str, bool] = {}
     tp = fn = fp = tn = 0
     by_label: Dict[str, Dict[str, int]] = {}
+    by_dataset: Dict[str, Dict[str, int]] = {}
     for ev_eval, event, act in session.exec(stmt).all():
         if event.room_id not in visible:
             visible[event.room_id] = user_can_access_room(current_user, event.room_id, session)
@@ -78,6 +79,11 @@ def replay_summary(
         row = by_label.setdefault(ev_eval.recorded_label, {"windows": 0, "flagged_possible_fall": 0})
         row["windows"] += 1
         row["flagged_possible_fall"] += int(flagged)
+        ds = by_dataset.setdefault(ev_eval.dataset_name, {"windows": 0, "recorded_falls": 0, "falls_flagged": 0,
+                                                          "non_falls": 0, "non_falls_flagged": 0})
+        ds["windows"] += 1
+        ds["recorded_falls" if actual_fall else "non_falls"] += 1
+        ds["falls_flagged" if actual_fall and flagged else "non_falls_flagged"] += int(flagged)
     n = tp + fn + fp + tn
     recall = tp / (tp + fn) if (tp + fn) else None
     fpr = fp / (fp + tn) if (fp + tn) else None
@@ -93,6 +99,7 @@ def replay_summary(
         "false_alarm_rate": round(fpr, 3) if fpr is not None else None,
         "precision": round(tp / (tp + fp), 3) if (tp + fp) else None,
         "by_recorded_label": by_label,
+        "by_dataset": by_dataset,
         "statement": ("Result of REPLAYED, RECORDED data compared with the labels that came with the dataset. "
                       "It describes this model on that dataset, not accuracy on live hardware."),
     }
