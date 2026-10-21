@@ -990,17 +990,20 @@ def seed_database(session: Session, force: bool = False):
     session.commit()
 
     # 12. Seed Sensing Devices
-    def _create_seeded_dev(mac, rm_id, status, fw, source="live"):
+    def _create_seeded_dev(mac, rm_id, status, fw, source="simulated"):
+        # Demo devices are NOT real hardware: they start OFFLINE, never seen, marked simulated,
+        # and their random token is discarded so nothing can ingest as them.
+        # Real ESP32 boards must be registered through POST /devices.
         raw_token = f"TK-ESP32-{secrets.token_urlsafe(32)}"
         return SensingDevice(
             mac_address=mac,
             room_id=rm_id,
-            device_status=status,
-            firmware_version=fw,
+            device_status="FAULT_REPORTED" if status == "FAULT_REPORTED" else "OFFLINE",
+            firmware_version=fw.replace("ESP32-CSI Node", "Demo Node (simulated)"),
             hardware_token=None,
             hardware_token_hash=hash_token(raw_token),
             allowed_source=source,
-            last_seen_at=datetime.now(timezone.utc)
+            last_seen_at=None
         )
 
     # SPACE Devices
