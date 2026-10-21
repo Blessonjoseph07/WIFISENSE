@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import CareRecordsPanel from "./CareRecordsPanel";
 
 export default function ResidentProfileModal({ residentId, onClose, authToken }) {
   const [activeTab, setActiveTab] = useState("personal"); // personal, medical, safety, contacts
@@ -59,6 +60,7 @@ export default function ResidentProfileModal({ residentId, onClose, authToken })
           {[
             { id: "personal", label: "Personal", icon: "person" },
             { id: "medical", label: "Medical Records", icon: "medical_services" },
+            { id: "records", label: "Care Records", icon: "edit_calendar" },
             { id: "safety", label: "Safety & CSI", icon: "health_and_safety" },
             { id: "contacts", label: "Emergency Contacts", icon: "contact_phone" },
           ].map((tab) => (
@@ -236,6 +238,9 @@ export default function ResidentProfileModal({ residentId, onClose, authToken })
                   </div>
                 </div>
               )}
+
+              {/* TAB: CARE RECORDS (appointments, doctors, medication log) */}
+              {activeTab === "records" && <CareRecordsPanel residentId={residentId} authToken={authToken} />}
 
               {/* TAB 3: SAFETY & TELEMETRY */}
               {activeTab === "safety" && (
