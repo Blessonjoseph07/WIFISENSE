@@ -418,6 +418,51 @@ def run_tests():
         assert status == 200, f"Expected 200 for System Admin resetting Corporate device, got {status}: {res}"
         print("[PASS] System Admin successfully reset Corporate Space device (HTTP 200).")
 
+        # Test 10: Truthfulness hardening (labels, source enum, admin-disabled devices, demo seed)
+        print("\n--- 10. Testing Label Rejection, Source Validation & Demo-Device Truthfulness ---")
+        # 10a. Unknown top-level field (e.g. a client-supplied label) must be rejected, not ignored
+        status, res = api_call("/sensing/ingest", method="POST", data=dict(dummy_csi_payload, label="fall"), device_token=new_token)
+        assert status == 422, f"Expected 422 for unknown packet field 'label', got {status}: {res}"
+        print("[PASS] Client-supplied top-level 'label' rejected with HTTP 422.")
+
+        # 10b. Label hidden inside csi_data must be rejected too
+        status, res = api_call("/sensing/ingest", method="POST", data=dict(dummy_csi_payload, csi_data={"subcarriers": [1, 2], "Activity": "walking"}), device_token=new_token)
+        assert status == 422, f"Expected 422 for label inside csi_data, got {status}: {res}"
+        print("[PASS] Label hidden inside csi_data rejected with HTTP 422.")
+
+        # 10c. allowed_source must be one of live / dataset / simulated
+        status, res = api_call("/devices", method="POST", data={
+            "room_id": valid_room_id,
+            "mac_address": "DE:AD:BE:EF:01:04",
+            "allowed_source": "totally-real-trust-me"
+        }, token=admin_token)
+        assert status == 422, f"Expected 422 for invalid allowed_source, got {status}: {res}"
+        print("[PASS] Invalid allowed_source rejected with HTTP 422.")
+
+        # 10d. A device pulled from service by an admin must not ingest or flip itself back ONLINE
+        with Session(engine) as session:
+            d = session.get(SensingDevice, dev1_id)
+            d.device_status = "INSPECTING"
+            session.add(d)
+            session.commit()
+        status, res = api_call("/sensing/ingest", method="POST", data=dummy_csi_payload, device_token=new_token)
+        assert status == 403, f"Expected 403 for device under inspection, got {status}: {res}"
+        with Session(engine) as session:
+            assert session.get(SensingDevice, dev1_id).device_status == "INSPECTING", "Ingest overrode admin status!"
+        print("[PASS] Device under INSPECTING rejected with HTTP 403 and status left unchanged.")
+
+        # 10e. Seeded demo devices must never be labelled as live hardware
+        with Session(engine) as session:
+            seeded = session.exec(
+                select(SensingDevice).where(
+                    (SensingDevice.mac_address.like("4C:75:25:AA:10:%")) | (SensingDevice.mac_address.like("24:0A:C4:00:20:%"))
+                )
+            ).all()
+            assert len(seeded) > 0, "No seeded demo devices found."
+            not_simulated = [s.mac_address for s in seeded if s.allowed_source != "simulated"]
+            assert not not_simulated, f"Seeded demo devices not marked simulated: {not_simulated}"
+        print(f"[PASS] All {len(seeded)} seeded demo devices are allowed_source='simulated'.")
+
     finally:
         # Cleanup test devices and telemetry
         print("\n--- Cleanup: Removing Test Devices & Telemetry ---")

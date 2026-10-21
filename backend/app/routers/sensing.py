@@ -13,6 +13,9 @@ from app.services.notifications import process_alert_notifications
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
 STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
 MAX_INGEST_PAYLOAD_BYTES = 64 * 1024  # 64 KB maximum request/payload limit
+# A device an admin has pulled for repair must not flip itself back to ONLINE by sending packets.
+# OFFLINE is deliberately allowed: a newly registered device starts OFFLINE and becomes ONLINE on first packet.
+INGEST_BLOCKED_STATUSES = {"FAULT_REPORTED", "INSPECTING", "SERVICING"}
 
 async def verify_ingest_payload_size(request: Request):
     content_length = request.headers.get("content-length")
@@ -72,6 +75,12 @@ def get_authenticated_device(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Room '{device.room_id}' assigned to device does not exist."
+        )
+
+    if device.device_status in INGEST_BLOCKED_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Device '{device.id}' is {device.device_status} and may not ingest telemetry until an administrator returns it to service."
         )
 
     return device

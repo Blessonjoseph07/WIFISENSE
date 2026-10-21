@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
 # ============================================================================
@@ -163,7 +163,7 @@ class SensingDeviceCreate(BaseModel):
     mac_address: str = Field(..., description="17-character MAC address, e.g. 4C:75:25:AA:BB:CC")
     device_status: Optional[str] = "OFFLINE"
     firmware_version: Optional[str] = None
-    allowed_source: Optional[str] = "live"
+    allowed_source: Literal["live", "dataset", "simulated"] = "live"
 
 class SensingDeviceOut(BaseModel):
     id: str
@@ -180,7 +180,12 @@ class SensingDeviceOut(BaseModel):
     class Config:
         from_attributes = True
 
+# Keys a client must never send inside csi_data: labels come from the pipeline, not the device.
+FORBIDDEN_CSI_LABEL_KEYS = {"label", "labels", "activity", "activity_label", "class", "ground_truth", "event_type"}
+
 class CsiPacketIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     sequence_number: Optional[int] = None
     timestamp: Optional[datetime] = None
     rssi: int = Field(..., ge=-120, le=0, description="RSSI in dBm between -120 and 0")
@@ -192,7 +197,17 @@ class CsiPacketIn(BaseModel):
     mac_address: Optional[str] = Field(default=None, description="Optional consistency check; derived from token if omitted")
     provenance: Optional[str] = Field(default=None, description="Optional; must match device.allowed_source if provided")
 
+    @field_validator("csi_data")
+    @classmethod
+    def reject_client_labels(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        bad = FORBIDDEN_CSI_LABEL_KEYS.intersection(k.lower() for k in v.keys())
+        if bad:
+            raise ValueError(f"csi_data must not contain client-supplied labels: {sorted(bad)}")
+        return v
+
 class CsiIngestBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     packets: List[CsiPacketIn] = Field(..., min_length=1, max_length=100)
     mac_address: Optional[str] = Field(default=None, description="Optional consistency check")
 
