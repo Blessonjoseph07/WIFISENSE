@@ -1,14 +1,16 @@
 """
 Train and export the deployable WiFall model (random forest on the V2 features, no per-person calibration).
 
-Usage:  python train_deployable_model.py /path/to/WiFall  /path/to/output_dir  [--cache clips_iq.npz]
+Usage:  python train_deployable_model.py /path/to/WiFall  /path/to/output_dir  [--cache clips_iq.npz] [--holdout ID9]
 Needs numpy and scikit-learn (NOT part of the application's requirements).
 
 Steps
   1. read the WiFall clips and compute features with the APPLICATION'S feature code (backend/app/services/csi_features.py)
   2. re-run the person-independent (leave-one-person-out) evaluation with EXACTLY the hyper-parameters being exported,
      so the accuracy recorded in the model file belongs to this model and not to a similar one
-  3. train on all clips and export the forest as plain JSON (no pickle) to backend/app/ml/wifall_rf_v2.json
+  3. train on every person EXCEPT the held-out one (default ID9) and export the forest as plain JSON (no pickle) to
+     backend/app/ml/wifall_rf_v2.json. The held-out person is never used for training, so replaying that person's
+     clips is an honest test of an unseen person; the model file records that person's exact result
   4. check that the pure-numpy inference in the application reproduces scikit-learn's scores
 """
 import argparse
@@ -63,6 +65,7 @@ def main():
     ap.add_argument("root")
     ap.add_argument("out_dir")
     ap.add_argument("--cache", default=None)
+    ap.add_argument("--holdout", default="ID9", help="person excluded from the exported model; replayed as the unseen person")
     args = ap.parse_args()
     os.makedirs(args.out_dir, exist_ok=True)
 
@@ -93,7 +96,17 @@ def main():
     )
     print("LOPO:", json.dumps(evaluation, indent=1), flush=True)
 
-    final = RandomForestClassifier(**RF_PARAMS).fit(X, y)
+    keep = np.where(P != args.holdout)[0]
+    held = np.where(P == args.holdout)[0]
+    final = RandomForestClassifier(**RF_PARAMS).fit(X[keep], y[keep])
+    hp = final.predict(X[held])
+    held_result = dict(
+        person=args.holdout, n_clips=int(len(held)), n_falls=int((y[held] == 1).sum()),
+        tp=int(((hp == 1) & (y[held] == 1)).sum()), fn=int(((hp == 0) & (y[held] == 1)).sum()),
+        fp=int(((hp == 1) & (y[held] == 0)).sum()), tn=int(((hp == 0) & (y[held] == 0)).sum()),
+        balanced_accuracy=round(float(balanced_accuracy_score(y[held], hp)), 3),
+    )
+    print("held-out person result (this exact model):", json.dumps(held_result), flush=True)
     model = dict(
         model_type="random_forest_binary_fall_vs_not_fall",
         features=FEATURE_NAMES,
@@ -102,9 +115,11 @@ def main():
         score_meaning="uncalibrated forest score in 0..1; NOT the probability that a fall happened",
         window_packets=250,
         csi_format="52 subcarriers, (I,Q) int pairs, about 84 packets/s, ESP32-S3, 20 MHz, 2.4 GHz",
-        trained_on="WiFall (Zhao et al., arXiv:2412.04783), all 10 people; one room, one transmitter, close range; "
-                   "licence of the data is not stated, data not redistributed",
-        n_training_clips=int(len(y)),
+        trained_on=f"WiFall (Zhao et al., arXiv:2412.04783), 9 of 10 people (person {args.holdout} held out); one room, "
+                   "one transmitter, close range; licence of the data is not stated, data not redistributed",
+        held_out_person=args.holdout,
+        held_out_person_result=held_result,
+        n_training_clips=int(len(keep)),
         hyperparameters={k: v for k, v in RF_PARAMS.items() if k != "n_jobs"},
         evaluation=evaluation,
         limitations=[
