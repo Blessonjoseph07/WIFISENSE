@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, or_
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
 from app.models.entities import Alert, AlertAcknowledgement, Room, Floor, Building, Resident, EmergencyContact, SensingEvent, ActivityType, Organization, User
@@ -247,7 +247,7 @@ def acknowledge_alert(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Alert is already resolved.")
 
     alert.status = "acknowledged"
-    alert.updated_at = datetime.utcnow()
+    alert.updated_at = datetime.now(timezone.utc)
     session.add(alert)
 
     ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert.id)).first()
@@ -255,11 +255,11 @@ def acknowledge_alert(
         ack = AlertAcknowledgement(
             alert_id=alert.id,
             user_id=current_user.id,
-            acknowledged_at=datetime.utcnow()
+            acknowledged_at=datetime.now(timezone.utc)
         )
     else:
         ack.user_id = current_user.id
-        ack.acknowledged_at = datetime.utcnow()
+        ack.acknowledged_at = datetime.now(timezone.utc)
     session.add(ack)
     session.commit()
     session.refresh(alert)
@@ -302,7 +302,7 @@ def mark_alert_responding(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Alert is already resolved.")
 
     alert.status = "responding"
-    alert.updated_at = datetime.utcnow()
+    alert.updated_at = datetime.now(timezone.utc)
     session.add(alert)
 
     ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert.id)).first()
@@ -310,7 +310,7 @@ def mark_alert_responding(
         ack = AlertAcknowledgement(
             alert_id=alert.id,
             user_id=current_user.id,
-            acknowledged_at=datetime.utcnow()
+            acknowledged_at=datetime.now(timezone.utc)
         )
         session.add(ack)
     
@@ -356,7 +356,7 @@ def resolve_alert(
         return alert
 
     alert.status = "resolved"
-    alert.updated_at = datetime.utcnow()
+    alert.updated_at = datetime.now(timezone.utc)
     session.add(alert)
 
     ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert.id)).first()
@@ -364,12 +364,12 @@ def resolve_alert(
         ack = AlertAcknowledgement(
             alert_id=alert.id,
             user_id=current_user.id,
-            acknowledged_at=datetime.utcnow(),
-            resolved_at=datetime.utcnow(),
+            acknowledged_at=datetime.now(timezone.utc),
+            resolved_at=datetime.now(timezone.utc),
             resolution_notes=resolution_data.resolution_notes
         )
     else:
-        ack.resolved_at = datetime.utcnow()
+        ack.resolved_at = datetime.now(timezone.utc)
         ack.resolution_notes = resolution_data.resolution_notes
     session.add(ack)
 
