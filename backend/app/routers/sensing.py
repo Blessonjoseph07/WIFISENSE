@@ -1,15 +1,160 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+import secrets
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, Request
 from sqlmodel import Session, select
 from datetime import datetime, timezone
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Union
 from app.core.database import get_session
+from app.core.security import hash_token
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
-from app.models.entities import SensingDevice, Room, Floor, Building, SensingEvent, ActivityType, Alert, RoomCalibration
-from app.schemas.schemas import SensingEventSimulate
+from app.models.entities import SensingDevice, Room, Floor, Building, SensingEvent, ActivityType, Alert, RoomCalibration, RawCsiTelemetry
+from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut
 from app.services.notifications import process_alert_notifications
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
 STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
+MAX_INGEST_PAYLOAD_BYTES = 64 * 1024  # 64 KB maximum request/payload limit
+
+async def verify_ingest_payload_size(request: Request):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_INGEST_PAYLOAD_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"Payload size ({content_length} bytes) exceeds maximum allowed limit of {MAX_INGEST_PAYLOAD_BYTES // 1024} KB."
+                )
+        except ValueError:
+            pass
+
+    body = await request.body()
+    if len(body) > MAX_INGEST_PAYLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Payload size ({len(body)} bytes) exceeds maximum allowed limit of {MAX_INGEST_PAYLOAD_BYTES // 1024} KB."
+        )
+
+def get_authenticated_device(
+    x_device_token: Optional[str] = Header(None, alias="X-Device-Token"),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    session: Session = Depends(get_session)
+) -> SensingDevice:
+    raw_token = None
+    if x_device_token:
+        raw_token = x_device_token.strip()
+    elif authorization and authorization.startswith("Bearer "):
+        raw_token = authorization[7:].strip()
+    
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing device authentication token. Provide X-Device-Token or Bearer token."
+        )
+    
+    incoming_hash = hash_token(raw_token)
+    device = session.exec(
+        select(SensingDevice).where(SensingDevice.hardware_token_hash == incoming_hash)
+    ).first()
+
+    if not device or not secrets.compare_digest(device.hardware_token_hash or "", incoming_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid device authentication token."
+        )
+
+    if not device.room_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Device '{device.id}' ({device.mac_address}) is not assigned to a room. Telemetry rejected."
+        )
+
+    room = session.get(Room, device.room_id)
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Room '{device.room_id}' assigned to device does not exist."
+        )
+
+    return device
+
+@router.post(
+    "/ingest",
+    response_model=CsiIngestOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(verify_ingest_payload_size)],
+    summary="Ingest Raw CSI Telemetry Packets"
+)
+def ingest_csi_telemetry(
+    payload: Union[CsiIngestBatch, CsiPacketIn],
+    device: SensingDevice = Depends(get_authenticated_device),
+    session: Session = Depends(get_session)
+):
+    device_source = device.allowed_source or "live"
+    
+    if isinstance(payload, CsiIngestBatch):
+        if payload.mac_address and payload.mac_address.strip().lower() != device.mac_address.strip().lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"MAC address mismatch in batch: payload specifies '{payload.mac_address}' but device is registered as '{device.mac_address}'."
+            )
+        packets_to_process = payload.packets
+    else:
+        packets_to_process = [payload]
+
+    records: List[RawCsiTelemetry] = []
+    now_utc = datetime.now(timezone.utc)
+
+    for p in packets_to_process:
+        if p.mac_address and p.mac_address.strip().lower() != device.mac_address.strip().lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"MAC address mismatch: packet specifies '{p.mac_address}' but device is registered as '{device.mac_address}'."
+            )
+        
+        if p.provenance and p.provenance.strip().lower() != device_source.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Provenance conflict: packet specifies '{p.provenance}' but device is restricted to '{device_source}'."
+            )
+        
+        pkt_time = p.timestamp or now_utc
+        if pkt_time.tzinfo is None:
+            pkt_time = pkt_time.replace(tzinfo=timezone.utc)
+
+        record = RawCsiTelemetry(
+            device_id=device.id,
+            room_id=device.room_id,
+            timestamp=pkt_time,
+            sequence_number=p.sequence_number,
+            rssi=p.rssi,
+            noise_floor=p.noise_floor,
+            subcarrier_count=p.subcarrier_count if p.subcarrier_count is not None else 56,
+            bandwidth_mhz=p.bandwidth_mhz if p.bandwidth_mhz is not None else 20,
+            channel=p.channel,
+            csi_data=p.csi_data,
+            provenance=device_source,
+            created_at=now_utc
+        )
+        records.append(record)
+
+    for rec in records:
+        session.add(rec)
+
+    device.device_status = "ONLINE"
+    device.last_seen_at = now_utc
+    session.add(device)
+    session.commit()
+    session.refresh(device)
+
+    return CsiIngestOut(
+        status="success",
+        device_id=device.id,
+        mac_address=device.mac_address,
+        room_id=device.room_id,
+        ingested_count=len(records),
+        provenance=device_source,
+        device_status=device.device_status,
+        last_seen_at=now_utc
+    )
 
 DETERMINISTIC_PROFILES = {
     "Empty": {

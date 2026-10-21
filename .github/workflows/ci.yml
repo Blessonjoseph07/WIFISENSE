@@ -66,6 +66,9 @@ jobs:
           echo "=== RUNNING PHASE 1 SECURITY TESTS ==="
           python test_phase1_security.py
           
+          echo "=== RUNNING DEVICE INGESTION & CSI TELEMETRY TESTS ==="
+          python test_device_ingestion.py
+          
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js

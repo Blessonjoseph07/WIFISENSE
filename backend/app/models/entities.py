@@ -176,6 +176,8 @@ class SensingDevice(SQLModel, table=True):
     device_status: str = Field(default="OFFLINE")
     firmware_version: Optional[str] = Field(default=None)
     hardware_token: Optional[str] = Field(default=None)
+    hardware_token_hash: Optional[str] = Field(default=None, index=True)
+    allowed_source: str = Field(default="live", nullable=False)
     last_seen_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -318,6 +320,25 @@ class SensingEvent(SQLModel, table=True):
     extracted_features: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     inferred_activity_id: int = Field(foreign_key="activity_types.id", nullable=False)
     model_confidence: float = Field(nullable=False)
+
+class RawCsiTelemetry(SQLModel, table=True):
+    __tablename__ = "raw_csi_telemetry"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    device_id: str = Field(foreign_key="devices.id", nullable=False, index=True)
+    room_id: str = Field(foreign_key="rooms.id", nullable=False, index=True)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    sequence_number: Optional[int] = Field(default=None)
+    rssi: int = Field(nullable=False)
+    noise_floor: Optional[int] = Field(default=None)
+    subcarrier_count: int = Field(default=56)
+    bandwidth_mhz: Optional[int] = Field(default=20)
+    channel: Optional[int] = Field(default=None)
+    csi_data: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    provenance: str = Field(default="live", nullable=False, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    device: Optional[SensingDevice] = Relationship()
+    room: Optional[Room] = Relationship()
 
 class RoomCalibration(SQLModel, table=True):
     __tablename__ = "room_calibrations"

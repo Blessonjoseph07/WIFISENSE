@@ -163,6 +163,7 @@ class SensingDeviceCreate(BaseModel):
     mac_address: str = Field(..., description="17-character MAC address, e.g. 4C:75:25:AA:BB:CC")
     device_status: Optional[str] = "OFFLINE"
     firmware_version: Optional[str] = None
+    allowed_source: Optional[str] = "live"
 
 class SensingDeviceOut(BaseModel):
     id: str
@@ -170,12 +171,47 @@ class SensingDeviceOut(BaseModel):
     mac_address: str
     device_status: str
     firmware_version: Optional[str]
+    allowed_source: Optional[str] = "live"
+    hardware_token: Optional[str] = None
     last_seen_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+class CsiPacketIn(BaseModel):
+    sequence_number: Optional[int] = None
+    timestamp: Optional[datetime] = None
+    rssi: int = Field(..., ge=-120, le=0, description="RSSI in dBm between -120 and 0")
+    noise_floor: Optional[int] = Field(default=None, ge=-120, le=0)
+    subcarrier_count: Optional[int] = Field(default=56, ge=1, le=256)
+    bandwidth_mhz: Optional[int] = Field(default=20)
+    channel: Optional[int] = Field(default=None, ge=1, le=165)
+    csi_data: Dict[str, Any] = Field(..., description="Subcarrier amplitudes, phases, or I/Q matrix")
+    mac_address: Optional[str] = Field(default=None, description="Optional consistency check; derived from token if omitted")
+    provenance: Optional[str] = Field(default=None, description="Optional; must match device.allowed_source if provided")
+
+class CsiIngestBatch(BaseModel):
+    packets: List[CsiPacketIn] = Field(..., min_length=1, max_length=100)
+    mac_address: Optional[str] = Field(default=None, description="Optional consistency check")
+
+class CsiIngestOut(BaseModel):
+    status: str = "success"
+    device_id: str
+    mac_address: str
+    room_id: str
+    ingested_count: int
+    provenance: str
+    device_status: str
+    last_seen_at: datetime
+
+class DeviceCredentialCreatedOut(BaseModel):
+    device_id: str
+    mac_address: str
+    hardware_token: str
+    allowed_source: str
+    message: str = "Store this token securely. It will not be shown again."
 
 class ResidentCreate(BaseModel):
     room_id: str

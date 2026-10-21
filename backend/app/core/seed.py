@@ -8,7 +8,8 @@ from app.models.entities import (
     EmergencyContact, Doctor, HospitalVisit, LabReport, Prescription,
     FamilyConnection, FamilySubscription, RoomCalibration, RoomSchedule
 )
-from app.core.security import hash_password
+import secrets
+from app.core.security import hash_password, hash_token
 
 ROLE_MAPPING = {
     "system_admin": 1,
@@ -989,32 +990,45 @@ def seed_database(session: Session, force: bool = False):
     session.commit()
 
     # 12. Seed Sensing Devices
+    def _create_seeded_dev(mac, rm_id, status, fw, source="live"):
+        raw_token = f"TK-ESP32-{secrets.token_urlsafe(32)}"
+        return SensingDevice(
+            mac_address=mac,
+            room_id=rm_id,
+            device_status=status,
+            firmware_version=fw,
+            hardware_token=None,
+            hardware_token_hash=hash_token(raw_token),
+            allowed_source=source,
+            last_seen_at=datetime.now(timezone.utc)
+        )
+
     # SPACE Devices
-    dev_c_conf_a = SensingDevice(mac_address="4C:75:25:AA:10:01", room_id=rm_conf_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP101", hardware_token="TK-ESP32-CONF-A", last_seen_at=datetime.now(timezone.utc))
-    dev_c_meet_b = SensingDevice(mac_address="4C:75:25:AA:10:02", room_id=rm_meet_b.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP102", hardware_token="TK-ESP32-MEET-B", last_seen_at=datetime.now(timezone.utc))
-    dev_c_lab1 = SensingDevice(mac_address="4C:75:25:AA:10:03", room_id=rm_comp_lab1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP103", hardware_token="TK-ESP32-LAB-01", last_seen_at=datetime.now(timezone.utc))
-    dev_c_lab2 = SensingDevice(mac_address="4C:75:25:AA:10:04", room_id=rm_comp_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP104", hardware_token="TK-ESP32-LAB-02", last_seen_at=datetime.now(timezone.utc))
-    dev_c_res2 = SensingDevice(mac_address="4C:75:25:AA:10:05", room_id=rm_res_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP105", hardware_token="TK-ESP32-RES-02", last_seen_at=datetime.now(timezone.utc))
-    dev_c_cls101 = SensingDevice(mac_address="4C:75:25:AA:10:06", room_id=rm_class_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP106", hardware_token="TK-ESP32-CLS-101", last_seen_at=datetime.now(timezone.utc))
-    dev_c_cls102 = SensingDevice(mac_address="4C:75:25:AA:10:07", room_id=rm_class_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP107", hardware_token="TK-ESP32-CLS-102", last_seen_at=datetime.now(timezone.utc))
-    dev_c_staff = SensingDevice(mac_address="4C:75:25:AA:10:08", room_id=rm_staff_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP108", hardware_token="TK-ESP32-STF-01", last_seen_at=datetime.now(timezone.utc))
-    dev_c_server = SensingDevice(mac_address="4C:75:25:AA:10:09", room_id=rm_server_telecom.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP109", hardware_token="TK-ESP32-SRV-01", last_seen_at=datetime.now(timezone.utc))
-    dev_c_sem = SensingDevice(mac_address="4C:75:25:AA:10:10", room_id=rm_seminar_mca.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP110", hardware_token="TK-ESP32-SEM-01", last_seen_at=datetime.now(timezone.utc))
+    dev_c_conf_a = _create_seeded_dev("4C:75:25:AA:10:01", rm_conf_a.id, "ONLINE", "ESP32-CSI Node SP101")
+    dev_c_meet_b = _create_seeded_dev("4C:75:25:AA:10:02", rm_meet_b.id, "ONLINE", "ESP32-CSI Node SP102")
+    dev_c_lab1 = _create_seeded_dev("4C:75:25:AA:10:03", rm_comp_lab1.id, "ONLINE", "ESP32-CSI Node SP103")
+    dev_c_lab2 = _create_seeded_dev("4C:75:25:AA:10:04", rm_comp_lab2.id, "ONLINE", "ESP32-CSI Node SP104")
+    dev_c_res2 = _create_seeded_dev("4C:75:25:AA:10:05", rm_res_lab2.id, "ONLINE", "ESP32-CSI Node SP105")
+    dev_c_cls101 = _create_seeded_dev("4C:75:25:AA:10:06", rm_class_101.id, "ONLINE", "ESP32-CSI Node SP106")
+    dev_c_cls102 = _create_seeded_dev("4C:75:25:AA:10:07", rm_class_102.id, "ONLINE", "ESP32-CSI Node SP107")
+    dev_c_staff = _create_seeded_dev("4C:75:25:AA:10:08", rm_staff_a.id, "ONLINE", "ESP32-CSI Node SP108")
+    dev_c_server = _create_seeded_dev("4C:75:25:AA:10:09", rm_server_telecom.id, "ONLINE", "ESP32-CSI Node SP109")
+    dev_c_sem = _create_seeded_dev("4C:75:25:AA:10:10", rm_seminar_mca.id, "ONLINE", "ESP32-CSI Node SP110")
 
     # CARE Devices
-    dev_ec_101 = SensingDevice(mac_address="24:0A:C4:00:20:01", room_id=rm_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC101", hardware_token="TK-ESP32-EC-101", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_102 = SensingDevice(mac_address="24:0A:C4:00:20:02", room_id=rm_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC102", hardware_token="TK-ESP32-EC-102", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_103 = SensingDevice(mac_address="24:0A:C4:00:20:03", room_id=rm_103.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC103", hardware_token="TK-ESP32-EC-103", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_104 = SensingDevice(mac_address="24:0A:C4:00:20:04", room_id=rm_104.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC104", hardware_token="TK-ESP32-EC-104", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_201 = SensingDevice(mac_address="24:0A:C4:00:20:05", room_id=rm_201.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC201", hardware_token="TK-ESP32-EC-201", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_202 = SensingDevice(mac_address="24:0A:C4:00:20:06", room_id=rm_202.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC202", hardware_token="TK-ESP32-EC-202", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_203 = SensingDevice(mac_address="24:0A:C4:00:20:07", room_id=rm_203.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC203", hardware_token="TK-ESP32-EC-203", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_204 = SensingDevice(mac_address="24:0A:C4:00:20:08", room_id=rm_204.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC204", hardware_token="TK-ESP32-EC-204", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_bath1 = SensingDevice(mac_address="24:0A:C4:00:20:09", room_id=rm_bath_1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-B01", hardware_token="TK-ESP32-EC-B01", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_physio = SensingDevice(mac_address="24:0A:C4:00:20:10", room_id=rm_physio.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-PHY", hardware_token="TK-ESP32-EC-PHY", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_rec = SensingDevice(mac_address="24:0A:C4:00:20:11", room_id=rm_recreation.id, device_status="FAULT_REPORTED", firmware_version="ESP32-CSI Node EC-REC", hardware_token="TK-ESP32-EC-REC", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_dining = SensingDevice(mac_address="24:0A:C4:00:20:12", room_id=rm_dining.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-DIN", hardware_token="TK-ESP32-EC-DIN", last_seen_at=datetime.now(timezone.utc))
-    dev_ec_nurse = SensingDevice(mac_address="24:0A:C4:00:20:13", room_id=rm_nursing.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-NUR", hardware_token="TK-ESP32-EC-NUR", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_101 = _create_seeded_dev("24:0A:C4:00:20:01", rm_101.id, "ONLINE", "ESP32-CSI Node EC101")
+    dev_ec_102 = _create_seeded_dev("24:0A:C4:00:20:02", rm_102.id, "ONLINE", "ESP32-CSI Node EC102")
+    dev_ec_103 = _create_seeded_dev("24:0A:C4:00:20:03", rm_103.id, "ONLINE", "ESP32-CSI Node EC103")
+    dev_ec_104 = _create_seeded_dev("24:0A:C4:00:20:04", rm_104.id, "ONLINE", "ESP32-CSI Node EC104")
+    dev_ec_201 = _create_seeded_dev("24:0A:C4:00:20:05", rm_201.id, "ONLINE", "ESP32-CSI Node EC201")
+    dev_ec_202 = _create_seeded_dev("24:0A:C4:00:20:06", rm_202.id, "ONLINE", "ESP32-CSI Node EC202")
+    dev_ec_203 = _create_seeded_dev("24:0A:C4:00:20:07", rm_203.id, "ONLINE", "ESP32-CSI Node EC203")
+    dev_ec_204 = _create_seeded_dev("24:0A:C4:00:20:08", rm_204.id, "ONLINE", "ESP32-CSI Node EC204")
+    dev_ec_bath1 = _create_seeded_dev("24:0A:C4:00:20:09", rm_bath_1.id, "ONLINE", "ESP32-CSI Node EC-B01")
+    dev_ec_physio = _create_seeded_dev("24:0A:C4:00:20:10", rm_physio.id, "ONLINE", "ESP32-CSI Node EC-PHY")
+    dev_ec_rec = _create_seeded_dev("24:0A:C4:00:20:11", rm_recreation.id, "FAULT_REPORTED", "ESP32-CSI Node EC-REC")
+    dev_ec_dining = _create_seeded_dev("24:0A:C4:00:20:12", rm_dining.id, "ONLINE", "ESP32-CSI Node EC-DIN")
+    dev_ec_nurse = _create_seeded_dev("24:0A:C4:00:20:13", rm_nursing.id, "ONLINE", "ESP32-CSI Node EC-NUR")
 
     all_devices = [
         dev_c_conf_a, dev_c_meet_b, dev_c_lab1, dev_c_lab2, dev_c_res2,
