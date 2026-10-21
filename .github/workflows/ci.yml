@@ -68,7 +68,10 @@ jobs:
           
           echo "=== RUNNING DEVICE INGESTION & CSI TELEMETRY TESTS ==="
           python test_device_ingestion.py
-          
+
+          echo "=== RUNNING CARE RECORDS TESTS ==="
+          python test_care_records.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js

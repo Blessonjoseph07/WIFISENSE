@@ -267,6 +267,30 @@ class Prescription(SQLModel, table=True):
 
     resident: "Resident" = Relationship(back_populates="prescriptions")
 
+class Appointment(SQLModel, table=True):
+    __tablename__ = "appointments"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    doctor_id: Optional[str] = Field(default=None, foreign_key="doctors.id")
+    scheduled_at: datetime = Field(nullable=False, index=True)
+    purpose: str = Field(nullable=False)
+    status: str = Field(default="SCHEDULED", nullable=False)  # SCHEDULED, COMPLETED, CANCELLED
+    notes: Optional[str] = Field(default=None)
+    created_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MedicationLog(SQLModel, table=True):
+    __tablename__ = "medication_logs"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    prescription_id: str = Field(foreign_key="prescriptions.id", nullable=False, index=True)
+    status: str = Field(nullable=False)  # GIVEN, MISSED, REFUSED
+    administered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    administered_by: Optional[str] = Field(default=None)
+    notes: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Resident(SQLModel, table=True):
     __tablename__ = "residents"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)

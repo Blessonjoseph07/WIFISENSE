@@ -688,3 +688,59 @@ class EnergyActionOut(BaseModel):
     energy_state: dict
     message: str
 
+
+
+# ============================================================================
+# CARE RECORDS: DOCTOR EDITS, APPOINTMENTS, MEDICATION LOG
+# ============================================================================
+
+class DoctorUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Optional[str] = None
+    specialty: Optional[str] = None
+    hospital: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+class AppointmentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    doctor_id: Optional[str] = None
+    scheduled_at: datetime
+    purpose: str = Field(..., min_length=1, max_length=200)
+    notes: Optional[str] = Field(default=None, max_length=1000)
+
+class AppointmentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scheduled_at: Optional[datetime] = None
+    purpose: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    status: Optional[Literal["SCHEDULED", "COMPLETED", "CANCELLED"]] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
+
+class AppointmentOut(BaseModel):
+    id: str
+    resident_id: str
+    resident_name: Optional[str] = None
+    doctor_id: Optional[str] = None
+    doctor_name: Optional[str] = None
+    scheduled_at: datetime
+    purpose: str
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class MedicationLogCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["GIVEN", "MISSED", "REFUSED"]
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+class MedicationLogOut(BaseModel):
+    id: str
+    resident_id: str
+    prescription_id: str
+    medication_name: Optional[str] = None
+    status: str
+    administered_at: datetime
+    administered_by: Optional[str] = None
+    administered_by_name: Optional[str] = None
+    notes: Optional[str] = None
