@@ -17,7 +17,8 @@ ROLE_MAPPING = {
     "facility_manager": 3,
     "caregiver": 4,
     "corporate_staff": 5,
-    "family_member": 7
+    "family_member": 7,
+    "doctor": 8
 }
 
 ACTIVITY_MAPPING = {
@@ -36,7 +37,13 @@ def seed_database(session: Session, force: bool = False):
         if existing_org:
             return
 
-    # 1. Clean existing tables
+    # 1. Clean existing tables (children first)
+    for _tbl in ("consultations", "allergies", "doctor_assignments", "doctor_profiles",
+                 "medication_logs", "appointments", "raw_csi_telemetry"):
+        try:
+            session.execute(text(f"DELETE FROM {_tbl}"))
+        except Exception:
+            pass
     try:
         session.execute(text("DELETE FROM family_subscriptions"))
     except Exception:
@@ -1444,8 +1451,9 @@ def seed_database(session: Session, force: bool = False):
     session.commit()
 
     # 17. Seed Master Extensions (Emergency Contacts, Medical Records, Family Connections, Subscriptions, Calibrations, Schedules)
-    from app.core.seed_extensions import populate_master_extensions
+    from app.core.seed_extensions import populate_master_extensions, populate_demo_doctors
     populate_master_extensions(session, now)
+    populate_demo_doctors(session, now)
 
     print("[WIFISENSE SEED ENGINE] Database seeded with realistic, strictly separated CARE and SPACE datasets successfully!")
 

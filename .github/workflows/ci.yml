@@ -75,6 +75,9 @@ jobs:
           echo "=== RUNNING ALERT CONFIDENCE & VERIFICATION TESTS ==="
           python test_alert_verification.py
 
+          echo "=== RUNNING MEDICAL PROVIDER WORKFLOW TESTS ==="
+          python test_doctor_workflow.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js

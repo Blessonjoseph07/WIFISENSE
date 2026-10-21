@@ -299,3 +299,52 @@ def populate_master_extensions(session: Session, now: datetime):
         session.commit()
 
     print("[WIFISENSE MASTER EXTENSIONS] Seeded emergency contacts, structured medical, family connections, subscriptions, calibrations, and schedules.")
+
+
+def populate_demo_doctors(session: Session, now: datetime):
+    """Demo medical providers for the elder-care organization: one approved and assigned, one pending review."""
+    from app.core.security import hash_password
+    from app.models.entities import (
+        Allergy, Consultation, DoctorAssignment, DoctorProfile, Organization, User, UserRole,
+    )
+
+    org = session.exec(select(Organization).where(Organization.type == "ELDER_CARE")).first()
+    residents = {f"{r.first_name} {r.last_name}": r for r in session.exec(select(Resident)).all()}
+    if not org or "Mary Joseph" not in residents:
+        return
+    naive_now = now.replace(tzinfo=None) if now.tzinfo else now
+
+    approved = User(email="mathew.varghese@wifisense.com", password_hash=hash_password("doctorpassword"),
+                    first_name="Dr. Mathew", last_name="Varghese", is_active=True)
+    pending = User(email="priya.nair@wifisense.com", password_hash=hash_password("doctorpassword"),
+                   first_name="Dr. Priya", last_name="Nair", is_active=True)
+    session.add(approved)
+    session.add(pending)
+    session.commit()
+    session.refresh(approved)
+    session.refresh(pending)
+
+    # Doctor role deliberately carries no organization/building/room scope.
+    session.add(UserRole(user_id=approved.id, role_id=8))
+    profile = DoctorProfile(user_id=approved.id, organization_id=org.id, clinic_name="Kanjirappally Medical Centre",
+                            specialty="Geriatrics", license_number="KMC-DEMO-1001", status="APPROVED",
+                            reviewed_at=naive_now, review_note="Demo data: credentials not verified against any registry.",
+                            created_at=naive_now)
+    session.add(profile)
+    session.add(DoctorProfile(user_id=pending.id, organization_id=org.id, clinic_name="St. Joseph Clinic",
+                              specialty="Cardiology", license_number="SJC-DEMO-2002", status="PENDING",
+                              created_at=naive_now))
+    session.commit()
+    session.refresh(profile)
+
+    for name in ("Mary Joseph", "Annamma Joseph"):
+        if name in residents:
+            session.add(DoctorAssignment(doctor_profile_id=profile.id, resident_id=residents[name].id,
+                                         created_at=naive_now))
+    mary = residents["Mary Joseph"]
+    session.add(Allergy(resident_id=mary.id, allergen="Penicillin", reaction="Rash", severity="MODERATE",
+                        created_at=naive_now))
+    session.add(Consultation(resident_id=mary.id, doctor_profile_id=profile.id, consulted_at=naive_now,
+                             reason="Routine geriatric review", notes="Demo note: vitals stable, continue current plan.",
+                             follow_up_date=naive_now + timedelta(days=14), created_at=naive_now))
+    session.commit()

@@ -291,6 +291,55 @@ class MedicationLog(SQLModel, table=True):
     notes: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class DoctorProfile(SQLModel, table=True):
+    """A doctor's application to one elder-care organization. Only APPROVED profiles may use the doctor portal."""
+    __tablename__ = "doctor_profiles"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(foreign_key="users.id", unique=True, nullable=False)
+    organization_id: str = Field(foreign_key="organizations.id", nullable=False, index=True)
+    clinic_name: str = Field(nullable=False)
+    specialty: str = Field(nullable=False)
+    license_number: str = Field(nullable=False)
+    status: str = Field(default="PENDING", nullable=False)  # PENDING, APPROVED, REJECTED, SUSPENDED
+    reviewed_by: Optional[str] = Field(default=None)
+    reviewed_at: Optional[datetime] = Field(default=None)
+    review_note: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class DoctorAssignment(SQLModel, table=True):
+    """Explicit doctor -> resident grant. A doctor can only see residents with an ACTIVE assignment."""
+    __tablename__ = "doctor_assignments"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    doctor_profile_id: str = Field(foreign_key="doctor_profiles.id", nullable=False, index=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    status: str = Field(default="ACTIVE", nullable=False)  # ACTIVE, REVOKED
+    assigned_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    revoked_by: Optional[str] = Field(default=None)
+    revoked_at: Optional[datetime] = Field(default=None)
+
+class Consultation(SQLModel, table=True):
+    __tablename__ = "consultations"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    doctor_profile_id: str = Field(foreign_key="doctor_profiles.id", nullable=False, index=True)
+    consulted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    reason: str = Field(nullable=False)
+    notes: Optional[str] = Field(default=None)  # doctor notes
+    follow_up_date: Optional[datetime] = Field(default=None)
+    follow_up_done: bool = Field(default=False, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Allergy(SQLModel, table=True):
+    __tablename__ = "allergies"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    allergen: str = Field(nullable=False)
+    reaction: Optional[str] = Field(default=None)
+    severity: str = Field(default="MODERATE", nullable=False)  # MILD, MODERATE, SEVERE
+    recorded_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Resident(SQLModel, table=True):
     __tablename__ = "residents"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)

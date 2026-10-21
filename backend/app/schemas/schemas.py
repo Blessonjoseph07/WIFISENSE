@@ -792,3 +792,56 @@ class MedicationLogOut(BaseModel):
     administered_by: Optional[str] = None
     administered_by_name: Optional[str] = None
     notes: Optional[str] = None
+
+
+# ============================================================================
+# MEDICAL PROVIDER WORKFLOW
+# ============================================================================
+
+class DoctorApply(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    organization_id: str
+    clinic_name: str = Field(..., min_length=2, max_length=120)
+    specialty: str = Field(..., min_length=2, max_length=80)
+    license_number: str = Field(..., min_length=3, max_length=40)
+
+class DoctorReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["APPROVE", "REJECT", "SUSPEND"]
+    note: Optional[str] = Field(default=None, max_length=500)
+
+class AssignmentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    doctor_profile_id: str
+    resident_id: str
+
+class ConsultationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(..., min_length=2, max_length=200)
+    notes: Optional[str] = Field(default=None, max_length=4000)
+    consulted_at: Optional[datetime] = None
+    follow_up_date: Optional[datetime] = None
+
+class FollowUpUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    done: bool
+
+class AllergyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    allergen: str = Field(..., min_length=2, max_length=100)
+    reaction: Optional[str] = Field(default=None, max_length=200)
+    severity: Literal["MILD", "MODERATE", "SEVERE"] = "MODERATE"
+
+class DoctorConditionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    condition_name: str = Field(..., min_length=2, max_length=120)
+    notes: Optional[str] = Field(default=None, max_length=1000)
+    diagnosed_date: Optional[datetime] = None
+
+class DoctorPrescriptionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    medication_name: str = Field(..., min_length=2, max_length=120)
+    dosage: str = Field(..., min_length=1, max_length=60)
+    frequency: str = Field(..., min_length=1, max_length=80)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
