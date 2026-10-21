@@ -54,8 +54,8 @@
   --primary-color: #2F6FED;
   --border-color: #e5e7eb;
   --alert-color: #ba1a1a;
-  --font-sans: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-serif: 'Inter', sans-serif; /* Fallback */
 }
 
@@ -67,7 +67,7 @@
   --border-color: #8B8578;
   --alert-color: #C4622D;
   --font-sans: 'Inter', sans-serif;
-  --font-serif: 'Source Serif 4', 'Lora', serif;
+  --font-serif: 'Inter', sans-serif;
 }
 
 body {
@@ -86,4 +86,99 @@ body {
 }
 .text-primary {
   color: var(--primary-color) !important;
+}
+
+/* ==========================================================================
+   UI polish (global, layout-neutral): typography, motion, focus, scrollbars
+   ========================================================================== */
+:root {
+  --ring: #14b8a6;                      /* focus ring (teal-500) */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01", "tnum" 0;  /* Inter: single-storey a, cleaner digits */
+  scroll-behavior: smooth;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+/* Numbers in tables, telemetry and mono text line up */
+.font-mono, .font-data-mono, table td, table th {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: rgba(20, 184, 166, 0.25);
+}
+
+/* Tailwind v4 leaves buttons with the default cursor: restore the expected affordance */
+button:not(:disabled), [role="button"]:not([aria-disabled="true"]), select, summary, label[for] {
+  cursor: pointer;
+}
+button:disabled, [aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Subtle, consistent interaction feedback */
+button, a, input, select, textarea, [role="button"] {
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              transform 100ms var(--ease-out),
+              opacity var(--dur-fast) var(--ease-out);
+}
+button:active:not(:disabled), [role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.985);
+}
+
+/* Visible, consistent keyboard focus */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline-offset: 0;
+}
+
+/* Quiet, thin scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.35); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.55); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Entrance animations used by modals and panels (these classes were referenced but never defined) */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-up {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-fade-in { animation: fade-in var(--dur-base) var(--ease-out) both; }
+.animate-scale-up { animation: scale-up 260ms var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

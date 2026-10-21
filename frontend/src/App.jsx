@@ -32,6 +32,7 @@ import DoctorPortalView from "./views/DoctorPortalView";
 import MedicalProvidersView from "./views/MedicalProvidersView";
 import UserProfileView from "./views/UserProfileView";
 import EmergencyFallModal from "./components/EmergencyFallModal";
+import { SourceBadge } from "./components/DetectionBadges";
 import SharingPolicyManager from "./components/SharingPolicyManager";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -1575,7 +1576,10 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-red-500 text-2xl fill">warning</span>
                 <div className="text-left font-sans">
-                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-red-600">POTENTIAL FALL ALERT</h3>
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-red-600 flex items-center gap-2">
+                    {activeFallAlert.requires_verification ? "POSSIBLE FALL · VERIFICATION REQUIRED" : "FALL ALERT"}
+                    <SourceBadge source={activeFallAlert.source} />
+                  </h3>
                   <p className="text-sm font-semibold">{activeFallAlert.message}</p>
                 </div>
               </div>
