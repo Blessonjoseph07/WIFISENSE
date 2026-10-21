@@ -1,0 +1,10 @@
+# Every change is reviewed by the repository owner. Add the scrum master / guide here if they use GitHub.
+*                              @Blessonjoseph07
+
+# Security-sensitive areas (authentication, device tokens, medical access) get explicit ownership.
+/backend/app/routers/auth.py           @Blessonjoseph07
+/backend/app/routers/sensing.py        @Blessonjoseph07
+/backend/app/routers/doctor_portal.py  @Blessonjoseph07
+/backend/app/core/security.py          @Blessonjoseph07
+/backend/alembic/                      @Blessonjoseph07
+/.github/                              @Blessonjoseph07
