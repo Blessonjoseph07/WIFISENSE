@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 
 /**
  * SubcarrierWaveformStream
+ * SIMULATED waveform: random bars shaped by the demo activity. It is not CSI from a sensor and is labelled as such.
  * Self-contained diagnostic waveform visualizer that updates every 150ms
  * without triggering re-renders in the parent application tree.
  */
@@ -30,7 +31,7 @@ export default function SubcarrierWaveformStream({ activeActivity = "Empty" }) {
     <div>
       <div className="text-label-caps font-label-caps text-slate-400 mb-2 flex justify-between">
         <span>Amplitude Stream</span>
-        <span className="font-data-mono text-[10px] text-teal-600 dark:text-teal-400 font-bold">LIVE</span>
+        <span className="font-data-mono text-[10px] text-violet-600 dark:text-violet-400 font-bold" title="Generated locally for demonstration. Not CSI from a sensor.">SIMULATED</span>
       </div>
       <div className="h-32 bg-slate-50 dark:bg-slate-950 rounded border border-slate-200 dark:border-slate-800 relative overflow-hidden flex items-end p-1 gap-0.5">
         {subcarriers.map((h, i) => (

@@ -39,7 +39,8 @@ ROLE_MAPPING = {
     "facility_manager": 3,
     "caregiver": 4,
     "corporate_staff": 5,
-    "family_member": 7
+    "family_member": 7,
+    "doctor": 8
 }
 
 DEFAULT_REGISTRATION_ROLE = "family_member"
@@ -51,7 +52,8 @@ ROLE_NAMES = {
     4: "caregiver",
     5: "corporate_staff",
     6: "emergency_contact",  # Legacy role retired; retained in lookup for negative authorization verification
-    7: "family_member"
+    7: "family_member",
+    8: "doctor"
 }
 
 def seed_roles_if_empty(session: Session):
@@ -94,42 +96,8 @@ def register(
             detail="A user with this email address already exists."
         )
 
-    # Validate role
-    if user_data.role not in ROLE_MAPPING:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role. Supported roles: {list(ROLE_MAPPING.keys())}"
-        )
-
-    # Disallow self-registering as system_admin (only one root platform admin permitted)
-    if user_data.role == "system_admin":
-        record_audit_event(
-            session=session,
-            what_action="AUTH_REGISTER_DENIED",
-            resource_type="USER",
-            result="DENIED",
-            who_email=user_data.email,
-            details={"reason": "Attempted self-registration as system_admin"},
-            request=request
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="System Administrator accounts cannot be self-registered. Only one global platform administrator is permitted."
-        )
-
-    # Validate parent scopes if provided
-    if user_data.organization_id:
-        org = session.get(Organization, user_data.organization_id)
-        if not org:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
-    if user_data.building_id:
-        bld = session.get(Building, user_data.building_id)
-        if not bld:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Building not found")
-    if user_data.room_id:
-        rm = session.get(Room, user_data.room_id)
-        if not rm:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+    # Self-registration never accepts a role or scope: the schema has no such fields and every new account
+    # starts as an unprivileged family_member. Privileged roles are granted via /auth/assign-role.
 
     hashed_pwd = hash_password(user_data.password)
     user = User(

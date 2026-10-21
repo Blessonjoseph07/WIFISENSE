@@ -1,10 +1,12 @@
 import uuid
+import secrets
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, or_
 from typing import List, Optional
 from app.core.database import get_session
 from app.core.audit import record_audit_event
+from app.core.security import hash_token
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
 
 from app.models.entities import (
@@ -222,12 +224,15 @@ def create_device(
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A device with this MAC address is already registered.")
 
+    raw_token = f"TK-ESP32-{secrets.token_urlsafe(32)}"
     db_dev = SensingDevice(
         room_id=dev.room_id,
         mac_address=dev.mac_address,
         device_status=dev.device_status or "OFFLINE",
         firmware_version=dev.firmware_version,
-        hardware_token=f"TK-ESP32-{uuid.uuid4().hex[:6].upper()}"
+        hardware_token=None,
+        hardware_token_hash=hash_token(raw_token),
+        allowed_source=dev.allowed_source or "live"
     )
     session.add(db_dev)
     session.commit()
@@ -244,7 +249,8 @@ def create_device(
         mac_address=db_dev.mac_address,
         device_status=db_dev.device_status,
         firmware_version=db_dev.firmware_version,
-        hardware_token=db_dev.hardware_token,
+        allowed_source=db_dev.allowed_source,
+        hardware_token=raw_token,
         last_seen_at=db_dev.last_seen_at,
         created_at=db_dev.created_at,
         updated_at=db_dev.updated_at,
@@ -278,8 +284,10 @@ def list_devices(
     output = []
     has_updates = False
     for dev in raw_devices:
-        if not dev.hardware_token:
-            dev.hardware_token = f"TK-ESP32-{uuid.uuid4().hex[:6].upper()}"
+        if not dev.hardware_token_hash:
+            raw_token = f"TK-ESP32-{secrets.token_urlsafe(32)}"
+            dev.hardware_token_hash = hash_token(raw_token)
+            dev.hardware_token = None
             session.add(dev)
             has_updates = True
 
@@ -294,7 +302,8 @@ def list_devices(
             mac_address=dev.mac_address,
             device_status=dev.device_status,
             firmware_version=dev.firmware_version,
-            hardware_token=dev.hardware_token,
+            allowed_source=dev.allowed_source,
+            hardware_token=None,
             last_seen_at=dev.last_seen_at,
             created_at=dev.created_at,
             updated_at=dev.updated_at,
@@ -394,7 +403,8 @@ def toggle_device_status(
         mac_address=db_dev.mac_address,
         device_status=db_dev.device_status,
         firmware_version=db_dev.firmware_version,
-        hardware_token=db_dev.hardware_token,
+        allowed_source=db_dev.allowed_source,
+        hardware_token=None,
         last_seen_at=db_dev.last_seen_at,
         created_at=db_dev.created_at,
         updated_at=db_dev.updated_at,
@@ -415,17 +425,30 @@ def reset_device_token(
     if not db_dev:
         raise HTTPException(status_code=404, detail="Device not found.")
     
-    if db_dev.room_id:
+    scopes = get_user_scopes(current_user)
+    if not scopes["is_system_admin"]:
+        if not db_dev.room_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to reset token for unassigned devices. System administrator privileges required."
+            )
         rm = session.get(Room, db_dev.room_id)
-        if rm:
-            flr = session.get(Floor, rm.floor_id)
-            bld = session.get(Building, flr.building_id) if flr else None
-            scopes = get_user_scopes(current_user)
-            if not scopes["is_system_admin"] and bld and bld.organization_id not in scopes["organization_ids"] and bld.id not in scopes["building_ids"]:
-                raise HTTPException(status_code=403, detail="Not authorized to reset token for this device.")
+        if not rm:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to reset token for this device (assigned room not found)."
+            )
+        flr = session.get(Floor, rm.floor_id) if rm else None
+        bld = session.get(Building, flr.building_id) if flr else None
+        if not bld or (bld.organization_id not in scopes["organization_ids"] and bld.id not in scopes["building_ids"]):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to reset token for this device outside your authorized organization/building scope."
+            )
 
-    new_token = f"TK-ESP32-{uuid.uuid4().hex[:6].upper()}"
-    db_dev.hardware_token = new_token
+    new_token = f"TK-ESP32-{secrets.token_urlsafe(32)}"
+    db_dev.hardware_token_hash = hash_token(new_token)
+    db_dev.hardware_token = None
     session.add(db_dev)
     session.commit()
     session.refresh(db_dev)
@@ -446,7 +469,7 @@ def reset_device_token(
         "device_id": db_dev.id,
         "mac_address": db_dev.mac_address,
         "hardware_token": new_token,
-        "message": f"Hardware token successfully reset to {new_token}"
+        "message": f"Hardware token successfully reset to {new_token}. Store this token securely; it will not be shown again."
     }
 
 
@@ -577,7 +600,9 @@ def service_node_fault(
     if db_dev:
         if payload.status == "REPLACED_RESOLVED":
             db_dev.device_status = "ONLINE"
-            db_dev.hardware_token = f"TK-ESP32-{uuid.uuid4().hex[:6].upper()}"
+            new_dev_tok = f"TK-ESP32-{secrets.token_urlsafe(32)}"
+            db_dev.hardware_token = None
+            db_dev.hardware_token_hash = hash_token(new_dev_tok)
             session.add(db_dev)
         elif payload.status == "UNDER_INSPECTION":
             db_dev.device_status = "INSPECTING"

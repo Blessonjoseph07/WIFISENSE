@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from app.core.confidence import confidence_level, signal_level, requires_verification
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
 # ============================================================================
@@ -163,6 +164,7 @@ class SensingDeviceCreate(BaseModel):
     mac_address: str = Field(..., description="17-character MAC address, e.g. 4C:75:25:AA:BB:CC")
     device_status: Optional[str] = "OFFLINE"
     firmware_version: Optional[str] = None
+    allowed_source: Literal["live", "dataset", "simulated"] = "live"
 
 class SensingDeviceOut(BaseModel):
     id: str
@@ -170,12 +172,62 @@ class SensingDeviceOut(BaseModel):
     mac_address: str
     device_status: str
     firmware_version: Optional[str]
+    allowed_source: Optional[str] = "live"
+    hardware_token: Optional[str] = None
     last_seen_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+# Keys a client must never send inside csi_data: labels come from the pipeline, not the device.
+FORBIDDEN_CSI_LABEL_KEYS = {"label", "labels", "activity", "activity_label", "class", "ground_truth", "event_type"}
+
+class CsiPacketIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sequence_number: Optional[int] = None
+    timestamp: Optional[datetime] = None
+    rssi: int = Field(..., ge=-120, le=0, description="RSSI in dBm between -120 and 0")
+    noise_floor: Optional[int] = Field(default=None, ge=-120, le=0)
+    subcarrier_count: Optional[int] = Field(default=56, ge=1, le=256)
+    bandwidth_mhz: Optional[int] = Field(default=20)
+    channel: Optional[int] = Field(default=None, ge=1, le=165)
+    csi_data: Dict[str, Any] = Field(..., description="Subcarrier amplitudes, phases, or I/Q matrix")
+    mac_address: Optional[str] = Field(default=None, description="Optional consistency check; derived from token if omitted")
+    provenance: Optional[str] = Field(default=None, description="Optional; must match device.allowed_source if provided")
+
+    @field_validator("csi_data")
+    @classmethod
+    def reject_client_labels(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        bad = FORBIDDEN_CSI_LABEL_KEYS.intersection(k.lower() for k in v.keys())
+        if bad:
+            raise ValueError(f"csi_data must not contain client-supplied labels: {sorted(bad)}")
+        return v
+
+class CsiIngestBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    packets: List[CsiPacketIn] = Field(..., min_length=1, max_length=100)
+    mac_address: Optional[str] = Field(default=None, description="Optional consistency check")
+
+class CsiIngestOut(BaseModel):
+    status: str = "success"
+    device_id: str
+    mac_address: str
+    room_id: str
+    ingested_count: int
+    provenance: str
+    device_status: str
+    last_seen_at: datetime
+
+class DeviceCredentialCreatedOut(BaseModel):
+    device_id: str
+    mac_address: str
+    hardware_token: str
+    allowed_source: str
+    message: str = "Store this token securely. It will not be shown again."
 
 class ResidentCreate(BaseModel):
     room_id: str
@@ -213,6 +265,9 @@ class HealthConditionOut(BaseModel):
 class SensingEventSimulate(BaseModel):
     device_id: str
     simulated_activity: str = Field(..., description="Activity name, e.g. Empty, Presence, Walking, Sitting, Fall_Detected")
+    # Optional overrides so low-confidence / poor-signal handling can be demonstrated and tested. Still SIMULATED.
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    signal_quality: Optional[int] = Field(default=None, ge=0, le=100)
 
 class SensingEventOut(BaseModel):
     id: int
@@ -249,9 +304,53 @@ class AlertOut(BaseModel):
     organization_name: Optional[str] = None
     organization_type: Optional[str] = None
     resident_name: Optional[str] = None
+    # Detection evidence + verification (levels are derived from the raw numbers, never stored)
+    source: str = "simulated"
+    device_id: Optional[str] = None
+    device_mac: Optional[str] = None
+    confidence: Optional[float] = None
+    confidence_level: str = "UNKNOWN"
+    signal_quality: Optional[int] = None
+    signal_level: str = "UNKNOWN"
+    requires_verification: bool = False
+    verification_status: str = "UNVERIFIED"
+    verified_by_name: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    verification_note: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _derive_levels(self):
+        self.confidence_level = confidence_level(self.confidence)
+        self.signal_level = signal_level(self.signal_quality)
+        self.requires_verification = (
+            self.verification_status == "UNVERIFIED"
+            and requires_verification(self.confidence, self.signal_quality)
+        )
+        return self
 
     class Config:
         from_attributes = True
+
+class AlertVerify(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    outcome: Literal["CONFIRMED", "DISMISSED"]
+    note: Optional[str] = Field(default=None, max_length=500)
+
+class SensingHistoryOut(BaseModel):
+    id: int
+    timestamp: datetime
+    room_id: str
+    room_name: Optional[str] = None
+    device_id: str
+    activity: str
+    category: Optional[str] = None
+    confidence: float
+    confidence_level: str
+    signal_quality: Optional[int] = None
+    signal_level: str
+    rssi: int
+    source: str
+    requires_verification: bool
 
 class AlertResolve(BaseModel):
     resolution_notes: str
@@ -637,3 +736,112 @@ class EnergyActionOut(BaseModel):
     energy_state: dict
     message: str
 
+
+
+# ============================================================================
+# CARE RECORDS: DOCTOR EDITS, APPOINTMENTS, MEDICATION LOG
+# ============================================================================
+
+class DoctorUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Optional[str] = None
+    specialty: Optional[str] = None
+    hospital: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+class AppointmentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    doctor_id: Optional[str] = None
+    scheduled_at: datetime
+    purpose: str = Field(..., min_length=1, max_length=200)
+    notes: Optional[str] = Field(default=None, max_length=1000)
+
+class AppointmentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scheduled_at: Optional[datetime] = None
+    purpose: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    status: Optional[Literal["SCHEDULED", "COMPLETED", "CANCELLED"]] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
+
+class AppointmentOut(BaseModel):
+    id: str
+    resident_id: str
+    resident_name: Optional[str] = None
+    doctor_id: Optional[str] = None
+    doctor_name: Optional[str] = None
+    scheduled_at: datetime
+    purpose: str
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class MedicationLogCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["GIVEN", "MISSED", "REFUSED"]
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+class MedicationLogOut(BaseModel):
+    id: str
+    resident_id: str
+    prescription_id: str
+    medication_name: Optional[str] = None
+    status: str
+    administered_at: datetime
+    administered_by: Optional[str] = None
+    administered_by_name: Optional[str] = None
+    notes: Optional[str] = None
+
+
+# ============================================================================
+# MEDICAL PROVIDER WORKFLOW
+# ============================================================================
+
+class DoctorApply(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    organization_id: str
+    clinic_name: str = Field(..., min_length=2, max_length=120)
+    specialty: str = Field(..., min_length=2, max_length=80)
+    license_number: str = Field(..., min_length=3, max_length=40)
+
+class DoctorReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["APPROVE", "REJECT", "SUSPEND"]
+    note: Optional[str] = Field(default=None, max_length=500)
+
+class AssignmentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    doctor_profile_id: str
+    resident_id: str
+
+class ConsultationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(..., min_length=2, max_length=200)
+    notes: Optional[str] = Field(default=None, max_length=4000)
+    consulted_at: Optional[datetime] = None
+    follow_up_date: Optional[datetime] = None
+
+class FollowUpUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    done: bool
+
+class AllergyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    allergen: str = Field(..., min_length=2, max_length=100)
+    reaction: Optional[str] = Field(default=None, max_length=200)
+    severity: Literal["MILD", "MODERATE", "SEVERE"] = "MODERATE"
+
+class DoctorConditionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    condition_name: str = Field(..., min_length=2, max_length=120)
+    notes: Optional[str] = Field(default=None, max_length=1000)
+    diagnosed_date: Optional[datetime] = None
+
+class DoctorPrescriptionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    medication_name: str = Field(..., min_length=2, max_length=120)
+    dosage: str = Field(..., min_length=1, max_length=60)
+    frequency: str = Field(..., min_length=1, max_length=80)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
