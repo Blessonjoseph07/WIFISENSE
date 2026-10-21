@@ -27,7 +27,7 @@ import json
 import urllib.request
 import urllib.error
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Session, select
 from app.core.database import engine
 from app.core.security import hash_password
@@ -92,8 +92,8 @@ def create_test_fall_alert():
             severity="CRITICAL",
             message="Fall Detected in Resident Room",
             status="new",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         session.add(alert)
         session.commit()

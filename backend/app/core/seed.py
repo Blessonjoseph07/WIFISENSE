@@ -1,5 +1,5 @@
 from sqlmodel import Session, select, text
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 from app.models.entities import (
     Role, User, UserRole, Organization, Building, Floor, Room, 
@@ -534,85 +534,85 @@ def seed_database(session: Session, force: bool = False):
         room_id=rm_204.id, 
         first_name="Annamma", 
         last_name="Joseph", 
-        date_of_birth=datetime(1938, 7, 22)
+        date_of_birth=datetime(1938, 7, 22, tzinfo=timezone.utc)
     )
     res_devassy = Resident(
         room_id=rm_101.id, 
         first_name="Devassy", 
         last_name="Varghese", 
-        date_of_birth=datetime(1942, 3, 10)
+        date_of_birth=datetime(1942, 3, 10, tzinfo=timezone.utc)
     )
     res_mary = Resident(
         room_id=rm_102.id, 
         first_name="Mary", 
         last_name="Joseph", 
-        date_of_birth=datetime(1941, 9, 14)
+        date_of_birth=datetime(1941, 9, 14, tzinfo=timezone.utc)
     )
     res_mathew = Resident(
         room_id=rm_103.id, 
         first_name="K. C.", 
         last_name="Mathew", 
-        date_of_birth=datetime(1945, 12, 5)
+        date_of_birth=datetime(1945, 12, 5, tzinfo=timezone.utc)
     )
     res_rosamma = Resident(
         room_id=rm_104.id, 
         first_name="Rosamma", 
         last_name="Thomas", 
-        date_of_birth=datetime(1940, 9, 18)
+        date_of_birth=datetime(1940, 9, 18, tzinfo=timezone.utc)
     )
     res_george = Resident(
         room_id=rm_201.id, 
         first_name="George", 
         last_name="Philip", 
-        date_of_birth=datetime(1941, 4, 14)
+        date_of_birth=datetime(1941, 4, 14, tzinfo=timezone.utc)
     )
     res_mariamma = Resident(
         room_id=rm_202.id, 
         first_name="Mariamma", 
         last_name="Kuruvilla", 
-        date_of_birth=datetime(1939, 11, 30)
+        date_of_birth=datetime(1939, 11, 30, tzinfo=timezone.utc)
     )
     res_thomas = Resident(
         room_id=rm_203.id, 
         first_name="Thomas", 
         last_name="Varkey", 
-        date_of_birth=datetime(1944, 8, 19)
+        date_of_birth=datetime(1944, 8, 19, tzinfo=timezone.utc)
     )
     res_saramma = Resident(
         room_id=rm_101.id, 
         first_name="Saramma", 
         last_name="Chacko", 
-        date_of_birth=datetime(1937, 2, 8)
+        date_of_birth=datetime(1937, 2, 8, tzinfo=timezone.utc)
     )
     res_abraham = Resident(
         room_id=rm_102.id, 
         first_name="Abraham", 
         last_name="Joseph", 
-        date_of_birth=datetime(1946, 6, 25)
+        date_of_birth=datetime(1946, 6, 25, tzinfo=timezone.utc)
     )
     res_thresia = Resident(
         room_id=rm_204.id, 
         first_name="Thresia", 
         last_name="Augustine", 
-        date_of_birth=datetime(1943, 10, 11)
+        date_of_birth=datetime(1943, 10, 11, tzinfo=timezone.utc)
     )
     res_joseph = Resident(
         room_id=rm_201.id, 
         first_name="Joseph", 
         last_name="Anthony", 
-        date_of_birth=datetime(1940, 1, 29)
+        date_of_birth=datetime(1940, 1, 29, tzinfo=timezone.utc)
     )
     res_varghese = Resident(
         room_id=rm_203.id, 
         first_name="Varghese", 
         last_name="Mathai", 
-        date_of_birth=datetime(1945, 9, 3)
+        date_of_birth=datetime(1945, 9, 3, tzinfo=timezone.utc)
     )
     res_aleyamma = Resident(
         room_id=rm_202.id, 
         first_name="Aleyamma", 
         last_name="Paul", 
-        date_of_birth=datetime(1942, 12, 21)
+        date_of_birth=datetime(1942, 12, 21, tzinfo=timezone.utc)
     )
 
     all_residents = [
@@ -632,7 +632,7 @@ def seed_database(session: Session, force: bool = False):
             resident_id=res_mary.id,
             condition_name="Mild Cognitive Impairment & Osteoporosis",
             notes="Doctor: Dr. Anjali Thomas (Geriatric Medicine). Requires morning mobility exercises, prescribed calcium & vitamin D3.",
-            diagnosed_date=datetime(2021, 5, 14),
+            diagnosed_date=datetime(2021, 5, 14, tzinfo=timezone.utc),
             is_active=True
         ),
         # Devassy Varghese
@@ -640,7 +640,7 @@ def seed_database(session: Session, force: bool = False):
             resident_id=res_devassy.id,
             condition_name="Hypertension & Osteoarthritis",
             notes="Doctor: Dr. Anjali Thomas (Geriatric Medicine). Monitor prolonged sitting; assist during joint stiffness episodes.",
-            diagnosed_date=datetime(2015, 6, 1),
+            diagnosed_date=datetime(2015, 6, 1, tzinfo=timezone.utc),
             is_active=True
         ),
         # Annamma Joseph
@@ -648,7 +648,7 @@ def seed_database(session: Session, force: bool = False):
             resident_id=res_annamma.id,
             condition_name="Type 2 Diabetes & Glaucoma",
             notes="Doctor: Dr. Philip Mathew (Endocrinology). Daily insulin regimen, eye drops administered at 08:00 and 20:00.",
-            diagnosed_date=datetime(2010, 11, 5),
+            diagnosed_date=datetime(2010, 11, 5, tzinfo=timezone.utc),
             is_active=True
         ),
         # K. C. Mathew
@@ -656,7 +656,7 @@ def seed_database(session: Session, force: bool = False):
             resident_id=res_mathew.id,
             condition_name="Parkinson's Early Stage",
             notes="Doctor: Dr. George Varghese (Neurology). Gait instability warning; high fall risk in wet areas or unassisted transfers.",
-            diagnosed_date=datetime(2021, 3, 12),
+            diagnosed_date=datetime(2021, 3, 12, tzinfo=timezone.utc),
             is_active=True
         ),
         # Rosamma Thomas
@@ -664,7 +664,7 @@ def seed_database(session: Session, force: bool = False):
             resident_id=res_rosamma.id,
             condition_name="Cardiac Arrhythmia",
             notes="Doctor: Dr. Elizabeth Kurian (Cardiology / Facility Manager). Prescribed beta-blockers, monitor for nighttime dizziness.",
-            diagnosed_date=datetime(2017, 8, 20),
+            diagnosed_date=datetime(2017, 8, 20, tzinfo=timezone.utc),
             is_active=True
         ),
         # Thomas Varkey
@@ -672,7 +672,7 @@ def seed_database(session: Session, force: bool = False):
             resident_id=res_thomas.id,
             condition_name="Knee Joint Arthroplasty (Post-Op)",
             notes="Doctor: Dr. Joseph Kurian (Orthopedic Surgery). Weekly physiotherapy checkups in Central Rehab clinic.",
-            diagnosed_date=datetime(2022, 5, 23),
+            diagnosed_date=datetime(2022, 5, 23, tzinfo=timezone.utc),
             is_active=True
         )
     ])
@@ -918,28 +918,28 @@ def seed_database(session: Session, force: bool = False):
             resident_id=res_annamma.id,
             status="approved",
             reviewed_by=blesson_user.id,
-            reviewed_at=datetime.utcnow() - timedelta(days=5)
+            reviewed_at=datetime.now(timezone.utc) - timedelta(days=5)
         ),
         AccessRequest(
             requesting_user_id=anna_user.id,
             resident_id=res_mary.id,
             status="approved",
             reviewed_by=elizabeth_user.id,
-            reviewed_at=datetime.utcnow() - timedelta(days=12)
+            reviewed_at=datetime.now(timezone.utc) - timedelta(days=12)
         ),
         AccessRequest(
             requesting_user_id=robert_user.id,
             resident_id=res_mary.id,
             status="approved",
             reviewed_by=elizabeth_user.id,
-            reviewed_at=datetime.utcnow() - timedelta(days=10)
+            reviewed_at=datetime.now(timezone.utc) - timedelta(days=10)
         ),
         AccessRequest(
             requesting_user_id=david_user.id,
             resident_id=res_mathew.id,
             status="approved",
             reviewed_by=elizabeth_user.id,
-            reviewed_at=datetime.utcnow() - timedelta(days=2)
+            reviewed_at=datetime.now(timezone.utc) - timedelta(days=2)
         ),
         AccessRequest(
             requesting_user_id=susan_user.id,
@@ -990,31 +990,31 @@ def seed_database(session: Session, force: bool = False):
 
     # 12. Seed Sensing Devices
     # SPACE Devices
-    dev_c_conf_a = SensingDevice(mac_address="4C:75:25:AA:10:01", room_id=rm_conf_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP101", hardware_token="TK-ESP32-CONF-A", last_seen_at=datetime.utcnow())
-    dev_c_meet_b = SensingDevice(mac_address="4C:75:25:AA:10:02", room_id=rm_meet_b.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP102", hardware_token="TK-ESP32-MEET-B", last_seen_at=datetime.utcnow())
-    dev_c_lab1 = SensingDevice(mac_address="4C:75:25:AA:10:03", room_id=rm_comp_lab1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP103", hardware_token="TK-ESP32-LAB-01", last_seen_at=datetime.utcnow())
-    dev_c_lab2 = SensingDevice(mac_address="4C:75:25:AA:10:04", room_id=rm_comp_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP104", hardware_token="TK-ESP32-LAB-02", last_seen_at=datetime.utcnow())
-    dev_c_res2 = SensingDevice(mac_address="4C:75:25:AA:10:05", room_id=rm_res_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP105", hardware_token="TK-ESP32-RES-02", last_seen_at=datetime.utcnow())
-    dev_c_cls101 = SensingDevice(mac_address="4C:75:25:AA:10:06", room_id=rm_class_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP106", hardware_token="TK-ESP32-CLS-101", last_seen_at=datetime.utcnow())
-    dev_c_cls102 = SensingDevice(mac_address="4C:75:25:AA:10:07", room_id=rm_class_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP107", hardware_token="TK-ESP32-CLS-102", last_seen_at=datetime.utcnow())
-    dev_c_staff = SensingDevice(mac_address="4C:75:25:AA:10:08", room_id=rm_staff_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP108", hardware_token="TK-ESP32-STF-01", last_seen_at=datetime.utcnow())
-    dev_c_server = SensingDevice(mac_address="4C:75:25:AA:10:09", room_id=rm_server_telecom.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP109", hardware_token="TK-ESP32-SRV-01", last_seen_at=datetime.utcnow())
-    dev_c_sem = SensingDevice(mac_address="4C:75:25:AA:10:10", room_id=rm_seminar_mca.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP110", hardware_token="TK-ESP32-SEM-01", last_seen_at=datetime.utcnow())
+    dev_c_conf_a = SensingDevice(mac_address="4C:75:25:AA:10:01", room_id=rm_conf_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP101", hardware_token="TK-ESP32-CONF-A", last_seen_at=datetime.now(timezone.utc))
+    dev_c_meet_b = SensingDevice(mac_address="4C:75:25:AA:10:02", room_id=rm_meet_b.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP102", hardware_token="TK-ESP32-MEET-B", last_seen_at=datetime.now(timezone.utc))
+    dev_c_lab1 = SensingDevice(mac_address="4C:75:25:AA:10:03", room_id=rm_comp_lab1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP103", hardware_token="TK-ESP32-LAB-01", last_seen_at=datetime.now(timezone.utc))
+    dev_c_lab2 = SensingDevice(mac_address="4C:75:25:AA:10:04", room_id=rm_comp_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP104", hardware_token="TK-ESP32-LAB-02", last_seen_at=datetime.now(timezone.utc))
+    dev_c_res2 = SensingDevice(mac_address="4C:75:25:AA:10:05", room_id=rm_res_lab2.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP105", hardware_token="TK-ESP32-RES-02", last_seen_at=datetime.now(timezone.utc))
+    dev_c_cls101 = SensingDevice(mac_address="4C:75:25:AA:10:06", room_id=rm_class_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP106", hardware_token="TK-ESP32-CLS-101", last_seen_at=datetime.now(timezone.utc))
+    dev_c_cls102 = SensingDevice(mac_address="4C:75:25:AA:10:07", room_id=rm_class_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP107", hardware_token="TK-ESP32-CLS-102", last_seen_at=datetime.now(timezone.utc))
+    dev_c_staff = SensingDevice(mac_address="4C:75:25:AA:10:08", room_id=rm_staff_a.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP108", hardware_token="TK-ESP32-STF-01", last_seen_at=datetime.now(timezone.utc))
+    dev_c_server = SensingDevice(mac_address="4C:75:25:AA:10:09", room_id=rm_server_telecom.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP109", hardware_token="TK-ESP32-SRV-01", last_seen_at=datetime.now(timezone.utc))
+    dev_c_sem = SensingDevice(mac_address="4C:75:25:AA:10:10", room_id=rm_seminar_mca.id, device_status="ONLINE", firmware_version="ESP32-CSI Node SP110", hardware_token="TK-ESP32-SEM-01", last_seen_at=datetime.now(timezone.utc))
 
     # CARE Devices
-    dev_ec_101 = SensingDevice(mac_address="24:0A:C4:00:20:01", room_id=rm_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC101", hardware_token="TK-ESP32-EC-101", last_seen_at=datetime.utcnow())
-    dev_ec_102 = SensingDevice(mac_address="24:0A:C4:00:20:02", room_id=rm_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC102", hardware_token="TK-ESP32-EC-102", last_seen_at=datetime.utcnow())
-    dev_ec_103 = SensingDevice(mac_address="24:0A:C4:00:20:03", room_id=rm_103.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC103", hardware_token="TK-ESP32-EC-103", last_seen_at=datetime.utcnow())
-    dev_ec_104 = SensingDevice(mac_address="24:0A:C4:00:20:04", room_id=rm_104.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC104", hardware_token="TK-ESP32-EC-104", last_seen_at=datetime.utcnow())
-    dev_ec_201 = SensingDevice(mac_address="24:0A:C4:00:20:05", room_id=rm_201.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC201", hardware_token="TK-ESP32-EC-201", last_seen_at=datetime.utcnow())
-    dev_ec_202 = SensingDevice(mac_address="24:0A:C4:00:20:06", room_id=rm_202.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC202", hardware_token="TK-ESP32-EC-202", last_seen_at=datetime.utcnow())
-    dev_ec_203 = SensingDevice(mac_address="24:0A:C4:00:20:07", room_id=rm_203.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC203", hardware_token="TK-ESP32-EC-203", last_seen_at=datetime.utcnow())
-    dev_ec_204 = SensingDevice(mac_address="24:0A:C4:00:20:08", room_id=rm_204.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC204", hardware_token="TK-ESP32-EC-204", last_seen_at=datetime.utcnow())
-    dev_ec_bath1 = SensingDevice(mac_address="24:0A:C4:00:20:09", room_id=rm_bath_1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-B01", hardware_token="TK-ESP32-EC-B01", last_seen_at=datetime.utcnow())
-    dev_ec_physio = SensingDevice(mac_address="24:0A:C4:00:20:10", room_id=rm_physio.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-PHY", hardware_token="TK-ESP32-EC-PHY", last_seen_at=datetime.utcnow())
-    dev_ec_rec = SensingDevice(mac_address="24:0A:C4:00:20:11", room_id=rm_recreation.id, device_status="FAULT_REPORTED", firmware_version="ESP32-CSI Node EC-REC", hardware_token="TK-ESP32-EC-REC", last_seen_at=datetime.utcnow())
-    dev_ec_dining = SensingDevice(mac_address="24:0A:C4:00:20:12", room_id=rm_dining.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-DIN", hardware_token="TK-ESP32-EC-DIN", last_seen_at=datetime.utcnow())
-    dev_ec_nurse = SensingDevice(mac_address="24:0A:C4:00:20:13", room_id=rm_nursing.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-NUR", hardware_token="TK-ESP32-EC-NUR", last_seen_at=datetime.utcnow())
+    dev_ec_101 = SensingDevice(mac_address="24:0A:C4:00:20:01", room_id=rm_101.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC101", hardware_token="TK-ESP32-EC-101", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_102 = SensingDevice(mac_address="24:0A:C4:00:20:02", room_id=rm_102.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC102", hardware_token="TK-ESP32-EC-102", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_103 = SensingDevice(mac_address="24:0A:C4:00:20:03", room_id=rm_103.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC103", hardware_token="TK-ESP32-EC-103", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_104 = SensingDevice(mac_address="24:0A:C4:00:20:04", room_id=rm_104.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC104", hardware_token="TK-ESP32-EC-104", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_201 = SensingDevice(mac_address="24:0A:C4:00:20:05", room_id=rm_201.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC201", hardware_token="TK-ESP32-EC-201", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_202 = SensingDevice(mac_address="24:0A:C4:00:20:06", room_id=rm_202.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC202", hardware_token="TK-ESP32-EC-202", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_203 = SensingDevice(mac_address="24:0A:C4:00:20:07", room_id=rm_203.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC203", hardware_token="TK-ESP32-EC-203", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_204 = SensingDevice(mac_address="24:0A:C4:00:20:08", room_id=rm_204.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC204", hardware_token="TK-ESP32-EC-204", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_bath1 = SensingDevice(mac_address="24:0A:C4:00:20:09", room_id=rm_bath_1.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-B01", hardware_token="TK-ESP32-EC-B01", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_physio = SensingDevice(mac_address="24:0A:C4:00:20:10", room_id=rm_physio.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-PHY", hardware_token="TK-ESP32-EC-PHY", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_rec = SensingDevice(mac_address="24:0A:C4:00:20:11", room_id=rm_recreation.id, device_status="FAULT_REPORTED", firmware_version="ESP32-CSI Node EC-REC", hardware_token="TK-ESP32-EC-REC", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_dining = SensingDevice(mac_address="24:0A:C4:00:20:12", room_id=rm_dining.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-DIN", hardware_token="TK-ESP32-EC-DIN", last_seen_at=datetime.now(timezone.utc))
+    dev_ec_nurse = SensingDevice(mac_address="24:0A:C4:00:20:13", room_id=rm_nursing.id, device_status="ONLINE", firmware_version="ESP32-CSI Node EC-NUR", hardware_token="TK-ESP32-EC-NUR", last_seen_at=datetime.now(timezone.utc))
 
     all_devices = [
         dev_c_conf_a, dev_c_meet_b, dev_c_lab1, dev_c_lab2, dev_c_res2,
@@ -1054,7 +1054,7 @@ def seed_database(session: Session, force: bool = False):
     session.commit()
 
     # 14. Seed Realistic Sensing Events with Relative Timestamps
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     events = []
 
     # SCENARIO A: Mary Joseph in Room 204 (Walking -> Sitting -> Resting)

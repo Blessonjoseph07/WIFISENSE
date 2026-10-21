@@ -29,6 +29,7 @@ import ResidentsView from "./views/ResidentsView";
 import AlertsView from "./views/AlertsView";
 import UserProfileView from "./views/UserProfileView";
 import EmergencyFallModal from "./components/EmergencyFallModal";
+import SharingPolicyManager from "./components/SharingPolicyManager";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
@@ -1659,10 +1660,9 @@ export default function App() {
           )}
 
           {/* ============================================================================
-            4. ORG ADMIN & SHARING POLICIES DASHBOARD
+            4. ORG ADMIN DASHBOARD (STAFF & ORGANIZATIONS)
           ============================================================================ */}
-          {(currentView === "orgadmin" || currentView === "sharing_policies") &&
-            isViewAllowed(currentView, appContext, role, isSystemAdmin) && (
+          {currentView === "orgadmin" && isViewAllowed("orgadmin", appContext, role, isSystemAdmin) && (
             <OrgAdminView
               setShowAddOrgModal={setShowAddOrgModal}
               organizations={organizations}
@@ -1673,7 +1673,22 @@ export default function App() {
               onUpdateSharingPolicy={handleUpdateSharingPolicy}
               canEditPolicies={isSystemAdmin || role === "system_admin" || role === "organization_admin"}
               userRole={role}
-              initialTab={currentView === "sharing_policies" ? "policies" : "policies"}
+              initialTab="organizations"
+            />
+          )}
+
+          {/* ============================================================================
+            4B. SHARING POLICIES DASHBOARD
+          ============================================================================ */}
+          {currentView === "sharing_policies" && isViewAllowed("sharing_policies", appContext, role, isSystemAdmin) && (
+            <SharingPolicyManager
+              policies={sharingPolicies}
+              organizations={organizations}
+              residents={residents}
+              canEdit={isSystemAdmin || role === "system_admin" || role === "organization_admin"}
+              userRole={role}
+              onUpdatePolicy={handleUpdateSharingPolicy}
+              isLoading={isLoading}
             />
           )}
 

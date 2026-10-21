@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlmodel import SQLModel, Field, Relationship, Column, JSON
 
@@ -12,8 +12,8 @@ class Organization(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     name: str = Field(index=True, unique=True, nullable=False)
     type: str = Field(nullable=False) # 'ELDER_CARE' or 'CORPORATE'
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     buildings: List["Building"] = Relationship(back_populates="organization", cascade_delete=True)
     users: List["UserRole"] = Relationship(back_populates="organization", cascade_delete=True)
@@ -24,8 +24,8 @@ class Building(SQLModel, table=True):
     organization_id: str = Field(foreign_key="organizations.id", nullable=False)
     name: str = Field(nullable=False)
     address: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     organization: Organization = Relationship(back_populates="buildings")
     floors: List["Floor"] = Relationship(back_populates="building", cascade_delete=True)
@@ -36,8 +36,8 @@ class Floor(SQLModel, table=True):
     building_id: str = Field(foreign_key="buildings.id", nullable=False)
     floor_number: int = Field(nullable=False)
     floor_plan_url: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     building: Building = Relationship(back_populates="floors")
     rooms: List["Room"] = Relationship(back_populates="floor", cascade_delete=True)
@@ -51,8 +51,8 @@ class Room(SQLModel, table=True):
     classification: Optional[str] = Field(default=None)
     capacity: int = Field(default=1)
     dimensions_metadata: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     floor: Floor = Relationship(back_populates="rooms")
     devices: List["SensingDevice"] = Relationship(back_populates="room")
@@ -78,8 +78,8 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
     photo_url: Optional[str] = Field(default=None)
     resident_id: Optional[str] = Field(default=None, foreign_key="residents.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     roles: List["UserRole"] = Relationship(back_populates="user", cascade_delete=True)
     caregiver_profile: Optional["CaregiverProfile"] = Relationship(back_populates="user", cascade_delete=True)
@@ -92,7 +92,7 @@ class UserRole(SQLModel, table=True):
     organization_id: Optional[str] = Field(default=None, foreign_key="organizations.id")
     building_id: Optional[str] = Field(default=None, foreign_key="buildings.id")
     room_id: Optional[str] = Field(default=None, foreign_key="rooms.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     user: User = Relationship(back_populates="roles")
     role: Role = Relationship()
@@ -106,8 +106,8 @@ class AccessRequest(SQLModel, table=True):
     status: str = Field(default="pending")
     reviewed_by: Optional[str] = Field(default=None, foreign_key="users.id")
     reviewed_at: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class FamilyConnection(SQLModel, table=True):
     __tablename__ = "family_connections"
@@ -116,13 +116,13 @@ class FamilyConnection(SQLModel, table=True):
     family_user_id: str = Field(foreign_key="users.id", nullable=False)
     relationship: str = Field(nullable=False) # Son, Daughter, Son-in-law, Daughter-in-law, Grandson, Granddaughter, Brother, Sister, Other
     status: str = Field(default="pending") # pending, approved, rejected, revoked
-    requested_at: datetime = Field(default_factory=datetime.utcnow)
+    requested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     approved_at: Optional[datetime] = Field(default=None)
     approved_by: Optional[str] = Field(default=None, foreign_key="users.id")
     revoked_at: Optional[datetime] = Field(default=None)
     notes: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     resident: "Resident" = Relationship(back_populates="family_connections")
 
@@ -136,8 +136,8 @@ class FamilySubscription(SQLModel, table=True):
     start_date: Optional[datetime] = Field(default=None)
     end_date: Optional[datetime] = Field(default=None)
     renewal_date: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class CaregiverProfile(SQLModel, table=True):
     __tablename__ = "caregiver_profiles"
@@ -146,8 +146,8 @@ class CaregiverProfile(SQLModel, table=True):
     photo_url: Optional[str] = Field(default=None)
     bio: Optional[str] = Field(default=None)
     work_history: Optional[List[Dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     user: User = Relationship(back_populates="caregiver_profile")
 
@@ -161,8 +161,8 @@ class SharingPolicy(SQLModel, table=True):
     share_room_name: bool = Field(default=True)
     share_alert_history: bool = Field(default=True)
     share_alert_severity_threshold: str = Field(default="MEDIUM") # LOW, MEDIUM, HIGH, CRITICAL
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ============================================================================
 # 3. DEVICE & SENSING ENGINE
@@ -177,8 +177,8 @@ class SensingDevice(SQLModel, table=True):
     firmware_version: Optional[str] = Field(default=None)
     hardware_token: Optional[str] = Field(default=None)
     last_seen_at: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     room: Optional[Room] = Relationship(back_populates="devices")
 
@@ -193,8 +193,8 @@ class NodeFaultReport(SQLModel, table=True):
     tracer_token: str = Field(default_factory=lambda: f"TRC-{uuid.uuid4().hex[:8].upper()}")
     status: str = Field(default="REPORTED") # REPORTED, UNDER_INSPECTION, DISPATCHED_SERVICE, REPLACED_RESOLVED
     service_notes: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EmergencyContact(SQLModel, table=True):
     __tablename__ = "emergency_contacts"
@@ -206,8 +206,8 @@ class EmergencyContact(SQLModel, table=True):
     priority: int = Field(default=1) # 1 = primary, 2 = secondary
     email: Optional[str] = Field(default=None)
     availability: Optional[str] = Field(default="24/7 Primary Response")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     resident: "Resident" = Relationship(back_populates="emergency_contacts")
 
@@ -220,8 +220,8 @@ class Doctor(SQLModel, table=True):
     hospital: Optional[str] = Field(default=None)
     phone: Optional[str] = Field(default=None)
     email: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     resident: "Resident" = Relationship(back_populates="doctors")
 
@@ -231,10 +231,10 @@ class HospitalVisit(SQLModel, table=True):
     resident_id: str = Field(foreign_key="residents.id", nullable=False)
     hospital_name: str = Field(nullable=False)
     reason: str = Field(nullable=False)
-    visit_date: datetime = Field(default_factory=datetime.utcnow)
+    visit_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     discharge_date: Optional[datetime] = Field(default=None)
     doctor_notes: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     resident: "Resident" = Relationship(back_populates="hospital_visits")
 
@@ -243,11 +243,11 @@ class LabReport(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     resident_id: str = Field(foreign_key="residents.id", nullable=False)
     test_name: str = Field(nullable=False)
-    test_date: datetime = Field(default_factory=datetime.utcnow)
+    test_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     result_summary: str = Field(nullable=False)
     normal_range: Optional[str] = Field(default=None)
     flag: Optional[str] = Field(default="NORMAL") # NORMAL, ELEVATED, HIGH, CRITICAL
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     resident: "Resident" = Relationship(back_populates="lab_reports")
 
@@ -258,10 +258,10 @@ class Prescription(SQLModel, table=True):
     medication_name: str = Field(nullable=False)
     dosage: str = Field(nullable=False)
     frequency: str = Field(nullable=False)
-    start_date: datetime = Field(default_factory=datetime.utcnow)
+    start_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     end_date: Optional[datetime] = Field(default=None)
     prescribing_doctor: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     resident: "Resident" = Relationship(back_populates="prescriptions")
 
@@ -273,8 +273,8 @@ class Resident(SQLModel, table=True):
     last_name: str = Field(nullable=False)
     date_of_birth: Optional[datetime] = Field(default=None)
     resident_status: Optional[str] = Field(default="Active")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     room: Room = Relationship(back_populates="residents")
     health_conditions: List["HealthCondition"] = Relationship(back_populates="resident", cascade_delete=True)
@@ -293,8 +293,8 @@ class HealthCondition(SQLModel, table=True):
     notes: Optional[str] = Field(default=None)
     diagnosed_date: Optional[datetime] = Field(default=None)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     resident: Resident = Relationship(back_populates="health_conditions")
 
@@ -309,7 +309,7 @@ class SensingEvent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     device_id: str = Field(foreign_key="devices.id", nullable=False)
     room_id: str = Field(foreign_key="rooms.id", nullable=False)
-    timestamp: datetime = Field(default_factory=datetime.utcnow, index=True)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     rssi: int = Field(nullable=False)
     subcarrier_count: int = Field(default=56)
     signal_quality: Optional[int] = Field(default=94)
@@ -325,14 +325,14 @@ class RoomCalibration(SQLModel, table=True):
     room_id: str = Field(foreign_key="rooms.id", nullable=False)
     device_id: Optional[str] = Field(default=None, foreign_key="devices.id")
     baseline_status: str = Field(default="VALID") # VALID, CALIBRATION_REQUIRED, CAPTURING
-    baseline_captured_at: datetime = Field(default_factory=datetime.utcnow)
+    baseline_captured_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     noise_floor_dbm: int = Field(default=-88)
     baseline_rssi: int = Field(default=-48)
     rf_similarity_pct: float = Field(default=96.0) # 0 - 100%
     rf_environment_status: str = Field(default="NORMAL") # NORMAL, ENVIRONMENT_CHANGED
     subcarrier_profile: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class RoomSchedule(SQLModel, table=True):
     __tablename__ = "room_schedules"
@@ -345,8 +345,8 @@ class RoomSchedule(SQLModel, table=True):
     meeting_title: Optional[str] = Field(default=None)
     organizer: Optional[str] = Field(default=None)
     ac_state: Optional[str] = Field(default="OFF") # ON, OFF
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ============================================================================
 # 4. ALERTS & NOTIFICATION ENGINE
@@ -360,8 +360,8 @@ class Alert(SQLModel, table=True):
     severity: str = Field(nullable=False)
     message: str = Field(nullable=False)
     status: str = Field(default="new")
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     room: Room = Relationship(back_populates="alerts")
     acknowledgement: Optional["AlertAcknowledgement"] = Relationship(back_populates="alert", cascade_delete=True)
@@ -371,7 +371,7 @@ class AlertAcknowledgement(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     alert_id: str = Field(foreign_key="alerts.id", unique=True, nullable=False)
     user_id: Optional[str] = Field(default=None, foreign_key="users.id")
-    acknowledged_at: datetime = Field(default_factory=datetime.utcnow)
+    acknowledged_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     resolved_at: Optional[datetime] = Field(default=None)
     resolution_notes: Optional[str] = Field(default=None)
 
@@ -393,14 +393,14 @@ class RefreshToken(SQLModel, table=True):
     expires_at: datetime = Field(index=True, nullable=False)
     revoked_at: Optional[datetime] = Field(default=None)
     replaced_by_token_id: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class TokenRevocation(SQLModel, table=True):
     __tablename__ = "token_revocations"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     token_identifier: str = Field(unique=True, index=True, nullable=False)
     user_id: Optional[str] = Field(default=None, index=True)
-    revoked_at: datetime = Field(default_factory=datetime.utcnow)
+    revoked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime = Field(index=True, nullable=False)
     reason: Optional[str] = Field(default=None)
 
@@ -415,5 +415,5 @@ class AuditLog(SQLModel, table=True):
     result: str = Field(default="SUCCESS") # SUCCESS, FAILURE, DENIED
     details: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     ip_address: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
 
