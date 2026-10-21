@@ -59,7 +59,8 @@ Fall vs not-fall, person-independent, **person-averaged balanced accuracy**:
 
 - Falls are **never** "detected" by this model. At best the output is **"Possible fall - verification required"**.
 - The deployable model is the **random forest on the V2 features without per-person calibration**
-  (person-averaged balanced accuracy about 0.69). It misses roughly 3 in 10 falls and flags roughly 3 in 10 non-falls.
+  (person-averaged balanced accuracy 0.688 with the exported 100-tree configuration: it catches about 2 falls in 3 and
+  falsely flags about 28% of non-falls).
 - The best figure (0.714) is optimistic: ten configurations were tried and the best is quoted, and V3 needs far more
   of a person's data than a short calibration (V4 shows an 8-clip calibration adds nothing beyond V2).
 - Everything was measured on one room, one transmitter and close range. Accuracy on other hardware and rooms is
