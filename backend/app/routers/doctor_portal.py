@@ -21,6 +21,7 @@ from sqlmodel import Session, select
 
 from app.core.audit import record_audit_event
 from app.core.database import get_session
+from app.core.timeutil import as_utc, utcnow
 from app.models.entities import (
     Alert, Allergy, Building, Consultation, DoctorAssignment, DoctorProfile, Floor, HealthCondition,
     HospitalVisit, LabReport, Organization, Prescription, Resident, Room, User, UserRole,
@@ -42,22 +43,14 @@ STAFF_READ_ROLES = ["system_admin", "organization_admin", "facility_manager", "c
 # Helpers
 # ----------------------------------------------------------------------------
 
-def _now() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)  # stored as naive UTC
-
-
-def _naive(dt: Optional[datetime]) -> Optional[datetime]:
-    if dt is not None and dt.tzinfo is not None:
-        return dt.astimezone(timezone.utc).replace(tzinfo=None)
-    return dt
+_now = utcnow   # timezone-aware UTC (see app/core/timeutil.py)
+_naive = as_utc  # historical name: normalises client datetimes to aware UTC
 
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
     if dt is None:
         return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return as_utc(dt).isoformat().replace("+00:00", "Z")
 
 
 def _audit(session: Session, user: User, action: str, resource_type: str, resource_id: Optional[str] = None,

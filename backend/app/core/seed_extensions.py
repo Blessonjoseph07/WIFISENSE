@@ -312,7 +312,8 @@ def populate_demo_doctors(session: Session, now: datetime):
     residents = {f"{r.first_name} {r.last_name}": r for r in session.exec(select(Resident)).all()}
     if not org or "Mary Joseph" not in residents:
         return
-    naive_now = now.replace(tzinfo=None) if now.tzinfo else now
+    from app.core.timeutil import as_utc
+    naive_now = as_utc(now)  # timezone-aware UTC (name kept to keep the diff small)
 
     approved = User(email="mathew.varghese@wifisense.com", password_hash=hash_password("doctorpassword"),
                     first_name="Dr. Mathew", last_name="Varghese", is_active=True)
