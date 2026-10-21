@@ -344,6 +344,8 @@ class SensingEvent(SQLModel, table=True):
     extracted_features: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
     inferred_activity_id: int = Field(foreign_key="activity_types.id", nullable=False)
     model_confidence: float = Field(nullable=False)
+    # live | dataset | simulated. Phase 1 events come from the simulator; real classification will set "live"/"dataset".
+    source: str = Field(default="simulated", nullable=False)
 
 class RawCsiTelemetry(SQLModel, table=True):
     __tablename__ = "raw_csi_telemetry"
@@ -407,6 +409,16 @@ class Alert(SQLModel, table=True):
     status: str = Field(default="new")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Detection evidence copied from the sensing event that raised the alert (all optional: seeded/manual alerts have none).
+    source: str = Field(default="simulated", nullable=False)  # live | dataset | simulated
+    device_id: Optional[str] = Field(default=None)
+    confidence: Optional[float] = Field(default=None)
+    signal_quality: Optional[int] = Field(default=None)
+    # Human verification of an uncertain detection (kept for future analytics).
+    verification_status: str = Field(default="UNVERIFIED", nullable=False)  # UNVERIFIED, CONFIRMED, DISMISSED
+    verified_by: Optional[str] = Field(default=None)
+    verified_at: Optional[datetime] = Field(default=None)
+    verification_note: Optional[str] = Field(default=None)
 
     room: Room = Relationship(back_populates="alerts")
     acknowledgement: Optional["AlertAcknowledgement"] = Relationship(back_populates="alert", cascade_delete=True)

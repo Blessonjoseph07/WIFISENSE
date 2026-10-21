@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from app.core.confidence import confidence_level, signal_level, requires_verification
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
@@ -264,6 +265,9 @@ class HealthConditionOut(BaseModel):
 class SensingEventSimulate(BaseModel):
     device_id: str
     simulated_activity: str = Field(..., description="Activity name, e.g. Empty, Presence, Walking, Sitting, Fall_Detected")
+    # Optional overrides so low-confidence / poor-signal handling can be demonstrated and tested. Still SIMULATED.
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    signal_quality: Optional[int] = Field(default=None, ge=0, le=100)
 
 class SensingEventOut(BaseModel):
     id: int
@@ -300,9 +304,53 @@ class AlertOut(BaseModel):
     organization_name: Optional[str] = None
     organization_type: Optional[str] = None
     resident_name: Optional[str] = None
+    # Detection evidence + verification (levels are derived from the raw numbers, never stored)
+    source: str = "simulated"
+    device_id: Optional[str] = None
+    device_mac: Optional[str] = None
+    confidence: Optional[float] = None
+    confidence_level: str = "UNKNOWN"
+    signal_quality: Optional[int] = None
+    signal_level: str = "UNKNOWN"
+    requires_verification: bool = False
+    verification_status: str = "UNVERIFIED"
+    verified_by_name: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    verification_note: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _derive_levels(self):
+        self.confidence_level = confidence_level(self.confidence)
+        self.signal_level = signal_level(self.signal_quality)
+        self.requires_verification = (
+            self.verification_status == "UNVERIFIED"
+            and requires_verification(self.confidence, self.signal_quality)
+        )
+        return self
 
     class Config:
         from_attributes = True
+
+class AlertVerify(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    outcome: Literal["CONFIRMED", "DISMISSED"]
+    note: Optional[str] = Field(default=None, max_length=500)
+
+class SensingHistoryOut(BaseModel):
+    id: int
+    timestamp: datetime
+    room_id: str
+    room_name: Optional[str] = None
+    device_id: str
+    activity: str
+    category: Optional[str] = None
+    confidence: float
+    confidence_level: str
+    signal_quality: Optional[int] = None
+    signal_level: str
+    rssi: int
+    source: str
+    requires_verification: bool
 
 class AlertResolve(BaseModel):
     resolution_notes: str

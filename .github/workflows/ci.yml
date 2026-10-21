@@ -72,6 +72,9 @@ jobs:
           echo "=== RUNNING CARE RECORDS TESTS ==="
           python test_care_records.py
 
+          echo "=== RUNNING ALERT CONFIDENCE & VERIFICATION TESTS ==="
+          python test_alert_verification.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js

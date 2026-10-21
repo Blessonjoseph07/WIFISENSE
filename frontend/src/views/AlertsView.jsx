@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { DetectionChips, DetectionEvidence, VerificationPanel } from "../components/DetectionBadges";
 
 export default function AlertsView({
   alerts = [],
@@ -236,6 +237,7 @@ export default function AlertsView({
                         <div className="text-[11px] text-slate-500 line-clamp-1 max-w-xs">
                           {alert.message}
                         </div>
+                        <DetectionChips alert={alert} />
                       </td>
                       <td className="p-4 text-slate-500 font-data-mono text-data-mono">
                         {new Date(alert.created_at).toLocaleTimeString([], {
@@ -501,6 +503,16 @@ export default function AlertsView({
                 <div className="text-[10px] uppercase font-bold text-red-600 mb-0.5">Incident Dispatch Message</div>
                 <p className="font-medium text-xs">{selectedDetail.message}</p>
               </div>
+
+              {/* Detection evidence (confidence, signal, source, device) and staff verification */}
+              <DetectionEvidence alert={selectedDetail} />
+              <VerificationPanel
+                alert={selectedDetail}
+                canVerify={isCareOps && selectedDetail.organization_type === "ELDER_CARE"}
+                authToken={authToken}
+                API_BASE={API_BASE}
+                onVerified={(data) => setSelectedDetail(data)}
+              />
 
               {/* Emergency Contact Information (Strictly for Elder Care residents only) */}
               {selectedDetail.organization_type === "ELDER_CARE" && selectedDetail.emergency_contact && (

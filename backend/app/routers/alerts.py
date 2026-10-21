@@ -4,9 +4,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from app.core.database import get_session
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
-from app.models.entities import Alert, AlertAcknowledgement, Room, Floor, Building, Resident, EmergencyContact, SensingEvent, ActivityType, Organization, User
-from app.schemas.schemas import AlertOut, AlertResolve, AlertDetailOut, AlertAcknowledgementOut
+from app.models.entities import Alert, AlertAcknowledgement, Room, Floor, Building, Resident, EmergencyContact, SensingEvent, ActivityType, Organization, User, SensingDevice
+from app.schemas.schemas import AlertOut, AlertResolve, AlertDetailOut, AlertAcknowledgementOut, AlertVerify
 from app.core.audit import record_audit_event
+from app.core.confidence import confidence_level, signal_level
 
 router = APIRouter(prefix="/alerts", tags=["Alert Engine"])
 
@@ -22,6 +23,22 @@ def get_scoped_alert_query(scopes):
             Room.id.in_(list(scopes["room_ids"]))
         ))
     return stmt
+
+def _evidence_fields(alert: Alert, session: Session) -> Dict[str, Any]:
+    """Detection evidence + verification fields shared by the list and detail responses."""
+    device = session.get(SensingDevice, alert.device_id) if alert.device_id else None
+    verifier = session.get(User, alert.verified_by) if alert.verified_by else None
+    return dict(
+        source=alert.source,
+        device_id=alert.device_id,
+        device_mac=device.mac_address if device else None,
+        confidence=alert.confidence,
+        signal_quality=alert.signal_quality,
+        verification_status=alert.verification_status,
+        verified_by_name=f"{verifier.first_name} {verifier.last_name}" if verifier else None,
+        verified_at=alert.verified_at,
+        verification_note=alert.verification_note,
+    )
 
 def enrich_alerts(alerts: List[Alert], session: Session) -> List[AlertOut]:
     if not alerts:
@@ -62,7 +79,8 @@ def enrich_alerts(alerts: List[Alert], session: Session) -> List[AlertOut]:
             organization_id=org.id if org else None,
             organization_name=org.name if org else None,
             organization_type=org.type if org else None,
-            resident_name=resident_name
+            resident_name=resident_name,
+            **_evidence_fields(alert, session)
         ))
     return out
 
@@ -117,10 +135,8 @@ def get_active_fall_emergency(
         if contacts:
             primary_contact = contacts[0]
 
-    # Retrieve latest sensing telemetry
-    latest_event = session.exec(
-        select(SensingEvent).where(SensingEvent.room_id == alert.room_id).order_by(SensingEvent.timestamp.desc())
-    ).first()
+    evidence = _evidence_fields(alert, session)
+    verification_needed = AlertOut.model_validate(alert).requires_verification
 
     return {
         "has_emergency": True,
@@ -129,28 +145,28 @@ def get_active_fall_emergency(
         "resident_id": resident.id if resident else None,
         "resident_name": f"{resident.first_name} {resident.last_name}" if resident else "Elder Care Resident",
         "room_id": room.id if room else alert.room_id,
-        "room_name": room.name if room else "Room 204",
+        "room_name": room.name if room else None,
         "detected_at": alert.created_at.strftime("%d %b %Y %H:%M:%S"),
         "activity": "Fall Detected",
         "severity": alert.severity,
         "message": alert.message,
+        "source": alert.source,
+        "device_mac": evidence["device_mac"],
+        "verification_status": alert.verification_status,
+        "requires_verification": verification_needed,
+        # Real values copied from the detecting event at alert time; null when the alert carries no sensing evidence.
         "telemetry": {
-            "signal_quality": latest_event.signal_quality if latest_event and latest_event.signal_quality else 94,
-            "subcarriers": latest_event.subcarrier_count if latest_event else 56,
-            "rssi": latest_event.rssi if latest_event else -42,
-            "confidence": round(latest_event.model_confidence * 100, 1) if latest_event else 97.5
+            "signal_quality": alert.signal_quality,
+            "signal_level": signal_level(alert.signal_quality),
+            "confidence": round(alert.confidence * 100, 1) if alert.confidence is not None else None,
+            "confidence_level": confidence_level(alert.confidence),
         },
         "emergency_contact": {
             "name": primary_contact.name,
             "relationship": primary_contact.relationship,
             "phone": primary_contact.phone,
             "priority": primary_contact.priority
-        } if primary_contact else {
-            "name": "Care Desk Duty Officer",
-            "relationship": "Emergency On-Call Desk",
-            "phone": "+91 4828 251122",
-            "priority": 1
-        }
+        } if primary_contact else None  # no invented fallback: the UI must say "no emergency contact on file"
     }
 
 @router.get("/{alert_id}", response_model=AlertDetailOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
@@ -225,8 +241,62 @@ def get_alert_detail(
         resident_id=resident.id if resident else None,
         resident_name=f"{resident.first_name} {resident.last_name}" if resident else None,
         acknowledgement=ack_out,
-        emergency_contact=emergency_contact
+        emergency_contact=emergency_contact,
+        **_evidence_fields(alert, session)
     )
+
+@router.patch("/{alert_id}/verify", response_model=AlertDetailOut, dependencies=[Depends(require_roles(CARE_RESPONDER_ROLES))])
+def verify_alert(
+    alert_id: str,
+    body: AlertVerify,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """Staff confirm or dismiss a detection. The outcome is stored for later analytics."""
+    scopes = get_user_scopes(current_user)
+    alert = session.exec(get_scoped_alert_query(scopes).where(Alert.id == alert_id)).first()
+    if not alert:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found or access denied.")
+    if alert.verification_status != "UNVERIFIED":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Alert already {alert.verification_status.lower()}.")
+    if body.outcome == "DISMISSED" and not (body.note and body.note.strip()):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="A note is required when dismissing a detection.")
+
+    now = datetime.now(timezone.utc)
+    alert.verification_status = body.outcome
+    alert.verified_by = current_user.id
+    alert.verified_at = now.replace(tzinfo=None)
+    alert.verification_note = body.note.strip() if body.note else None
+    alert.updated_at = now
+    if body.outcome == "DISMISSED":
+        # A dismissed detection is a false alarm: close the alert and keep who/why on the acknowledgement.
+        alert.status = "resolved"
+        ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert.id)).first()
+        if not ack:
+            ack = AlertAcknowledgement(alert_id=alert.id, user_id=current_user.id, acknowledged_at=now)
+        ack.resolved_at = now
+        ack.resolution_notes = f"Dismissed as false alarm: {alert.verification_note}"
+        session.add(ack)
+    session.add(alert)
+    session.commit()
+    session.refresh(alert)
+
+    record_audit_event(
+        session=session,
+        what_action=f"ALERT_{body.outcome}",
+        resource_type="ALERT",
+        resource_id=alert.id,
+        result="SUCCESS",
+        who_user_id=current_user.id,
+        who_email=current_user.email,
+        details={
+            "confidence": alert.confidence,
+            "signal_quality": alert.signal_quality,
+            "source": alert.source,
+            "room_id": alert.room_id,
+        }
+    )
+    return get_alert_detail(alert_id, session, current_user)
 
 @router.patch("/{alert_id}/acknowledge", response_model=AlertOut, dependencies=[Depends(require_roles(CARE_RESPONDER_ROLES))])
 def acknowledge_alert(
