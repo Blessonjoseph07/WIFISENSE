@@ -104,6 +104,9 @@ jobs:
           echo "=== RUNNING ROOM BOOKING TESTS ==="
           python test_room_bookings.py
 
+          echo "=== RUNNING CSI SERIAL BRIDGE TESTS ==="
+          python test_csi_serial_bridge.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js
