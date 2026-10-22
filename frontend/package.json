@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "node --test tests/session.test.mjs tests/no_hardcoded_hosts.test.mjs tests/no_misleading_claims.test.mjs"
+    "test": "node --test tests/session.test.mjs tests/no_hardcoded_hosts.test.mjs tests/no_misleading_claims.test.mjs tests/subscription_panel.test.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
