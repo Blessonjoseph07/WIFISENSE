@@ -114,6 +114,12 @@ export const VIEW_DEFINITIONS = {
     icon: "medical_services",
     description: "Approve doctors and assign the residents they may see"
   },
+  evidence: {
+    id: "evidence",
+    label: "Evidence & Limits",
+    icon: "fact_check",
+    description: "What the system has measured, what it has not, and what it must not claim"
+  },
   bookings: {
     id: "bookings",
     label: "Room Scheduling",
@@ -138,7 +144,7 @@ const MATRIX = {
       theme: "care"
     },
     facility_manager: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "sensing", "family", "devices", "assets", "analytics", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "sensing", "evidence", "family", "devices", "assets", "analytics", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Facility Manager",
       theme: "care"
@@ -178,7 +184,7 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SYSTEM]: {
     system_admin: {
-      allowedViews: ["sysadmin", "orgadmin", "providers", "sharing_policies", "devices", "alerts", "sensing", "analytics", "assets", "occupancy", "dashboard", "profile"],
+      allowedViews: ["sysadmin", "orgadmin", "providers", "sharing_policies", "devices", "alerts", "sensing", "evidence", "analytics", "assets", "occupancy", "dashboard", "profile"],
       defaultView: "sysadmin",
       badgeText: "SYSTEM CONSOLE",
       theme: "system"
