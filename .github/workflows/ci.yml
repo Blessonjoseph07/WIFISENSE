@@ -98,6 +98,12 @@ jobs:
           echo "=== RUNNING SHARING POLICY UI FLOW TESTS ==="
           python test_ui_flow_sharing_policy.py
 
+          echo "=== RUNNING LIVE CSI STREAM TESTS ==="
+          python test_live_stream.py
+
+          echo "=== RUNNING ROOM BOOKING TESTS ==="
+          python test_room_bookings.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js

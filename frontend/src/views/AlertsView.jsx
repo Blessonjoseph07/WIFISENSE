@@ -23,7 +23,10 @@ export default function AlertsView({
     role !== "system_admin" &&
     (role === "facility_manager" || role === "caregiver");
 
-  const [contextFilter, setContextFilter] = useState("ALL"); // "ALL" | "ELDER_CARE" | "CORPORATE"
+  // Only a system admin oversees both worlds. Everyone else sees their own context and nothing else.
+  const lockedType =
+    !isSystemAdmin && role !== "system_admin" && (appContext === "CORPORATE" || appContext === "ELDER_CARE") ? appContext : null;
+  const [contextFilter, setContextFilter] = useState(lockedType || "ALL"); // "ALL" | "ELDER_CARE" | "CORPORATE"
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -51,7 +54,8 @@ export default function AlertsView({
     };
   };
 
-  const activeAlerts = alerts.filter((a) => a.status !== "resolved");
+  const scopedAlerts = lockedType ? alerts.filter((a) => getAlertContext(a).type === lockedType) : alerts;
+  const activeAlerts = scopedAlerts.filter((a) => a.status !== "resolved");
   const countAll = activeAlerts.length;
   const countElder = activeAlerts.filter((a) => getAlertContext(a).type === "ELDER_CARE").length;
   const countCorp = activeAlerts.filter((a) => getAlertContext(a).type === "CORPORATE").length;
@@ -61,7 +65,7 @@ export default function AlertsView({
     return getAlertContext(a).type === contextFilter;
   });
 
-  const resolvedAlerts = alerts.filter((a) => a.status === "resolved");
+  const resolvedAlerts = scopedAlerts.filter((a) => a.status === "resolved");
   const filteredResolvedAlerts = resolvedAlerts.filter((a) => {
     if (contextFilter === "ALL") return true;
     return getAlertContext(a).type === contextFilter;
@@ -113,7 +117,11 @@ export default function AlertsView({
             Alert & Incident Management
           </h2>
           <p className="text-body-lg font-body-lg text-slate-500 dark:text-slate-400 mt-1">
-            Monitor platform-wide incidents, inspect telemetry context, and maintain operational oversight.
+            {lockedType === "CORPORATE"
+              ? "Monitor workplace incidents, inspect telemetry context, and maintain operational oversight."
+              : lockedType === "ELDER_CARE"
+              ? "Monitor resident safety incidents, inspect telemetry context, and respond to alerts."
+              : "Monitor platform-wide incidents, inspect telemetry context, and maintain operational oversight."}
           </p>
         </div>
         <div className="text-body-md font-body-md text-slate-500 flex items-center gap-2">
@@ -123,9 +131,9 @@ export default function AlertsView({
       </div>
 
       {/* Bento Grid Layout for Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+      <div className="grid grid-cols-1 2xl:grid-cols-3 gap-gutter">
         {/* Pending Alerts Table (Spans 2 columns) */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
+        <div className="2xl:col-span-2 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-red-500">warning</span>
@@ -137,7 +145,8 @@ export default function AlertsView({
               </span>
             </div>
 
-            {/* Classification Filter Tabs: ALL, ELDER CARE, CORPORATE */}
+            {/* Classification filter tabs: system admin only */}
+            {!lockedType && (
             <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-850 rounded-lg text-xs self-start sm:self-auto">
               <button
                 type="button"
@@ -175,12 +184,13 @@ export default function AlertsView({
                 CORPORATE ({countCorp})
               </button>
             </div>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-slate-100 dark:bg-slate-850 text-slate-500 dark:text-slate-400 text-label-caps font-label-caps uppercase font-semibold">
                 <tr>
-                  <th className="p-4">Context & Org</th>
+                  {!lockedType && <th className="p-4">Context & Org</th>}
                   <th className="p-4">Location / Target</th>
                   <th className="p-4">Event Type</th>
                   <th className="p-4">Timestamp</th>
@@ -200,6 +210,7 @@ export default function AlertsView({
                       key={alert.id}
                       className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors"
                     >
+                      {!lockedType && (
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
                           <span
@@ -216,7 +227,8 @@ export default function AlertsView({
                           </span>
                         </div>
                       </td>
-                      <td className="p-4">
+                      )}
+                      <td className="p-4 min-w-[9rem]">
                         <div className="font-semibold text-slate-900 dark:text-white">
                           {ctx.roomName}
                         </div>
@@ -231,7 +243,7 @@ export default function AlertsView({
                           </div>
                         )}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 min-w-[15rem]">
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {alert.event_type.replace(/_/g, " ")}
                         </span>
@@ -240,13 +252,13 @@ export default function AlertsView({
                         </div>
                         <DetectionChips alert={alert} />
                       </td>
-                      <td className="p-4 text-slate-500 font-data-mono text-data-mono">
+                      <td className="p-4 text-slate-500 font-data-mono text-data-mono whitespace-nowrap">
                         {new Date(alert.created_at).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             isCritical
@@ -262,7 +274,7 @@ export default function AlertsView({
                           {alert.severity}
                         </span>
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                             alert.status === "new"
@@ -275,7 +287,7 @@ export default function AlertsView({
                           {alert.status}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenDetail(alert.id)}
@@ -302,7 +314,7 @@ export default function AlertsView({
                               </button>
                             </>
                           ) : (
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
                               <span className="material-symbols-outlined text-[14px] text-teal-600 dark:text-teal-400">visibility</span>
                               Oversight
                             </span>
@@ -314,7 +326,7 @@ export default function AlertsView({
                 })}
                 {filteredActiveAlerts.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="p-8 text-center text-slate-400 italic">
+                    <td colSpan={lockedType ? 6 : 7} className="p-8 text-center text-slate-400 italic">
                       No active alerts in {contextFilter === "ALL" ? "platform queue" : contextFilter === "ELDER_CARE" ? "Elder Care scope" : "Corporate scope"}. All areas nominal.
                     </td>
                   </tr>
@@ -325,7 +337,7 @@ export default function AlertsView({
         </div>
 
         {/* Resolution History / Activity Stream */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col h-[500px] shadow-sm text-xs">
+        <div className="min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col h-[500px] shadow-sm text-xs">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-between">
             <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white flex items-center gap-2 font-bold">
               <span className="material-symbols-outlined text-teal-605">check_circle</span>
