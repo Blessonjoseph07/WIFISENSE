@@ -4,7 +4,11 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
+from app.core.audit import record_audit_event
 from app.core.database import get_session
+from app.core.timeutil import as_utc, utcnow
+from app.services.payments import lifecycle
+from app.services.payments.webhooks import subscription_org_id
 from app.routers.auth import get_current_user, require_roles, get_user_scopes, get_user_role_and_context
 from app.models.entities import (
     User, AccessRequest, FamilyConnection, FamilySubscription,
@@ -221,6 +225,11 @@ def review_family_connection(
 # 2. FAMILY SUBSCRIPTION ARCHITECTURE (PHASE 3B)
 # ============================================================================
 
+def _staff_can_see_subscription(session: Session, current_user: User, sub: FamilySubscription) -> bool:
+    scopes = get_user_scopes(current_user)
+    return scopes["is_system_admin"] or subscription_org_id(session, sub) in scopes["organization_ids"]
+
+
 @router.get("/subscriptions", response_model=List[FamilySubscriptionOut])
 def list_family_subscriptions(
     session: Session = Depends(get_session),
@@ -228,12 +237,19 @@ def list_family_subscriptions(
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
     if role_name == "family_member":
-        return session.exec(select(FamilySubscription).where(FamilySubscription.family_user_id == current_user.id)).all()
-    
+        subs = session.exec(select(FamilySubscription).where(FamilySubscription.family_user_id == current_user.id)).all()
+        for s_ in subs:
+            lifecycle.reconcile(session, s_)
+        return subs
+
     if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Not authorized to inspect subscriptions.")
-    
-    return session.exec(select(FamilySubscription)).all()
+
+    visible = [s_ for s_ in session.exec(select(FamilySubscription)).all() if _staff_can_see_subscription(session, current_user, s_)]
+    for s_ in visible:
+        lifecycle.reconcile(session, s_)
+    return visible
+
 
 @router.patch("/subscriptions/{subscription_id}", response_model=FamilySubscriptionOut)
 def update_family_subscription(
@@ -242,24 +258,72 @@ def update_family_subscription(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    """Facility staff can place a hold (SUSPENDED) or lift it. They cannot mark a subscription paid: only a verified
+    payment webhook does that. Staff only reach subscriptions of their own organization."""
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
     if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Only elder care facility managers can update subscription states.")
 
     sub = session.get(FamilySubscription, subscription_id)
-    if not sub:
-        raise HTTPException(status_code=404, detail="Subscription record not found.")
+    if not sub or not _staff_can_see_subscription(session, current_user, sub):
+        raise HTTPException(status_code=404, detail="Subscription record not found.")   # same answer for other organizations
+    lifecycle.reconcile(session, sub)
 
-    sub.status = update_in.status
-    if update_in.plan:
-        sub.plan = update_in.plan
-    if update_in.status == "ACTIVE" and not sub.start_date:
-        sub.start_date = datetime.now(timezone.utc)
-    sub.updated_at = datetime.now(timezone.utc)
+    target = update_in.status
+    if target == "SUSPENDED":
+        sub.status = "SUSPENDED"
+        action = "SUBSCRIPTION_SUSPENDED_BY_STAFF"
+    elif target == "ACTIVE":
+        if sub.status != "SUSPENDED":
+            raise HTTPException(status_code=409, detail="Staff can only lift a hold. A subscription becomes active when a payment is confirmed by the payment provider.")
+        # lifting a hold restores what was paid for; it never grants time that was not paid
+        if sub.end_date is None and not sub.provider_subscription_id:
+            sub.status = "ACTIVE"                                      # facility-managed (legacy) subscription
+        elif sub.end_date is not None and as_utc(sub.end_date) > utcnow():
+            sub.status = "ACTIVE"
+        else:
+            sub.status = "EXPIRED"
+        action = "SUBSCRIPTION_HOLD_LIFTED_BY_STAFF"
+    else:
+        raise HTTPException(status_code=422, detail="Staff can set status to SUSPENDED or lift a hold with ACTIVE.")
+    sub.updated_at = utcnow()
     session.add(sub)
     session.commit()
     session.refresh(sub)
+    record_audit_event(session, what_action=action, resource_type="SUBSCRIPTION", resource_id=sub.id,
+                       who_user_id=current_user.id, who_email=current_user.email,
+                       organization_id=subscription_org_id(session, sub), details={"resulting_status": sub.status})
     return sub
+
+
+def emergency_block(session: Session, resident: Resident) -> dict:
+    """Emergency visibility for an APPROVED family connection. Deliberately independent of the subscription: safety
+    information is not a paid feature. Minimal fields only (open HIGH/CRITICAL alerts)."""
+    SEV_ORDER = {"LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
+    alerts = session.exec(
+        select(Alert).where(Alert.room_id == resident.room_id, Alert.status != "RESOLVED").order_by(Alert.created_at.desc()).limit(20)
+    ).all()
+    items = [{"id": a.id, "severity": a.severity, "message": a.message, "status": a.status,
+              "created_at": a.created_at.isoformat() if hasattr(a.created_at, "isoformat") else str(a.created_at)}
+             for a in alerts if SEV_ORDER.get(a.severity, 1) >= SEV_ORDER["HIGH"]]
+    return {"available_without_subscription": True, "open_alerts": items,
+            "note": "Shows open HIGH/CRITICAL alerts. Fall alerts are possible falls that need verification, not confirmed falls."}
+
+
+@router.get("/emergency-status")
+def get_emergency_status(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    """Works for any approved connection whatever the subscription status (including none, expired, suspended)."""
+    role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
+    if role_name != "family_member" or app_context == "CORPORATE":
+        raise HTTPException(status_code=403, detail="Only family members of an elder care organization can use this.")
+    conn = session.exec(select(FamilyConnection).where(FamilyConnection.family_user_id == current_user.id,
+                                                       FamilyConnection.status == "approved")
+                        .order_by(FamilyConnection.created_at.desc())).first()
+    resident = session.get(Resident, conn.resident_id) if conn else None
+    if not resident:
+        raise HTTPException(status_code=403, detail="No approved connection to a resident.")
+    return {"resident_id": resident.id, "resident_name": f"{resident.first_name} {resident.last_name}",
+            "emergency": emergency_block(session, resident)}
 
 # ============================================================================
 # 3. FAMILY PORTAL GATED DATA + SHARING POLICY (PHASE 4)
@@ -329,11 +393,14 @@ def get_linked_resident_status(
             "reason": f"Connection is currently '{conn.status}'. Access is granted once approved by the Facility Manager."
         }
 
-    # GATING 2: Subscription Status
+    # GATING 2: Subscription status. It only gates OPTIONAL portal features; the emergency block is always present.
     sub = session.exec(select(FamilySubscription).where(FamilySubscription.family_user_id == current_user.id)).first()
+    if sub:
+        lifecycle.reconcile(session, sub)
     sub_status = sub.status if sub else "PENDING"
     room = session.get(Room, target_res.room_id)
-    if sub_status != "ACTIVE":
+    emergency = emergency_block(session, target_res)
+    if not lifecycle.is_entitled(sub):
         return {
             "linked": True,
             "connection_status": "approved",
@@ -347,7 +414,8 @@ def get_linked_resident_status(
                 "room_name": room.name if room else "Resident Room"
             },
             "has_active_subscription": False,
-            "reason": f"Active family subscription required. Current subscription status: '{sub_status}'. Please contact the Care Facility Manager."
+            "emergency": emergency,
+            "reason": f"Optional portal features need an active subscription (current status: '{sub_status}'). Emergency alerts are not affected."
         }
 
 
@@ -421,8 +489,9 @@ def get_linked_resident_status(
     return {
         "linked": True,
         "connection_status": "approved",
-        "subscription_status": "ACTIVE",
+        "subscription_status": sub_status,
         "has_active_subscription": True,
+        "emergency": emergency,
         "relationship": conn.relationship,
         "resident": {
             "id": target_res.id,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ACTIVITY_LABEL, SourceBadge } from "../components/DetectionBadges";
+import SubscriptionPanel from "../components/SubscriptionPanel";
 import { API_BASE } from "../config";
 
 export default function FamilyPortalView({
@@ -82,8 +83,8 @@ export default function FamilyPortalView({
     }
   };
 
-  const handleToggleSubscription = async (subId, currentStatus) => {
-    const nextStatus = currentStatus === "ACTIVE" ? "PENDING" : "ACTIVE";
+  const handleHoldToggle = async (subId, currentStatus) => {
+    const targetStatus = currentStatus === "SUSPENDED" ? "ACTIVE" : "SUSPENDED";
     try {
       const res = await fetch(`${API_BASE}/family/subscriptions/${subId}`, {
         method: "PATCH",
@@ -91,17 +92,36 @@ export default function FamilyPortalView({
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({ status: targetStatus }),
       });
       if (res.ok) {
         setToastMessage({
           type: "success",
-          text: `Subscription set to ${nextStatus}`,
+          text: targetStatus === "SUSPENDED" ? "Administrative hold placed." : "Administrative hold lifted.",
         });
         fetchConnectionsAndSubscriptions();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setToastMessage({ type: "error", text: err.detail || "Failed to update subscription hold." });
       }
     } catch (e) {
-      setToastMessage({ type: "error", text: "Failed to update subscription." });
+      setToastMessage({ type: "error", text: "Network error updating subscription hold." });
+    }
+  };
+
+  const refreshFamilyStatus = async () => {
+    fetchConnectionsAndSubscriptions();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/family/resident-status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setFamilyStatus(json);
+      }
+    } catch (e) {
+      console.warn("Failed to refresh family resident status:", e);
     }
   };
 
@@ -319,7 +339,7 @@ export default function FamilyPortalView({
                     <th className="px-5 py-3">Plan Tier</th>
                     <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">Started At</th>
-                    <th className="px-5 py-3 text-right">Toggle Tier</th>
+                    <th className="px-5 py-3 text-right">Administrative Hold</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
@@ -332,6 +352,8 @@ export default function FamilyPortalView({
                           className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                             s.status === "ACTIVE"
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : s.status === "SUSPENDED"
+                              ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                               : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                           }`}
                         >
@@ -343,14 +365,14 @@ export default function FamilyPortalView({
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <button
-                          onClick={() => handleToggleSubscription(s.id, s.status)}
+                          onClick={() => handleHoldToggle(s.id, s.status)}
                           className={`px-3 py-1 rounded text-[11px] font-bold cursor-pointer ${
-                            s.status === "ACTIVE"
-                              ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
-                              : "bg-emerald-600 text-white hover:bg-emerald-700"
+                            s.status === "SUSPENDED"
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                              : "bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
                           }`}
                         >
-                          Set {s.status === "ACTIVE" ? "PENDING" : "ACTIVE"}
+                          {s.status === "SUSPENDED" ? "Lift Hold" : "Place Hold"}
                         </button>
                       </td>
                     </tr>
@@ -420,8 +442,32 @@ export default function FamilyPortalView({
     const presenceStatus = familyStatus?.presence_status || "No data";
     const rawActivity = familyStatus?.current_activity || "";
     const activityName = rawActivity ? ACTIVITY_LABEL[rawActivity] || rawActivity.replace(/_/g, " ") : "";
-    const dataSource = familyStatus?.data_source || null;
-    const openFallAlerts = (familyStatus?.alerts || []).filter((a) => a.event_type === "Fall_Detected" && a.status !== "resolved");
+    // Emergency alerts are ALWAYS visible to approved family members regardless of subscription status.
+    // Merge both direct alerts and emergency.open_alerts, de-duplicating by alert id so open HIGH/CRITICAL
+    // emergency alerts are always included even if direct alerts exist.
+    const emergencyOpenAlerts = familyStatus?.emergency?.open_alerts || [];
+    const directAlerts = familyStatus?.alerts || [];
+    const alertsById = new Map();
+    [...directAlerts, ...emergencyOpenAlerts].forEach((a, idx) => {
+      if (!a) return;
+      const key = a.id != null ? String(a.id) : `fallback-${a.event_type || 'alert'}-${a.created_at || idx}`;
+      if (!alertsById.has(key)) {
+        alertsById.set(key, a);
+      }
+    });
+    const combinedAlerts = Array.from(alertsById.values());
+
+    const isFallAlert = (a) => {
+      const et = String(a.event_type || "").toLowerCase();
+      return et === "fall_detected" || et.includes("fall");
+    };
+
+    const openFallAlerts = combinedAlerts.filter(
+      (a) =>
+        isFallAlert(a) &&
+        a.status !== "resolved" &&
+        a.status !== "RESOLVED"
+    );
     const presenceText =
       { Present: "Presence detected", "Not Detected": "No presence detected", Restricted: "Hidden by the sharing policy", "No data": "No sensing data yet" }[presenceStatus] ||
       presenceStatus;
@@ -471,12 +517,14 @@ export default function FamilyPortalView({
               <span className="text-slate-400">Care Plan:</span>
               <span
                 className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                  activeSub
+                  (activeSub?.status === "ACTIVE" || familyStatus?.subscription_status === "ACTIVE")
                     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : (activeSub?.status === "SUSPENDED" || familyStatus?.subscription_status === "SUSPENDED")
+                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                     : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                 }`}
               >
-                {activeSub ? "ACTIVE" : "PENDING"}
+                {activeSub?.status || familyStatus?.subscription_status || "PENDING"}
               </span>
             </div>
 
@@ -621,18 +669,20 @@ export default function FamilyPortalView({
               </div>
 
               <div className="space-y-2.5">
-                {(familyStatus?.alerts || []).map((a) => (
+                {combinedAlerts.map((a) => (
                   <div
                     key={a.id}
                     className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 flex items-center justify-center shrink-0">
-                        <span className="material-symbols-outlined text-[18px]">info</span>
+                        <span className="material-symbols-outlined text-[18px]">
+                          {a.severity === "CRITICAL" || a.event_type === "Fall_Detected" ? "warning" : "info"}
+                        </span>
                       </div>
                       <div>
                         <div className="font-bold text-slate-900 dark:text-white capitalize">
-                          {a.event_type?.replace(/_/g, " ")}
+                          {a.event_type ? a.event_type.replace(/_/g, " ") : a.message || "Alert"}
                         </div>
                         <div className="text-[11px] text-slate-400">
                           {formatAlertDate(a.created_at)}
@@ -641,7 +691,7 @@ export default function FamilyPortalView({
                     </div>
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                        a.status === "resolved" || a.status === "acknowledged"
+                        a.status === "resolved" || a.status === "acknowledged" || a.status === "RESOLVED"
                           ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
                           : "bg-red-500 text-white"
                       }`}
@@ -651,7 +701,7 @@ export default function FamilyPortalView({
                   </div>
                 ))}
 
-                {(!familyStatus?.alerts || familyStatus.alerts.length === 0) && (
+                {combinedAlerts.length === 0 && (
                   <div className="p-4 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
                       <span className="material-symbols-outlined text-xl">verified</span>
@@ -687,6 +737,14 @@ export default function FamilyPortalView({
                     familyStatus?.recent_activity_history && familyStatus.recent_activity_history.length > 0
                       ? familyStatus.recent_activity_history
                       : [];
+
+                  if (familyStatus?.has_active_subscription === false) {
+                    return (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 italic p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60">
+                        Activity timeline is an optional Care Plan feature. Emergency fall and high-severity safety alerts are always active and never gated.
+                      </p>
+                    );
+                  }
 
                   if (activityList.length === 0) {
                     return <p className="text-xs text-slate-400 italic">No sensing updates to show (none yet, or hidden by the sharing policy).</p>;
@@ -749,8 +807,15 @@ export default function FamilyPortalView({
             </div>
           </div>
 
-          {/* Right Column (5 cols): Controls, Connected Residents, Desk Link */}
+          {/* Right Column (5 cols): Subscription, Sharing Controls, Connected Residents */}
           <div className="lg:col-span-5 space-y-5">
+            {/* Family Subscription Management (SANDBOX) */}
+            <SubscriptionPanel
+              token={token}
+              setToastMessage={setToastMessage}
+              onChanged={refreshFamilyStatus}
+            />
+
             {/* Sharing Policy & Privacy Toggles */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-1">

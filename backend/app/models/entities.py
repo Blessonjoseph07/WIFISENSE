@@ -132,12 +132,37 @@ class FamilySubscription(SQLModel, table=True):
     family_user_id: str = Field(foreign_key="users.id", nullable=False)
     family_connection_id: Optional[str] = Field(default=None, foreign_key="family_connections.id")
     plan: str = Field(default="CARE_MONTHLY")
-    status: str = Field(default="PENDING") # PENDING, ACTIVE, EXPIRED, SUSPENDED, CANCELLED
-    start_date: Optional[datetime] = Field(default=None)
-    end_date: Optional[datetime] = Field(default=None)
-    renewal_date: Optional[datetime] = Field(default=None)
+    # PENDING (never paid), ACTIVE, PAST_DUE (renewal failed or missed: grace period), EXPIRED, CANCELLED, SUSPENDED
+    # (SUSPENDED is an administrator's hold: payments never lift it)
+    status: str = Field(default="PENDING")
+    start_date: Optional[datetime] = Field(default=None)      # start of the current paid period
+    end_date: Optional[datetime] = Field(default=None)        # end of the current paid period (None = admin-managed, no period)
+    renewal_date: Optional[datetime] = Field(default=None)    # next automatic renewal; None when cancelling or unpaid
+    cancel_at_period_end: bool = Field(default=False, nullable=False)
+    cancelled_at: Optional[datetime] = Field(default=None)
+    past_due_since: Optional[datetime] = Field(default=None)
+    # Payment provider references only. No card or payment details are ever stored.
+    provider: Optional[str] = Field(default=None)
+    provider_checkout_id: Optional[str] = Field(default=None, index=True)
+    provider_subscription_id: Optional[str] = Field(default=None, index=True)
+    last_payment_status: Optional[str] = Field(default=None)  # SUCCEEDED / FAILED
+    last_event_at: Optional[datetime] = Field(default=None)   # created-time of the newest provider event applied
+    price_minor: Optional[int] = Field(default=None)         # price snapshot of the current period
+    currency: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PaymentEvent(SQLModel, table=True):
+    """Every provider webhook that passed signature verification, for idempotency and audit. Whitelisted fields only."""
+    __tablename__ = "payment_events"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    provider: str = Field(nullable=False)
+    event_id: str = Field(nullable=False, unique=True, index=True)
+    event_type: str = Field(nullable=False)
+    subscription_id: Optional[str] = Field(default=None, index=True)
+    outcome: str = Field(nullable=False)   # PROCESSED, HELD_BY_ADMIN, IGNORED_STALE, IGNORED_UNKNOWN_TYPE, REJECTED_*
+    summary: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
 
 class CaregiverProfile(SQLModel, table=True):
     __tablename__ = "caregiver_profiles"
