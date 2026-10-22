@@ -71,7 +71,8 @@ class Settings:
             if self.ENVIRONMENT.lower() == "production":
                 raise RuntimeError("PAYMENT_WEBHOOK_SECRET is required in production.")
             self.PAYMENT_WEBHOOK_SECRET = secrets.token_urlsafe(32)
-        self.SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "1") == "1"
+        # Demo data is on by default for development and off by default in production (an explicit opt-in there).
+        self.SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "0" if self.ENVIRONMENT.lower() == "production" else "1") == "1"
         self.SEED_PROFILE = os.getenv("SEED_PROFILE", "full").strip().lower()
         self.SEED_PASSWORD = os.getenv("SEED_PASSWORD", "")
         if self.SEED_PROFILE not in ("full", "minimal"):
