@@ -106,6 +106,8 @@ jobs:
 
           echo "=== RUNNING CSI SERIAL BRIDGE TESTS ==="
           python test_csi_serial_bridge.py
+          echo "=== RUNNING FALL -> DOCTOR NOTIFICATION TESTS ==="
+          python test_fall_doctor_notify.py
 
           kill $UVICORN_PID 2>/dev/null || true
 
