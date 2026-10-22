@@ -21,3 +21,6 @@ __pycache__/
 .env
 .DS_Store
 /CSI_data/
+
+# database backups written by tools/keep_one_user_per_role.py
+*.before_user_cleanup_*

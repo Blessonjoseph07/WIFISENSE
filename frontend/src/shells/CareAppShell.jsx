@@ -87,30 +87,32 @@ export default function CareAppShell({
           })}
         </div>
 
-        {/* Family Member Portal Dedicated Web Page Switcher */}
-        <div className="p-3 border-t border-emerald-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/20">
-          <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[13px]">family_restroom</span>
-              Family Portal
-            </span>
-            <span className="text-[9px] bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 px-1 py-0.2 rounded font-bold uppercase">PAGE</span>
-          </div>
-          <button
-            onClick={() => setCurrentView("family")}
-            className={`w-full p-2 rounded-lg text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
-              currentView === "family"
-                ? "bg-emerald-600 text-white shadow-xs font-extrabold"
-                : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-emerald-200 dark:border-slate-700 hover:border-emerald-500 shadow-2xs"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-base text-emerald-600 dark:text-emerald-400">group</span>
-              <span>Resident Family Portal</span>
+        {/* Family portal switcher: facility managers only (caregivers have no family-portal page) */}
+        {role === "facility_manager" && (
+          <div className="p-3 border-t border-emerald-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]">family_restroom</span>
+                Family Portal
+              </span>
+              <span className="text-[9px] bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 px-1 py-0.2 rounded font-bold uppercase">PAGE</span>
             </div>
-            <span className="material-symbols-outlined text-sm">arrow_forward</span>
-          </button>
-        </div>
+            <button
+              onClick={() => setCurrentView("family")}
+              className={`w-full p-2 rounded-lg text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                currentView === "family"
+                  ? "bg-emerald-600 text-white shadow-xs font-extrabold"
+                  : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-emerald-200 dark:border-slate-700 hover:border-emerald-500 shadow-2xs"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-emerald-600 dark:text-emerald-400">group</span>
+                <span>Resident Family Portal</span>
+              </div>
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+          </div>
+        )}
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-emerald-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 flex flex-col gap-3">
@@ -163,17 +165,19 @@ export default function CareAppShell({
               <span className="material-symbols-outlined text-[15px]">health_and_safety</span>
               <span className="hidden md:inline">Care Operations</span>
             </button>
+            {role === "facility_manager" && (
             <button
-              onClick={() => setCurrentView("family")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer ${
-                currentView === "family"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 font-extrabold"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[15px]">group</span>
-              <span className="hidden md:inline">Family Member Portal</span>
-            </button>
+                onClick={() => setCurrentView("family")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer ${
+                  currentView === "family"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 font-extrabold"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">group</span>
+                <span className="hidden md:inline">Family Member Portal</span>
+              </button>
+            )}
             <span className="hidden xl:inline-block text-[11px] text-slate-400 dark:text-slate-500 font-mono">|</span>
             <span className="hidden xl:inline-block text-[11px] font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap truncate max-w-[16rem]">
               {organizations[0]?.name || "St. Peter's Elder Care Home"}

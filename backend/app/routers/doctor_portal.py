@@ -17,15 +17,17 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
 from app.core.audit import record_audit_event
 from app.core.database import get_session
 from app.core.timeutil import as_utc, utcnow
 from app.models.entities import (
-    Alert, Allergy, Building, Consultation, DoctorAssignment, DoctorProfile, Floor, HealthCondition,
-    HospitalVisit, LabReport, Organization, Prescription, Resident, Room, User, UserRole,
+    Alert, Allergy, Building, Consultation, Doctor, DoctorAssignment, DoctorNotification, DoctorProfile, Floor,
+    HealthCondition, HospitalVisit, LabReport, Organization, Prescription, Resident, Room, User, UserRole,
 )
+from app.services.notifications import try_send_email
 from app.routers.auth import ROLE_MAPPING, get_current_user, get_user_role_and_context, get_user_scopes, require_roles
 from app.routers.crud import verify_elder_care_access
 from app.schemas.schemas import (
@@ -603,3 +605,121 @@ def staff_medical_summary(
         "consultations": [_consultation_out(c, session) for c in consultations],
         "open_follow_ups": [_consultation_out(c, session) for c in consultations if c.follow_up_date and not c.follow_up_done],
     }
+
+
+# ----------------------------------------------------------------------------
+# Fall notifications: care staff -> the resident's doctors
+# ----------------------------------------------------------------------------
+
+SOURCE_LABEL = {"live": "LIVE HARDWARE", "dataset": "DATASET REPLAY", "simulated": "DEMO"}
+
+
+class NotifyDoctors(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    alert_id: Optional[str] = None
+    note: Optional[str] = Field(default=None, max_length=300)
+
+
+def _notification_out(n: DoctorNotification, session: Session) -> Dict[str, Any]:
+    r = session.get(Resident, n.resident_id)
+    room = session.get(Room, r.room_id) if r else None
+    return {
+        "id": n.id, "resident_id": n.resident_id, "resident_name": f"{r.first_name} {r.last_name}" if r else None,
+        "room_name": room.name if room else None, "alert_id": n.alert_id, "message": n.message,
+        "created_at": _iso(n.created_at), "read": n.read_at is not None,
+    }
+
+
+@router.post("/residents/{resident_id}/notify-doctors", dependencies=[Depends(require_roles(STAFF_READ_ROLES))])
+def notify_doctors(
+    resident_id: str,
+    body: NotifyDoctors,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Tell the doctors of ONE resident that a fall alert was raised. Staff only, inside their own organization.
+
+    Approved doctors with an active assignment get a message in their portal (always delivered). Doctors that are only
+    contact records get an email if one is on file and a mail server is reachable. The result says, per doctor, exactly
+    what happened; nothing is reported as sent that was not."""
+    resident = verify_elder_care_access(current_user, resident_id, session)
+    room = session.get(Room, resident.room_id)
+    alert = None
+    if body.alert_id:
+        alert = session.get(Alert, body.alert_id)
+        if not alert or alert.room_id != resident.room_id:
+            raise HTTPException(status_code=400, detail="That alert does not belong to this resident's room.")
+
+    name = f"{resident.first_name} {resident.last_name}"
+    staff = f"{current_user.first_name} {current_user.last_name}".strip() or current_user.email
+    when = _now().strftime("%d %b %Y %H:%M UTC")
+    lines = [f"Fall alert: {name}, {room.name if room else 'room not recorded'}."]
+    if alert:
+        lines.append(f"{alert.message} (source: {SOURCE_LABEL.get(alert.source, alert.source)}; alert status: {alert.status}; "
+                     f"detection {'needs staff verification' if alert.verification_status == 'UNVERIFIED' else alert.verification_status.lower()}).")
+    lines.append(f"Care staff {staff} asked that you be informed ({when}).")
+    if body.note and body.note.strip():
+        lines.append(f"Note from staff: {body.note.strip()}")
+    text = " ".join(lines)
+
+    results: List[Dict[str, Any]] = []
+    portal = session.exec(
+        select(DoctorAssignment, DoctorProfile).where(
+            DoctorAssignment.resident_id == resident_id, DoctorAssignment.status == "ACTIVE",
+            DoctorProfile.id == DoctorAssignment.doctor_profile_id, DoctorProfile.status == "APPROVED")
+    ).all()
+    for _assignment, profile in portal:
+        doc_user = session.get(User, profile.user_id)
+        full = f"{doc_user.first_name} {doc_user.last_name}".strip() if doc_user else ""
+        label = full if full.lower().startswith("dr") else (f"Dr. {full}" if full else "Doctor")
+        existing = None
+        if alert:
+            existing = session.exec(select(DoctorNotification).where(
+                DoctorNotification.doctor_profile_id == profile.id, DoctorNotification.alert_id == alert.id)).first()
+        if existing:
+            results.append({"doctor": label, "specialty": profile.specialty, "channel": "doctor portal", "status": "already informed about this alert"})
+            continue
+        session.add(DoctorNotification(doctor_profile_id=profile.id, resident_id=resident_id, alert_id=alert.id if alert else None,
+                                       message=text, created_by=current_user.id))
+        results.append({"doctor": label, "specialty": profile.specialty, "channel": "doctor portal", "status": "delivered to the doctor's portal"})
+    session.commit()
+
+    for d in session.exec(select(Doctor).where(Doctor.resident_id == resident_id)).all():
+        entry = {"doctor": d.name, "specialty": d.specialty, "hospital": d.hospital, "phone": d.phone, "channel": "contact record"}
+        if d.email:
+            ok, why = try_send_email([d.email], f"Fall alert: {name}", text)
+            entry.update({"channel": "email", "status": f"email sent to {d.email}" if ok else f"email NOT sent ({why}). Please call."})
+        else:
+            entry["status"] = "no email on file. Please call." if d.phone else "no email or phone on file"
+        results.append(entry)
+
+    _audit(session, current_user, "DOCTORS_NOTIFIED_OF_FALL", "RESIDENT", resident_id,
+           details={"alert_id": alert.id if alert else None, "recipients": len(results)})
+    return {"resident": name, "message": text, "results": results,
+            "summary": "No doctor is linked to this resident." if not results else f"{sum(1 for x in results if x['status'].startswith(('delivered', 'email sent')))} of {len(results)} doctors reached."}
+
+
+@router.get("/notifications")
+def my_notifications(
+    profile: DoctorProfile = Depends(require_approved_doctor),
+    session: Session = Depends(get_session),
+):
+    rows = session.exec(select(DoctorNotification).where(DoctorNotification.doctor_profile_id == profile.id)
+                        .order_by(DoctorNotification.created_at.desc()).limit(50)).all()
+    return [_notification_out(n, session) for n in rows]
+
+
+@router.post("/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: str,
+    profile: DoctorProfile = Depends(require_approved_doctor),
+    session: Session = Depends(get_session),
+):
+    n = session.get(DoctorNotification, notification_id)
+    if not n or n.doctor_profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="Notification not found.")   # same answer for missing and for another doctor's
+    if n.read_at is None:
+        n.read_at = _now()
+        session.add(n)
+        session.commit()
+    return _notification_out(n, session)

@@ -343,6 +343,18 @@ class DoctorAssignment(SQLModel, table=True):
     revoked_by: Optional[str] = Field(default=None)
     revoked_at: Optional[datetime] = Field(default=None)
 
+class DoctorNotification(SQLModel, table=True):
+    """A message from care staff to an approved, assigned doctor (for example: a resident may have fallen)."""
+    __tablename__ = "doctor_notifications"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    doctor_profile_id: str = Field(foreign_key="doctor_profiles.id", nullable=False, index=True)
+    resident_id: str = Field(foreign_key="residents.id", nullable=False, index=True)
+    alert_id: Optional[str] = Field(default=None, index=True)
+    message: str = Field(nullable=False)
+    created_by: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    read_at: Optional[datetime] = Field(default=None)
+
 class Consultation(SQLModel, table=True):
     __tablename__ = "consultations"
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
