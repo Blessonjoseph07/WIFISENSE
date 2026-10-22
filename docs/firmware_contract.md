@@ -46,10 +46,10 @@ for (int k = -26; k <= 26; k++) {
 }
 ```
 Check this against the IDF version you build with (slot order differs if HT-LTF or 40 MHz is enabled). A wrong order
-still uploads but shows garbled phase and waterfall structure in the Live CSI stream panel.
+still uploads but shows garbled phase and waterfall structure in the CSI packet stream panel.
 
 ## 4. What the dashboard derives from this
-Sensing Monitor > pick the LIVE device > **Live CSI stream**: packet rate, loss (sequence gaps), RSSI/noise/SNR, amplitude
+Sensing Monitor > pick the LIVE device > **CSI packet stream**: packet rate, loss (sequence gaps), RSSI/noise/SNR, amplitude
 and sanitised phase per subcarrier, an amplitude waterfall, dominant fluctuation frequency, and the radio link
 (frequency and wavelength derived from `channel`; spacing 312.5 kHz). The detector needs windows of >= 100 packets.
 
