@@ -1,15 +1,16 @@
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, Request, Query
-from sqlmodel import Session, select, or_
+from sqlmodel import Session, select, or_, func
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Union
 from app.core.database import get_session
 from app.core.security import hash_token
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
-from app.models.entities import SensingDevice, Room, Floor, Building, SensingEvent, ActivityType, Alert, RoomCalibration, RawCsiTelemetry
+from app.models.entities import SensingDevice, Room, Floor, Building, SensingEvent, ActivityType, Alert, RoomCalibration, RawCsiTelemetry, ReplayEvaluation
 from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut, SensingHistoryOut
 from app.core.confidence import confidence_level, signal_level, requires_verification
 from app.services.notifications import process_alert_notifications
+from app.services import detection, fall_model
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
 STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
@@ -155,6 +156,13 @@ def ingest_csi_telemetry(
     session.commit()
     session.refresh(device)
 
+    det = {"detections": [], "note": None}
+    try:
+        det = detection.run_detection(session, device, flush=False)
+    except Exception as exc:  # packets are already stored; a detector fault must not fail the device upload
+        session.rollback()
+        det = {"detections": [], "note": f"Detection error ({type(exc).__name__}); packets were stored."}
+
     return CsiIngestOut(
         status="success",
         device_id=device.id,
@@ -163,8 +171,37 @@ def ingest_csi_telemetry(
         ingested_count=len(records),
         provenance=device_source,
         device_status=device.device_status,
-        last_seen_at=now_utc
+        last_seen_at=now_utc,
+        detections=det["detections"],
+        detection_note=det["note"],
     )
+
+
+@router.post("/detect", summary="Analyse any complete-enough pending packets now (device-authenticated)")
+def flush_detection(
+    device: SensingDevice = Depends(get_authenticated_device),
+    session: Session = Depends(get_session)
+):
+    """Used at the end of a recorded clip: processes a final partial window of at least 100 packets."""
+    det = detection.run_detection(session, device, flush=True)
+    return {"device_id": device.id, "provenance": device.allowed_source, "detections": det["detections"], "note": det["note"]}
+
+
+@router.get("/model-info", dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_model_info():
+    """What the detection model is, what it was trained on, and how it scored on people it had never seen."""
+    return fall_model.model_info()
+
+
+def user_can_access_room(user, room_id: Optional[str], session: Session) -> bool:
+    scopes = get_user_scopes(user)
+    if scopes["is_system_admin"]:
+        return True
+    room = session.get(Room, room_id) if room_id else None
+    flr = session.get(Floor, room.floor_id) if room else None
+    bld = session.get(Building, flr.building_id) if flr else None
+    return bool(bld and (bld.organization_id in scopes["organization_ids"] or bld.id in scopes["building_ids"]
+                         or room.id in scopes["room_ids"]))
 
 DETERMINISTIC_PROFILES = {
     "Empty": {
@@ -368,6 +405,7 @@ def simulate_event(
 @router.get("/history", response_model=List[SensingHistoryOut], dependencies=[Depends(require_roles(STAFF_ROLES))])
 def get_detection_history(
     room_id: Optional[str] = None,
+    source: Optional[str] = Query(default=None, pattern="^(simulated|dataset|live)$"),
     limit: int = Query(default=50, ge=1, le=200),
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
@@ -383,7 +421,14 @@ def get_detection_history(
         ))
     if room_id:
         stmt = stmt.where(SensingEvent.room_id == room_id)
+    if source:
+        stmt = stmt.where(SensingEvent.source == source)
     rows = session.exec(stmt.order_by(SensingEvent.timestamp.desc()).limit(limit)).all()
+    ev_ids = [ev.id for ev, _, _ in rows]
+    labels = {e.event_id: e.recorded_label for e in session.exec(
+        select(ReplayEvaluation).where(ReplayEvaluation.event_id.in_(ev_ids))).all()} if ev_ids else {}
+    macs = {d.id: d.mac_address for d in session.exec(
+        select(SensingDevice).where(SensingDevice.id.in_([ev.device_id for ev, _, _ in rows]))).all()} if rows else {}
     return [
         SensingHistoryOut(
             id=ev.id,
@@ -399,7 +444,14 @@ def get_detection_history(
             signal_level=signal_level(ev.signal_quality),
             rssi=ev.rssi,
             source=ev.source,
-            requires_verification=requires_verification(ev.model_confidence, ev.signal_quality),
+            requires_verification=(act.name == "Possible_Fall") or requires_verification(ev.model_confidence, ev.signal_quality),
+            noise_floor=(ev.extracted_features or {}).get("noise_floor_median"),
+            subcarrier_count=ev.subcarrier_count if ev.source != "simulated" else None,
+            window_packets=(ev.extracted_features or {}).get("window_packets"),
+            fall_score=(ev.extracted_features or {}).get("fall_score"),
+            model=(ev.extracted_features or {}).get("model"),
+            device_mac=macs.get(ev.device_id),
+            recorded_label=labels.get(ev.id),
         )
         for ev, act, rm in rows
     ]
@@ -410,48 +462,65 @@ def get_device_csi_telemetry(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
 ):
+    """What this device has REALLY sent. Nothing here is generated: a device that has sent no packets reports none.
+
+    The mode is derived from the registered provenance of the device: DEMO, DATASET REPLAY or LIVE HARDWARE."""
     device = session.get(SensingDevice, device_id)
-    if not device:
-        raise HTTPException(status_code=404, detail="Device not found.")
+    if not device or not user_can_access_room(current_user, device.room_id, session):
+        raise HTTPException(status_code=404, detail="Device not found.")  # same answer for missing and for not yours
 
-    latest_event = session.exec(
-        select(SensingEvent).where(SensingEvent.device_id == device_id).order_by(SensingEvent.timestamp.desc())
-    ).first()
-
+    source = device.allowed_source or "live"
+    mode = {"simulated": "DEMO", "dataset": "DATASET REPLAY", "live": "LIVE HARDWARE"}.get(source, source.upper())
     room = session.get(Room, device.room_id) if device.room_id else None
-    cal = session.exec(select(RoomCalibration).where(RoomCalibration.room_id == device.room_id)).first() if room else None
+    total = session.exec(select(func.count()).select_from(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id)).one()
+    recent = session.exec(
+        select(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id).order_by(RawCsiTelemetry.id.desc()).limit(200)
+    ).all()
+    last_event = session.exec(
+        select(SensingEvent).where(SensingEvent.device_id == device_id, SensingEvent.event_type == "DetectionWindow")
+        .order_by(SensingEvent.id.desc())
+    ).first()
+    act = session.get(ActivityType, last_event.inferred_activity_id) if last_event else None
 
-    # Deterministic subcarrier spectrum generation for visualization (RuView reference: 56 subcarriers)
-    subcarriers_data = []
-    base_amp = 1.0 if not latest_event else (1.4 if latest_event.extracted_features.get("doppler_shift_hz", 0) > 1.0 else 0.8)
-    for i in range(56):
-        # Deterministic wave shape
-        amp = round(base_amp + 0.15 * ((i % 7) - 3) / 3.0, 3)
-        phase = round(-3.14 + (6.28 * i / 55), 2)
-        subcarriers_data.append({"subcarrier_index": i, "amplitude": amp, "phase_rad": phase})
-
-    signal_quality = latest_event.signal_quality if (latest_event and latest_event.signal_quality) else 94
-    recommendation = "Normal operating parameters." if signal_quality >= 75 else "SIGNAL QUALITY LOW. Check sensor placement or interference."
-
-    return {
-        "device_id": device.id,
-        "mac_address": device.mac_address,
-        "room_name": room.name if room else "Unassigned",
-        "signal_quality_pct": signal_quality,
-        "subcarrier_count": 56,
-        "rssi_dbm": latest_event.rssi if latest_event else -47,
-        "baseline_calibration": {
-            "status": cal.baseline_status if cal else "VALID",
-            "rf_similarity_pct": cal.rf_similarity_pct if cal else 96.0,
-            "environment_status": cal.rf_environment_status if cal else "NORMAL",
-            "captured_at": cal.baseline_captured_at.strftime("%H:%M:%S") if cal else "07:00:00"
-        },
-        "motion_energy": latest_event.extracted_features.get("variance_amplitude", 0.12) if latest_event else 0.12,
-        "doppler_shift_hz": latest_event.extracted_features.get("doppler_shift_hz", 0.0) if latest_event else 0.0,
-        "confidence_pct": round((latest_event.model_confidence if latest_event else 0.94) * 100, 1),
-        "activity_detected": "Resting" if not latest_event else session.get(ActivityType, latest_event.inferred_activity_id).name,
-        "recommendation": recommendation,
-        "spectrum": subcarriers_data,
-        "note": "CSI sensing telemetry generated via deterministic OFDM RF simulation model."
+    out: Dict[str, Any] = {
+        "device_id": device.id, "mac_address": device.mac_address, "room_name": room.name if room else None,
+        "mode": mode, "provenance": source, "device_status": device.device_status,
+        "last_seen_at": device.last_seen_at.isoformat() if device.last_seen_at else None,
+        "packets_total": int(total), "has_data": bool(recent),
+        "data_statement": {
+            "DEMO": "Demonstration data. No CSI packets come from this device.",
+            "DATASET REPLAY": "Recorded CSI replayed through the ingest pipeline. This is not current sensing.",
+            "LIVE HARDWARE": "Packets received from this authenticated device.",
+        }.get(mode),
     }
-
+    if recent:
+        last = recent[0]
+        rssi = sorted(r.rssi for r in recent)
+        noise = sorted(r.noise_floor for r in recent if r.noise_floor is not None)
+        arrivals = sorted(r.created_at for r in recent if r.created_at)
+        span = (arrivals[-1] - arrivals[0]).total_seconds() if len(arrivals) > 1 else 0
+        iq = (last.csi_data or {}).get("iq") if isinstance(last.csi_data, dict) else None
+        amplitude = None
+        if isinstance(iq, list) and len(iq) % 2 == 0:
+            amplitude = [round((iq[i] ** 2 + iq[i + 1] ** 2) ** 0.5, 2) for i in range(0, len(iq), 2)]
+        out.update({
+            "last_packet": {
+                "timestamp": last.timestamp.isoformat() if last.timestamp else None,
+                "received_at": last.created_at.isoformat() if last.created_at else None,
+                "sequence_number": last.sequence_number, "rssi_dbm": last.rssi, "noise_floor_dbm": last.noise_floor,
+                "subcarrier_count": last.subcarrier_count, "channel": last.channel, "bandwidth_mhz": last.bandwidth_mhz,
+            },
+            "recent_window": {
+                "packets": len(recent),
+                "rssi_median_dbm": float(rssi[len(rssi) // 2]),
+                "noise_floor_median_dbm": float(noise[len(noise) // 2]) if noise else None,
+                "arrival_rate_hz": round((len(arrivals) - 1) / span, 1) if span > 0 else None,
+            },
+            "amplitude_last_packet": amplitude,
+        })
+    out["latest_detection"] = ({
+        "event_id": last_event.id, "activity": act.name if act else None, "confidence": round(last_event.model_confidence, 3),
+        "signal_quality": last_event.signal_quality, "timestamp": last_event.timestamp.isoformat(),
+        "fall_score": (last_event.extracted_features or {}).get("fall_score"), "source": last_event.source,
+    } if last_event else None)
+    return out

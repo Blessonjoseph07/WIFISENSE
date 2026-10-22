@@ -78,6 +78,9 @@ jobs:
           echo "=== RUNNING MEDICAL PROVIDER WORKFLOW TESTS ==="
           python test_doctor_workflow.py
 
+          echo "=== RUNNING DATASET REPLAY & DETECTION TESTS ==="
+          python test_dataset_replay.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js

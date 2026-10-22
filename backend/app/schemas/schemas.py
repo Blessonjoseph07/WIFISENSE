@@ -221,6 +221,9 @@ class CsiIngestOut(BaseModel):
     provenance: str
     device_status: str
     last_seen_at: datetime
+    # Detection windows completed by this request (DEMO devices never produce any).
+    detections: List[Dict[str, Any]] = Field(default_factory=list)
+    detection_note: Optional[str] = None
 
 class DeviceCredentialCreatedOut(BaseModel):
     device_id: str
@@ -322,9 +325,12 @@ class AlertOut(BaseModel):
     def _derive_levels(self):
         self.confidence_level = confidence_level(self.confidence)
         self.signal_level = signal_level(self.signal_quality)
+        # A fall flagged by the detector from recorded or live CSI is only ever a POSSIBLE fall: it always needs a human
+        # decision, whatever its score. (DEMO alerts keep the evidence-based rule so existing demos behave as before.)
+        model_fall = self.event_type == "Fall_Detected" and self.source in ("dataset", "live")
         self.requires_verification = (
             self.verification_status == "UNVERIFIED"
-            and requires_verification(self.confidence, self.signal_quality)
+            and (model_fall or requires_verification(self.confidence, self.signal_quality))
         )
         return self
 
@@ -351,6 +357,15 @@ class SensingHistoryOut(BaseModel):
     rssi: int
     source: str
     requires_verification: bool
+    # detection-window details (None for DEMO events)
+    noise_floor: Optional[float] = None
+    subcarrier_count: Optional[int] = None
+    window_packets: Optional[int] = None
+    fall_score: Optional[float] = None
+    model: Optional[str] = None
+    device_mac: Optional[str] = None
+    # ground truth entered by an administrator for DATASET REPLAY windows only
+    recorded_label: Optional[str] = None
 
 class AlertResolve(BaseModel):
     resolution_notes: str
@@ -845,3 +860,14 @@ class DoctorPrescriptionCreate(BaseModel):
     frequency: str = Field(..., min_length=1, max_length=80)
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+
+
+# ============================================================================
+# DATASET REPLAY EVALUATION
+# ============================================================================
+
+class ReplayEvaluationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_id: int
+    recorded_label: str = Field(..., min_length=1, max_length=40)
+    dataset_name: str = Field(..., min_length=1, max_length=80)

@@ -217,7 +217,7 @@ export default function DoctorPortalView({ authToken, API_BASE }) {
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     <SourceBadge source={a.source} />
-                    <ConfidenceBadge level={a.confidence_level} confidence={a.confidence} />
+                    <ConfidenceBadge level={a.confidence_level} confidence={a.confidence} source={a.source} />
                     <VerificationChip alert={a} />
                   </div>
                 </div>
@@ -410,7 +410,7 @@ export default function DoctorPortalView({ authToken, API_BASE }) {
                         <div className="text-xs text-slate-500">{fmt(a.created_at)} · {a.status}</div>
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           <SourceBadge source={a.source} />
-                          <ConfidenceBadge level={a.confidence_level} confidence={a.confidence} />
+                          <ConfidenceBadge level={a.confidence_level} confidence={a.confidence} source={a.source} />
                           <VerificationChip alert={a} />
                         </div>
                       </div>
