@@ -14,7 +14,7 @@ export default function CentralMonitoringView({
   return (
     <div className="space-y-6">
       {/* Central Monitoring Dashboard Title Row */}
-      <div className="mb-stack-lg flex items-end justify-between">
+      <div className="mb-stack-lg flex flex-wrap items-end justify-between gap-3">
         <div className="text-left">
           <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white tracking-tight">
             Central Monitoring
@@ -147,16 +147,26 @@ export default function CentralMonitoringView({
                         )}
                       </td>
                       <td className="p-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium">
-                          <span className="material-symbols-outlined text-[16px] text-teal-600 dark:text-teal-400">
+                        <div
+                          className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium max-w-[11rem]"
+                          title={devices.find((d) => d.room_id === rm.room_id)?.firmware_version || "ESP-Node"}
+                        >
+                          <span className="material-symbols-outlined text-[16px] text-teal-600 dark:text-teal-400 shrink-0">
                             wifi
                           </span>
-                          {devices.find((d) => d.room_id === rm.room_id)?.firmware_version ||
-                            "ESP-Node"}
+                          <span className="truncate">
+                            {devices.find((d) => d.room_id === rm.room_id)?.firmware_version ||
+                              "ESP-Node"}
+                          </span>
                         </div>
                       </td>
                       <td className="p-4 text-right font-data-mono text-data-mono text-slate-500 dark:text-slate-400">
-                        {rm.is_occupied ? new Date().toLocaleTimeString() + ".112" : "-"}
+                        {(() => {
+                          const seen = devices.find((d) => d.room_id === rm.room_id)?.last_seen_at;
+                          if (!seen) return <span className="italic text-xs">No live packet</span>;
+                          const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(seen) ? seen : `${seen}Z`;
+                          return new Date(iso).toLocaleTimeString();
+                        })()}
                       </td>
                     </tr>
                   );
