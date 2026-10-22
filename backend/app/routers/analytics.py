@@ -6,7 +6,7 @@ from app.models.entities import Room, Floor, Building, Organization, SensingEven
 from app.schemas.schemas import OccupancySummaryOut, AlertSummaryOut
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
-STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
+STAFF_ROLES = ["system_admin", "facility_manager", "caregiver", "corporate_staff"]
 
 @router.get("/occupancy-summary", response_model=OccupancySummaryOut, dependencies=[Depends(require_roles(STAFF_ROLES))])
 def get_occupancy_summary(

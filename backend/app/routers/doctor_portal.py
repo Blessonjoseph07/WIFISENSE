@@ -35,8 +35,8 @@ from app.schemas.schemas import (
 
 router = APIRouter(prefix="/medical", tags=["Medical Provider Workflow"])
 
-ORG_REVIEW_ROLES = ["system_admin", "organization_admin", "facility_manager"]
-STAFF_READ_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver"]
+ORG_REVIEW_ROLES = ["system_admin", "facility_manager"]
+STAFF_READ_ROLES = ["system_admin", "facility_manager", "caregiver"]
 
 
 # ----------------------------------------------------------------------------

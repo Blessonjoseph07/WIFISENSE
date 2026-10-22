@@ -21,7 +21,7 @@ export default function AlertsView({
     appContext === "ELDER_CARE" &&
     !isSystemAdmin &&
     role !== "system_admin" &&
-    (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
+    (role === "facility_manager" || role === "caregiver");
 
   const [contextFilter, setContextFilter] = useState("ALL"); // "ALL" | "ELDER_CARE" | "CORPORATE"
   const [selectedDetail, setSelectedDetail] = useState(null);

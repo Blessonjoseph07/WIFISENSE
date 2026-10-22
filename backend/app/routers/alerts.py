@@ -11,8 +11,8 @@ from app.core.confidence import confidence_level, signal_level
 
 router = APIRouter(prefix="/alerts", tags=["Alert Engine"])
 
-STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
-CARE_RESPONDER_ROLES = ["organization_admin", "facility_manager", "caregiver"]
+STAFF_ROLES = ["system_admin", "facility_manager", "caregiver", "corporate_staff"]
+CARE_RESPONDER_ROLES = ["facility_manager", "caregiver"]
 
 def get_scoped_alert_query(scopes):
     stmt = select(Alert)
@@ -108,7 +108,7 @@ def list_active_alerts(
 # EMERGENCY FALL PROTOCOL DYNAMIC DATA REFRESH (PHASE 5 & 5A)
 # ============================================================================
 
-@router.get("/emergency-active", dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "caregiver"]))])
+@router.get("/emergency-active", dependencies=[Depends(require_roles(["system_admin", "facility_manager", "caregiver"]))])
 def get_active_fall_emergency(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)

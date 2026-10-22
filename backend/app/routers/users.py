@@ -125,7 +125,7 @@ from app.models.entities import UserRole, Role, Organization
 from app.schemas.schemas import PersonnelOut
 from app.routers.auth import require_roles
 
-@router.get("/personnel", response_model=List[PersonnelOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin"]))])
+@router.get("/personnel", response_model=List[PersonnelOut], dependencies=[Depends(require_roles(["system_admin"]))])
 def get_active_personnel(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
@@ -152,7 +152,7 @@ def get_active_personnel(
         elif role_name == "caregiver":
             scope_description = f"{org.name if org else 'Facility'} - Patient Ward"
             
-        permissions = ["View", "Edit"] if role_name in ["system_admin", "organization_admin"] else ["View"]
+        permissions = ["View", "Edit"] if role_name in ["system_admin", "facility_manager"] else ["View"]
         
         results.append(PersonnelOut(
             id=u.id,

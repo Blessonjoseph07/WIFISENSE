@@ -557,10 +557,10 @@ def test_analytics_empty_organization_unfabricated_data():
         session.add(test_user)
         session.commit()
 
-        # Assign organization_admin role scoped to empty_org
+        # Assign facility_manager role scoped to empty_org
         ur = UserRole(
             user_id=test_user_id,
-            role_id=2,  # organization_admin
+            role_id=3,  # facility_manager
             organization_id=empty_org_id
         )
         session.add(ur)
