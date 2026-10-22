@@ -1395,19 +1395,6 @@ export default function App() {
                   </div>
                 </div>
                 <div className="text-left">
-                  <label className="block font-label-caps text-label-caps text-slate-500 dark:text-slate-400 mb-1">Role Type</label>
-                  <select
-                    className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none font-medium"
-                    value={regRole}
-                    onChange={(e) => setRegRole(e.target.value)}
-                  >
-                    <option value="caregiver">Caregiver (Elder-Care Home)</option>
-                    <option value="family_member">Family Member (Elder-Care)</option>
-                    <option value="facility_manager">Facility Manager</option>
-                    <option value="corporate_staff">Corporate Staff (Smart Workplace)</option>
-                  </select>
-                </div>
-                <div className="text-left">
                   <label className="block font-label-caps text-label-caps text-slate-500 dark:text-slate-400 mb-1">Password</label>
                   <input
                     type="password"
