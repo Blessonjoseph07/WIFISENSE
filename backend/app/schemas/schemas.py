@@ -15,7 +15,7 @@ class UserRegister(BaseModel):
 
 class RoleAssignment(BaseModel):
     user_id: str
-    role: str = Field(..., description="Role must be one of: system_admin, organization_admin, facility_manager, caregiver, corporate_staff, family_member")
+    role: str = Field(..., description="Role must be one of: system_admin, facility_manager, caregiver, corporate_staff, family_member")
     organization_id: Optional[str] = None
     building_id: Optional[str] = None
     room_id: Optional[str] = None

@@ -2,15 +2,16 @@
 WIFISENSE SHARING POLICY FRONTEND CONFIGURATION & API INTEGRATION TEST SUITE
 ===========================================================================
 This test suite verifies:
-1. Frontend navigation configuration and view authorization matrix in navConfig.js.
+1. Frontend navigation configuration and view authorization matrix in navConfig.js
+   (organization_admin removed, facility_manager has sharing_policies and orgadmin).
 2. API integration contract for the SharingPolicy UI flow:
-   - Org Admin view & update flow matching UI form payloads
-   - Facility Manager read-only view flow (GET allowed, PUT blocked with 403)
-   - Unauthorized roles (Caregiver, Corporate Staff) boundary gating
+   - Facility Manager view & update flow matching UI form payloads
+   - Tenant isolation: Facility Manager of Org A CANNOT edit Org B's sharing policy (403)
+   - Facility Manager CANNOT list personnel (403)
+   - Facility Manager of Org A CANNOT see Org B's audit logs (empty list)
+   - Phase 1 restriction: organization_admin CANNOT be assigned via /auth/assign-role (400)
+   - Unauthorized roles (Caregiver, Corporate Staff) boundary gating (403)
 3. Structured audit logging on policy update.
-
-NOTE: This is an automated frontend configuration + API integration test suite.
-It does NOT execute real browser DOM rendering or headless browser interactions.
 """
 
 import os
@@ -20,7 +21,7 @@ import urllib.error
 from pathlib import Path
 from sqlmodel import Session, select
 from app.core.database import engine
-from app.models.entities import AuditLog, SharingPolicy
+from app.models.entities import AuditLog, SharingPolicy, Organization, User
 
 # Environment-configurable endpoints and paths for cross-environment portability
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -29,11 +30,17 @@ NAV_CONFIG_PATH = REPO_ROOT / "frontend" / "src" / "navigation" / "navConfig.js"
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 
 # Test credentials with configurable fallbacks to seeded development users
-ORG_ADMIN_EMAIL = os.getenv("TEST_ORG_ADMIN_EMAIL", "anjali@wifisense.com")
-ORG_ADMIN_PASSWORD = os.getenv("TEST_ORG_ADMIN_PASSWORD", "anjalipassword")
+FM_ADMIN_EMAIL = os.getenv("TEST_FM_ADMIN_EMAIL", "anjali@wifisense.com")
+FM_ADMIN_PASSWORD = os.getenv("TEST_FM_ADMIN_PASSWORD", "anjalipassword")
 
 FM_EMAIL = os.getenv("TEST_FM_EMAIL", "elizabeth@wifisense.com")
 FM_PASSWORD = os.getenv("TEST_FM_PASSWORD", "elizabethpassword")
+
+CORP_FM_EMAIL = os.getenv("TEST_CORP_FM_EMAIL", "kavitha@wifisense.com")
+CORP_FM_PASSWORD = os.getenv("TEST_CORP_FM_PASSWORD", "kavithapassword")
+
+SYSADMIN_EMAIL = os.getenv("TEST_SYSADMIN_EMAIL", "blesson@wifisense.com")
+SYSADMIN_PASSWORD = os.getenv("TEST_SYSADMIN_PASSWORD", "blessonpassword")
 
 CAREGIVER_EMAIL = os.getenv("TEST_CAREGIVER_EMAIL", "abhinanth@wifisense.com")
 CAREGIVER_PASSWORD = os.getenv("TEST_CAREGIVER_PASSWORD", "abhinanthpassword")
@@ -67,7 +74,10 @@ def login(email, password):
 
 def test_frontend_nav_matrix_rules():
     """
-    Validates the navigation configuration matrix rules in frontend/src/navigation/navConfig.js.
+    Validates navigation configuration rules in frontend/src/navigation/navConfig.js:
+    - organization_admin is completely removed from BACKEND_ROLES and MATRIX.
+    - facility_manager has allowedViews containing sharing_policies and orgadmin.
+    - caregiver does not have sharing_policies or orgadmin.
     """
     print("\n--- 1. Testing Frontend Nav Configuration & Gating Matrix ---")
     
@@ -81,46 +91,49 @@ def test_frontend_nav_matrix_rules():
     import re
     care_matrix = content[content.find("[APP_CONTEXTS.CARE]: {"):]
     
-    # Verify Caregiver allowedViews does NOT contain orgadmin or sharing_policies
+    # 1. Verify organization_admin is NOT in BACKEND_ROLES
+    backend_roles_match = re.search(r'export const BACKEND_ROLES = \[(.*?)\];', content, re.DOTALL)
+    assert backend_roles_match is not None, "BACKEND_ROLES array not found"
+    backend_roles_text = backend_roles_match.group(1)
+    assert '"organization_admin"' not in backend_roles_text, "organization_admin must not be in BACKEND_ROLES for Phase 1!"
+
+    # 2. Verify organization_admin is NOT in care_matrix or space_matrix
+    assert "organization_admin:" not in content, "organization_admin must not be mapped in navigation matrix!"
+
+    # 3. Verify Caregiver allowedViews does NOT contain orgadmin or sharing_policies
     caregiver_match = re.search(r'caregiver:\s*\{[^}]*allowedViews:\s*(\[[^\]]+\])', care_matrix)
     assert caregiver_match is not None, "caregiver block not found in matrix"
     caregiver_views = caregiver_match.group(1)
     assert "sharing_policies" not in caregiver_views, "Caregiver incorrectly has sharing_policies view!"
     assert "orgadmin" not in caregiver_views, "Caregiver incorrectly has orgadmin view!"
 
-    # Verify Organization Admin allowedViews contains both
-    org_admin_match = re.search(r'organization_admin:\s*\{[^}]*allowedViews:\s*(\[[^\]]+\])', care_matrix)
-    assert org_admin_match is not None, "organization_admin block not found in matrix"
-    org_admin_views = org_admin_match.group(1)
-    assert "sharing_policies" in org_admin_views, "Org admin missing sharing_policies view!"
-    assert "orgadmin" in org_admin_views, "Org admin missing orgadmin view!"
-
-    # Verify Facility Manager allowedViews contains sharing_policies for read-only viewing
+    # 4. Verify Facility Manager allowedViews contains sharing_policies and orgadmin
     fm_match = re.search(r'facility_manager:\s*\{[^}]*allowedViews:\s*(\[[^\]]+\])', care_matrix)
     assert fm_match is not None, "facility_manager block not found in matrix"
     fm_views = fm_match.group(1)
     assert "sharing_policies" in fm_views, "Facility manager missing sharing_policies view!"
+    assert "orgadmin" in fm_views, "Facility manager missing orgadmin view!"
 
-    print("[PASS] Navigation matrix verified: Org Admin & FM have view access; Caregiver is strictly blocked.")
+    print("[PASS] Navigation matrix verified: FM has view access; Caregiver is strictly blocked; organization_admin is absent.")
 
-def test_org_admin_view_and_update_flow():
+def test_facility_manager_view_and_update_flow():
     """
-    Tests an Organization Admin loading and updating their facility's SharingPolicy via the UI-flow contract.
+    Tests a Facility Manager loading and updating their facility's SharingPolicy via the UI-flow contract.
     """
-    print("\n--- 2. Testing Org Admin View & Update UI Flow ---")
+    print("\n--- 2. Testing Facility Manager View & Update UI Flow ---")
     
-    admin = login(ORG_ADMIN_EMAIL, ORG_ADMIN_PASSWORD)
-    assert admin["role"] == "organization_admin"
+    admin = login(FM_ADMIN_EMAIL, FM_ADMIN_PASSWORD)
+    assert admin["role"] == "facility_manager", f"Expected facility_manager role, got {admin['role']}"
     assert admin["application_context"] == "ELDER_CARE"
     token = admin["access_token"]
     
     # Step 1: View - GET /sharing-policies
     status, policies = api_call("/sharing-policies", method="GET", token=token)
     assert status == 200, f"Expected 200, got {status}: {policies}"
-    assert len(policies) > 0, "No sharing policies returned for Org Admin."
+    assert len(policies) > 0, "No sharing policies returned for Facility Manager."
     policy = policies[0]
     policy_id = policy["id"]
-    print(f"[PASS] Org Admin successfully viewed {len(policies)} policy(ies). Target policy ID: {policy_id}")
+    print(f"[PASS] Facility Manager successfully viewed {len(policies)} policy(ies). Target policy ID: {policy_id}")
     
     orig_presence = policy["share_presence"]
     orig_threshold = policy["share_alert_severity_threshold"]
@@ -142,7 +155,7 @@ def test_org_admin_view_and_update_flow():
     assert status == 200, f"Expected 200, got {status}: {update_res}"
     assert update_res["share_presence"] == new_presence
     assert update_res["share_alert_severity_threshold"] == new_threshold
-    print("[PASS] Org Admin successfully updated policy via UI payload.")
+    print("[PASS] Facility Manager successfully updated policy via UI payload.")
     
     # Step 3: Verify Persistence via subsequent GET
     status, refreshed_policies = api_call("/sharing-policies", method="GET", token=token)
@@ -162,7 +175,7 @@ def test_org_admin_view_and_update_flow():
             .order_by(AuditLog.created_at.desc())
         ).first()
         assert audit is not None, "Audit log not recorded for policy update."
-        assert audit.who_email == ORG_ADMIN_EMAIL
+        assert audit.who_email == FM_ADMIN_EMAIL
         assert audit.result == "SUCCESS"
         print(f"[PASS] Audit log verified: {audit.what_action} by {audit.who_email}.")
 
@@ -178,32 +191,67 @@ def test_org_admin_view_and_update_flow():
     )
     print("[PASS] Restored original policy values.")
 
-def test_facility_manager_view_only_flow():
+def test_cross_organization_tenant_isolation_and_gating():
     """
-    Tests Facility Manager: Can view policies (200), but cannot modify (403).
+    Tests tenant isolation & Phase 1 negative boundaries:
+    1. A facility manager of Org A CANNOT edit Org B's sharing policy (403 Forbidden).
+    2. A facility manager of Org A CANNOT see Org B's audit logs (empty list).
+    3. A facility manager CANNOT list personnel via GET /users/personnel (403 Forbidden).
+    4. Phase 1 block: organization_admin CANNOT be assigned via POST /auth/assign-role (400 Bad Request).
     """
-    print("\n--- 3. Testing Facility Manager Read-Only UI Flow ---")
+    print("\n--- 3. Testing Cross-Organization Tenant Isolation & Phase 1 Gating ---")
     
-    fm = login(FM_EMAIL, FM_PASSWORD)
-    assert fm["role"] == "facility_manager"
-    token = fm["access_token"]
-    
-    # Step 1: View - GET /sharing-policies succeeds
-    status, policies = api_call("/sharing-policies", method="GET", token=token)
-    assert status == 200, f"Facility Manager should be able to view policies, got {status}"
-    assert len(policies) > 0
-    policy_id = policies[0]["id"]
-    print(f"[PASS] Facility Manager successfully viewed {len(policies)} policy(ies).")
-    
-    # Step 2: Attempt Edit - PUT /sharing-policies/{id} must be blocked with 403 Forbidden
+    # Get elder-care sharing policy ID and corporate org ID
+    with Session(engine) as session:
+        care_policy = session.exec(select(SharingPolicy)).first()
+        assert care_policy is not None, "No sharing policy found"
+        policy_id = care_policy.id
+        corp_org = session.exec(select(Organization).where(Organization.type == "CORPORATE")).first()
+        assert corp_org is not None, "Corporate organization not found"
+        corp_org_id = corp_org.id
+
+    # 1. Facility Manager of Corporate Org attempting to update Elder Care sharing policy -> 403 Forbidden
+    corp_fm = login(CORP_FM_EMAIL, CORP_FM_PASSWORD)
+    assert corp_fm["role"] == "facility_manager"
     status, res = api_call(
         f"/sharing-policies/{policy_id}",
         method="PUT",
-        token=token,
+        token=corp_fm["access_token"],
         data={"share_presence": False}
     )
-    assert status == 403, f"Facility Manager should be blocked from editing policy, got {status}: {res}"
-    print("[PASS] Facility Manager edit attempt correctly rejected with HTTP 403 Forbidden.")
+    assert status == 403, f"Cross-org FM should be blocked from editing policy, got {status}: {res}"
+    print("[PASS] Cross-organization sharing policy edit rejected with HTTP 403 Forbidden.")
+
+    # 2. Facility Manager of Org A querying audit logs for Org B -> returns empty list
+    care_fm = login(FM_ADMIN_EMAIL, FM_ADMIN_PASSWORD)
+    status, logs = api_call(f"/auth/audit-logs?organization_id={corp_org_id}", token=care_fm["access_token"])
+    assert status == 200, f"Expected 200 from audit logs, got {status}"
+    assert logs == [], f"Elder-care FM must receive empty list when querying corporate org logs, got: {logs}"
+    print("[PASS] Cross-organization audit log inquiry safely returns empty list.")
+
+    # 3. Facility Manager attempting to access GET /users/personnel -> 403 Forbidden (system_admin only)
+    status, res = api_call("/users/personnel", token=care_fm["access_token"])
+    assert status == 403, f"Facility Manager must be forbidden from listing personnel, got {status}: {res}"
+    print("[PASS] Facility Manager rejected from GET /users/personnel with HTTP 403 Forbidden.")
+
+    # 4. Attempting to assign organization_admin role via POST /auth/assign-role -> 400 Bad Request
+    sysadmin = login(SYSADMIN_EMAIL, SYSADMIN_PASSWORD)
+    with Session(engine) as session:
+        test_user = session.exec(select(User).where(User.email == CAREGIVER_EMAIL)).first()
+        target_user_id = test_user.id
+    
+    status, res = api_call(
+        "/auth/assign-role",
+        method="POST",
+        token=sysadmin["access_token"],
+        data={
+            "user_id": target_user_id,
+            "role": "organization_admin"
+        }
+    )
+    assert status == 400, f"Assigning organization_admin should fail with 400, got {status}: {res}"
+    assert "reserved for Phase 2" in str(res), f"Expected clear Phase 2 reservation message, got: {res}"
+    print(f"[PASS] Attempting to assign organization_admin rejected with HTTP 400: {res['detail']}.")
 
 def test_unauthorized_roles_blocked_flow():
     """
@@ -261,8 +309,8 @@ if __name__ == "__main__":
     print("  WIFISENSE SHARING POLICY FRONTEND CONFIG & API INTEGRATION TEST SUITE   ")
     print("==========================================================================")
     test_frontend_nav_matrix_rules()
-    test_org_admin_view_and_update_flow()
-    test_facility_manager_view_only_flow()
+    test_facility_manager_view_and_update_flow()
+    test_cross_organization_tenant_isolation_and_gating()
     test_unauthorized_roles_blocked_flow()
     test_frontend_admin_navigation_routing_separation()
     print("\n==========================================================================")

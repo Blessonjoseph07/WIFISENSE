@@ -122,7 +122,7 @@ export default function SharingPolicyManager({
             info
           </span>
           <div className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-            <strong>View-Only Mode:</strong> Facility Managers can audit and review data sharing policies, but cannot modify rules or thresholds. Modifying sharing policies requires an Organization Administrator or System Administrator account.
+            <strong>View-Only Mode:</strong> You are viewing data sharing policies in read-only mode. Modifying sharing policies requires a Facility Manager or System Administrator account.
           </div>
         </div>
       )}

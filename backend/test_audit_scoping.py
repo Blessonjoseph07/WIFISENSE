@@ -131,12 +131,13 @@ def run_tests():
 
     # ---------------------------------------------------------------- 5. who may read the trail at all
     print("\n--- 5. Roles ---")
-    for name, tok in (("facility manager", corp_fm), ("doctor", doctor)):
+    caregiver = login("abhinanth@wifisense.com", "abhinanthpassword")
+    for name, tok in (("caregiver", caregiver), ("doctor", doctor)):
         status, res = api_call("/auth/audit-logs", token=tok)
         assert status == 403, f"{name} read the audit trail: {status}"
     status, res = api_call("/auth/audit-logs")
     assert status == 401
-    print("[PASS] Facility managers, doctors and anonymous callers are refused.")
+    print("[PASS] Caregivers, doctors and anonymous callers are refused.")
 
     # ---------------------------------------------------------------- 6. attribution rules (in-process)
     print("\n--- 6. Attribution rules ---")

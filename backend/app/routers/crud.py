@@ -36,7 +36,7 @@ from app.schemas.schemas import (
 )
 
 router = APIRouter(tags=["Hierarchical Asset Management"])
-STAFF_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver", "corporate_staff"]
+STAFF_ROLES = ["system_admin", "facility_manager", "caregiver", "corporate_staff"]
 
 # ============================================================================
 # 1. ORGANIZATIONS
@@ -81,7 +81,7 @@ def list_organizations(
 # 2. BUILDINGS
 # ============================================================================
 
-@router.post("/buildings", response_model=BuildingOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin"]))])
+@router.post("/buildings", response_model=BuildingOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin"]))])
 def create_building(
     bld: BuildingCreate,
     session: Session = Depends(get_session),
@@ -119,7 +119,7 @@ def list_buildings(
 # 3. FLOORS
 # ============================================================================
 
-@router.post("/floors", response_model=FloorOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/floors", response_model=FloorOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def create_floor(
     flr: FloorCreate,
     session: Session = Depends(get_session),
@@ -157,7 +157,7 @@ def list_floors(
 # 4. ROOMS
 # ============================================================================
 
-@router.post("/rooms", response_model=RoomOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/rooms", response_model=RoomOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def create_room(
     rm: RoomCreate,
     session: Session = Depends(get_session),
@@ -204,7 +204,7 @@ def list_rooms(
 # 5. SENSING DEVICES
 # ============================================================================
 
-@router.post("/devices", response_model=SensingDeviceOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/devices", response_model=SensingDeviceOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def create_device(
     dev: SensingDeviceCreate,
     session: Session = Depends(get_session),
@@ -323,7 +323,7 @@ def list_devices(
 # 6. RESIDENTS
 # ============================================================================
 
-@router.post("/residents", response_model=ResidentOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/residents", response_model=ResidentOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def create_resident(
     res: ResidentCreate,
     session: Session = Depends(get_session),
@@ -369,7 +369,7 @@ def list_residents(
         )
     return session.exec(stmt).all()
 
-@router.patch("/devices/{device_id}/toggle", response_model=SensingDeviceOut, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "corporate_staff"]))])
+@router.patch("/devices/{device_id}/toggle", response_model=SensingDeviceOut, dependencies=[Depends(require_roles(["system_admin", "facility_manager", "corporate_staff"]))])
 def toggle_device_status(
     device_id: str,
     session: Session = Depends(get_session),
@@ -415,7 +415,7 @@ def toggle_device_status(
         room_name=rm.name if rm else "Unassigned Room"
     )
 
-@router.post("/devices/{device_id}/reset-token", dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/devices/{device_id}/reset-token", dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def reset_device_token(
     device_id: str,
     session: Session = Depends(get_session),
@@ -473,7 +473,7 @@ def reset_device_token(
     }
 
 
-@router.post("/devices/{device_id}/report-fault", response_model=FaultReportOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "corporate_staff", "caregiver"]))])
+@router.post("/devices/{device_id}/report-fault", response_model=FaultReportOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager", "corporate_staff", "caregiver"]))])
 def report_node_fault(
     device_id: str,
     payload: FaultReportCreate,
@@ -527,7 +527,7 @@ def report_node_fault(
         updated_at=report.updated_at
     )
 
-@router.get("/devices/fault-tracer", response_model=List[FaultReportOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "corporate_staff", "caregiver"]))])
+@router.get("/devices/fault-tracer", response_model=List[FaultReportOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager", "corporate_staff", "caregiver"]))])
 def list_fault_reports(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
@@ -571,7 +571,7 @@ def list_fault_reports(
         ))
     return results
 
-@router.patch("/devices/fault-tracer/{report_id}/service", response_model=FaultReportOut, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.patch("/devices/fault-tracer/{report_id}/service", response_model=FaultReportOut, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def service_node_fault(
     report_id: str,
     payload: FaultReportServiceUpdate,
@@ -691,7 +691,7 @@ def get_resident_health(
 # 7. SHARING POLICIES (ELDER_CARE ONLY)
 # ============================================================================
 
-@router.get("/sharing-policies", response_model=List[SharingPolicyOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.get("/sharing-policies", response_model=List[SharingPolicyOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def list_sharing_policies(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
@@ -715,7 +715,7 @@ def list_sharing_policies(
         stmt = select(SharingPolicy)
     return session.exec(stmt).all()
 
-@router.put("/sharing-policies/{policy_id}", response_model=SharingPolicyOut, dependencies=[Depends(require_roles(["system_admin", "organization_admin"]))])
+@router.put("/sharing-policies/{policy_id}", response_model=SharingPolicyOut, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def update_sharing_policy(
     policy_id: str,
     update_data: SharingPolicyUpdate,
@@ -789,7 +789,7 @@ def verify_elder_care_access(current_user, resident_id: str, session: Session):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Resident outside your organization scope.")
     return resident
 
-@router.get("/residents/{resident_id}/profile-details", response_model=ResidentDetailOut, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "caregiver"]))])
+@router.get("/residents/{resident_id}/profile-details", response_model=ResidentDetailOut, dependencies=[Depends(require_roles(["system_admin", "facility_manager", "caregiver"]))])
 def get_resident_profile_details(
     resident_id: str,
     session: Session = Depends(get_session),
@@ -903,7 +903,7 @@ def get_resident_profile_details(
         recent_activity_history=recent_history
     )
 
-@router.get("/residents/{resident_id}/emergency-contacts", response_model=List[EmergencyContactOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "caregiver"]))])
+@router.get("/residents/{resident_id}/emergency-contacts", response_model=List[EmergencyContactOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager", "caregiver"]))])
 def list_resident_emergency_contacts(
     resident_id: str,
     session: Session = Depends(get_session),
@@ -914,7 +914,7 @@ def list_resident_emergency_contacts(
         select(EmergencyContact).where(EmergencyContact.resident_id == resident_id).order_by(EmergencyContact.priority)
     ).all()
 
-@router.post("/residents/{resident_id}/emergency-contacts", response_model=EmergencyContactOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/residents/{resident_id}/emergency-contacts", response_model=EmergencyContactOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def add_resident_emergency_contact(
     resident_id: str,
     contact_in: EmergencyContactCreate,
@@ -936,7 +936,7 @@ def add_resident_emergency_contact(
     session.refresh(new_contact)
     return new_contact
 
-@router.delete("/emergency-contacts/{contact_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.delete("/emergency-contacts/{contact_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def delete_emergency_contact(
     contact_id: str,
     session: Session = Depends(get_session),
@@ -960,7 +960,7 @@ def delete_emergency_contact(
     session.commit()
     return {"status": "deleted", "id": contact_id}
 
-@router.get("/emergency-contacts/missing", response_model=List[ResidentOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.get("/emergency-contacts/missing", response_model=List[ResidentOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def list_residents_missing_emergency_contacts(
     session: Session = Depends(get_session),
     current_user = Depends(get_current_user)
@@ -979,12 +979,12 @@ def list_residents_missing_emergency_contacts(
     return missing
 
 # Medical sub-entities
-@router.get("/residents/{resident_id}/doctors", response_model=List[DoctorOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "caregiver"]))])
+@router.get("/residents/{resident_id}/doctors", response_model=List[DoctorOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager", "caregiver"]))])
 def list_resident_doctors(resident_id: str, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     return session.exec(select(Doctor).where(Doctor.resident_id == resident_id)).all()
 
-@router.post("/residents/{resident_id}/doctors", response_model=DoctorOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/residents/{resident_id}/doctors", response_model=DoctorOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def add_resident_doctor(resident_id: str, doc_in: DoctorCreate, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     doc = Doctor(
@@ -1000,12 +1000,12 @@ def add_resident_doctor(resident_id: str, doc_in: DoctorCreate, session: Session
     session.refresh(doc)
     return doc
 
-@router.get("/residents/{resident_id}/hospital-visits", response_model=List[HospitalVisitOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "caregiver"]))])
+@router.get("/residents/{resident_id}/hospital-visits", response_model=List[HospitalVisitOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager", "caregiver"]))])
 def list_resident_hospital_visits(resident_id: str, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     return session.exec(select(HospitalVisit).where(HospitalVisit.resident_id == resident_id).order_by(HospitalVisit.visit_date.desc())).all()
 
-@router.post("/residents/{resident_id}/hospital-visits", response_model=HospitalVisitOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/residents/{resident_id}/hospital-visits", response_model=HospitalVisitOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def add_resident_hospital_visit(resident_id: str, visit_in: HospitalVisitCreate, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     visit = HospitalVisit(
@@ -1021,12 +1021,12 @@ def add_resident_hospital_visit(resident_id: str, visit_in: HospitalVisitCreate,
     session.refresh(visit)
     return visit
 
-@router.get("/residents/{resident_id}/lab-reports", response_model=List[LabReportOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "caregiver"]))])
+@router.get("/residents/{resident_id}/lab-reports", response_model=List[LabReportOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager", "caregiver"]))])
 def list_resident_lab_reports(resident_id: str, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     return session.exec(select(LabReport).where(LabReport.resident_id == resident_id).order_by(LabReport.test_date.desc())).all()
 
-@router.post("/residents/{resident_id}/lab-reports", response_model=LabReportOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/residents/{resident_id}/lab-reports", response_model=LabReportOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def add_resident_lab_report(resident_id: str, report_in: LabReportCreate, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     rep = LabReport(
@@ -1042,12 +1042,12 @@ def add_resident_lab_report(resident_id: str, report_in: LabReportCreate, sessio
     session.refresh(rep)
     return rep
 
-@router.get("/residents/{resident_id}/prescriptions", response_model=List[PrescriptionOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager", "caregiver"]))])
+@router.get("/residents/{resident_id}/prescriptions", response_model=List[PrescriptionOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager", "caregiver"]))])
 def list_resident_prescriptions(resident_id: str, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     return session.exec(select(Prescription).where(Prescription.resident_id == resident_id).order_by(Prescription.start_date.desc())).all()
 
-@router.post("/residents/{resident_id}/prescriptions", response_model=PrescriptionOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/residents/{resident_id}/prescriptions", response_model=PrescriptionOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def add_resident_prescription(resident_id: str, rx_in: PrescriptionCreate, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     verify_elder_care_access(current_user, resident_id, session)
     rx = Prescription(
@@ -1111,7 +1111,7 @@ def get_room_calibration(
         subcarrier_profile=cal.subcarrier_profile
     )
 
-@router.post("/rooms/{room_id}/calibration/recalibrate", response_model=RoomCalibrationOut, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/rooms/{room_id}/calibration/recalibrate", response_model=RoomCalibrationOut, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def recalibrate_room_baseline(
     room_id: str,
     session: Session = Depends(get_session),
@@ -1157,7 +1157,7 @@ def recalibrate_room_baseline(
 def list_room_schedules(room_id: str, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     return session.exec(select(RoomSchedule).where(RoomSchedule.room_id == room_id)).all()
 
-@router.post("/rooms/{room_id}/schedules", response_model=RoomScheduleOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "organization_admin", "facility_manager"]))])
+@router.post("/rooms/{room_id}/schedules", response_model=RoomScheduleOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def create_room_schedule(room_id: str, sched_in: RoomScheduleCreate, session: Session = Depends(get_session), current_user = Depends(get_current_user)):
     room = session.get(Room, room_id)
     if not room:

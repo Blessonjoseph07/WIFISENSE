@@ -11,16 +11,19 @@ export default function OrgAdminView({
   onUpdateSharingPolicy = async () => {},
   canEditPolicies = false,
   userRole = "",
+  isSystemAdmin = false,
   initialTab = "organizations",
   isLoading = false
 }) {
-  const [activeTab, setActiveTab] = useState(initialTab || "organizations");
+  const isSysAdmin = Boolean(isSystemAdmin || userRole === "system_admin");
+  const effectiveInitialTab = !isSysAdmin && initialTab === "organizations" ? "policies" : (initialTab || "policies");
+  const [activeTab, setActiveTab] = useState(effectiveInitialTab);
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      setActiveTab(!isSysAdmin && initialTab === "organizations" ? "policies" : initialTab);
     }
-  }, [initialTab]);
+  }, [initialTab, isSysAdmin]);
 
   const pendingRequestsCount = accessRequests.filter((r) => r.status === "pending").length;
 
@@ -30,10 +33,12 @@ export default function OrgAdminView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-            Organization Management & Governance
+            {isSysAdmin ? "Organization Management & Governance" : "Staff & Facility Governance"}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Manage organization tenants, family portal link requests, and elder-care data sharing policies.
+            {isSysAdmin
+              ? "Manage organization tenants, family portal link requests, and elder-care data sharing policies."
+              : "Manage family portal link requests and elder-care data sharing policies for your facility."}
           </p>
         </div>
 
@@ -57,18 +62,20 @@ export default function OrgAdminView({
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("organizations")}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === "organizations"
-                ? "bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-xs font-extrabold"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[16px]">domain</span>
-            Organizations
-          </button>
+          {isSysAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("organizations")}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "organizations"
+                  ? "bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-xs font-extrabold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">domain</span>
+              Organizations
+            </button>
+          )}
 
           <button
             type="button"
@@ -115,8 +122,8 @@ export default function OrgAdminView({
         />
       )}
 
-      {/* 2. Active Organizations Section */}
-      {(activeTab === "organizations" || activeTab === "all") && (
+      {/* 2. Active Organizations Section (System Admin Only) */}
+      {isSysAdmin && (activeTab === "organizations" || activeTab === "all") && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
             <div>
