@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app.core.config import settings
 from app.core.database import init_db, engine
 from app.core.seed import seed_database
 from app.core.bootstrap import bootstrap_system_admin
+from app.core.demo_profile import apply_demo_profile
+from app.models.entities import Organization
 from app.routers import auth, crud, sensing, alerts, analytics, family_portal, users, care_records, doctor_portal, replay, payments, bookings
 
 app = FastAPI(
@@ -43,7 +45,10 @@ def on_startup():
     init_db()
     with Session(engine) as session:
         if settings.SEED_DEMO_DATA:
+            first_run = session.exec(select(Organization)).first() is None
             seed_database(session)
+            if first_run:
+                apply_demo_profile(session)
         bootstrap_system_admin(session)
 
 @app.get("/health", tags=["Health"])
