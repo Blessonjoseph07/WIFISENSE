@@ -48,7 +48,9 @@ def enrich_alerts(alerts: List[Alert], session: Session) -> List[AlertOut]:
     floors_map = {f.id: f for f in session.exec(select(Floor)).all()}
     blds_map = {b.id: b for b in session.exec(select(Building)).all()}
     orgs_map = {o.id: o for o in session.exec(select(Organization)).all()}
-    residents_map = {res.room_id: res for res in session.exec(select(Resident)).all()}
+    residents_by_room = {}
+    for res in session.exec(select(Resident)).all():
+        residents_by_room.setdefault(res.room_id, []).append(f"{res.first_name} {res.last_name}")
     
     out = []
     for alert in alerts:
@@ -59,9 +61,9 @@ def enrich_alerts(alerts: List[Alert], session: Session) -> List[AlertOut]:
         
         resident_name = None
         if org and org.type == "ELDER_CARE" and room:
-            resident = residents_map.get(room.id)
-            if resident:
-                resident_name = f"{resident.first_name} {resident.last_name}"
+            names = residents_by_room.get(room.id)
+            if names:
+                resident_name = ", ".join(names)
                 
         out.append(AlertOut(
             id=alert.id,

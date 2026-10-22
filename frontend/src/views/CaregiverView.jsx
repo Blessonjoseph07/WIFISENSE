@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import ResidentProfileModal from "../components/ResidentProfileModal";
+import { SourceBadge } from "../components/DetectionBadges";
 
 export default function CaregiverView({
   activeFallAlert = null,
@@ -19,7 +20,7 @@ export default function CaregiverView({
   return (
     <div className="space-y-6 text-left">
       {/* Page Header */}
-      <div className="mb-stack-lg flex justify-between items-end">
+      <div className="mb-stack-lg flex flex-wrap justify-between items-end gap-3">
         <div>
           <h2 className="text-headline-lg font-headline-lg text-slate-900 dark:text-white font-bold flex items-center gap-2">
             <span className="material-symbols-outlined text-teal-600 text-3xl">health_and_safety</span>
@@ -37,12 +38,13 @@ export default function CaregiverView({
 
       {/* Critical Alert Banner */}
       {activeFallAlert && (
-        <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg p-4 mb-6 flex items-center justify-between shadow-sm pulse-animation">
-          <div className="flex items-center gap-3">
+        <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg p-4 mb-6 flex flex-wrap items-center justify-between gap-3 shadow-sm pulse-animation">
+          <div className="flex items-center gap-3 min-w-0">
             <span className="material-symbols-outlined fill text-red-500 text-2xl">warning</span>
             <div>
               <h2 className="text-headline-sm font-headline-sm font-bold uppercase text-red-700">
-                POTENTIAL FALL DETECTED - {activeFallAlert.message.split(" ")[0] || "Room"}
+                {activeFallAlert.requires_verification ? "Possible fall - verification required" : "Fall alert"}
+                <span className="ml-2 align-middle"><SourceBadge source={activeFallAlert.source} /></span>
               </h2>
               <p className="text-body-md font-body-md">{activeFallAlert.message}</p>
             </div>
@@ -67,7 +69,7 @@ export default function CaregiverView({
       {/* Dashboard Layout: 12-column Grid */}
       <div className="grid grid-cols-12 gap-gutter">
         {/* Left Column: Active Incidents & Assigned Residents (8 cols on desktop) */}
-        <div className="col-span-12 xl:col-span-8 flex flex-col gap-gutter">
+        <div className="col-span-12 min-w-0 xl:col-span-8 flex flex-col gap-gutter">
           {/* Active Incidents Table */}
           <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
@@ -288,7 +290,7 @@ export default function CaregiverView({
         </div>
 
         {/* Right Column: Alert History Sidebar (4 cols on desktop) */}
-        <aside className="col-span-12 xl:col-span-4 flex flex-col gap-gutter">
+        <aside className="col-span-12 min-w-0 xl:col-span-4 flex flex-col gap-gutter">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
               <h3 className="text-headline-sm font-headline-sm text-slate-900 dark:text-white font-bold flex items-center gap-2">

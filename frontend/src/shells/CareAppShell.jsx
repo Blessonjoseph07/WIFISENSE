@@ -25,6 +25,7 @@ export default function CareAppShell({
   children
 }) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -37,7 +38,10 @@ export default function CareAppShell({
   return (
     <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex transition-all duration-300">
       {/* SideNavbar — WIFISENSE CARE Shell */}
-      <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white dark:bg-slate-900 border-r border-emerald-100 dark:border-slate-800 shadow-sm">
+      {navOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setNavOpen(false)} aria-hidden="true" />
+      )}
+      <nav className={`fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white dark:bg-slate-900 border-r border-emerald-100 dark:border-slate-800 shadow-sm transition-transform duration-200 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         {/* Logo / Header with CARE Branding */}
         <div className="p-4 border-b border-emerald-100 dark:border-slate-800 flex items-center gap-3 bg-gradient-to-r from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/20 dark:to-transparent">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs">
@@ -60,7 +64,7 @@ export default function CareAppShell({
             return (
               <button
                 key={item.id}
-                onClick={() => setCurrentView(item.id)}
+                onClick={() => { setCurrentView(item.id); setNavOpen(false); }}
                 className={`flex items-center justify-between gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all cursor-pointer ${
                   isActive
                     ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 shadow-xs font-extrabold"
@@ -136,9 +140,17 @@ export default function CareAppShell({
       </nav>
 
       {/* Main Content Wrapper */}
-      <div className="ml-sidebar-width flex-1 flex flex-col min-h-screen">
+      <div className="lg:ml-sidebar-width flex-1 min-w-0 flex flex-col min-h-screen">
         {/* TopAppBar */}
-        <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-emerald-100 dark:border-slate-800 fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter">
+        <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-emerald-100 dark:border-slate-800 fixed top-0 right-0 left-0 lg:left-sidebar-width gap-2 h-header-height z-30 flex items-center justify-between px-gutter">
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            className="lg:hidden shrink-0 p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            aria-label="Open navigation menu"
+          >
+            <span className="material-symbols-outlined">menu</span>
+          </button>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentView("dashboard")}
@@ -149,7 +161,7 @@ export default function CareAppShell({
               }`}
             >
               <span className="material-symbols-outlined text-[15px]">health_and_safety</span>
-              Care Operations
+              <span className="hidden md:inline">Care Operations</span>
             </button>
             <button
               onClick={() => setCurrentView("family")}
@@ -160,20 +172,20 @@ export default function CareAppShell({
               }`}
             >
               <span className="material-symbols-outlined text-[15px]">group</span>
-              Family Member Portal
+              <span className="hidden md:inline">Family Member Portal</span>
             </button>
-            <span className="hidden sm:inline-block text-[11px] text-slate-400 dark:text-slate-500 font-mono">|</span>
-            <span className="hidden sm:inline-block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+            <span className="hidden xl:inline-block text-[11px] text-slate-400 dark:text-slate-500 font-mono">|</span>
+            <span className="hidden xl:inline-block text-[11px] font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap truncate max-w-[16rem]">
               {organizations[0]?.name || "St. Peter's Elder Care Home"}
             </span>
           </div>
 
-          <div className="flex items-center gap-gutter">
+          <div className="flex items-center gap-1 sm:gap-gutter shrink-0">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-xs font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
             </div>
-            <div className="flex items-center gap-stack-sm border-l border-slate-200 dark:border-slate-800 pl-gutter">
+            <div className="flex items-center gap-1 sm:gap-stack-sm sm:border-l border-slate-200 dark:border-slate-800 sm:pl-gutter">
               <button
                 onClick={() => {
                   if (devices.length > 0) {
@@ -186,7 +198,7 @@ export default function CareAppShell({
                 className="text-emerald-600 dark:text-emerald-400 border border-emerald-500 dark:border-emerald-500/40 px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[16px]">sensors</span>
-                Simulate Fall / CSI
+                <span className="hidden lg:inline">Simulate Fall / CSI</span>
               </button>
 
               <button

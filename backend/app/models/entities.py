@@ -486,6 +486,24 @@ class RoomSchedule(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class RoomBooking(SQLModel, table=True):
+    """A dated reservation of a corporate room. RoomSchedule above is the recurring *expected* schedule; this is a booking."""
+    __tablename__ = "room_bookings"
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    room_id: str = Field(foreign_key="rooms.id", nullable=False, index=True)
+    organization_id: Optional[str] = Field(default=None, index=True)
+    organizer_user_id: Optional[str] = Field(default=None)
+    organizer_name: str = Field(nullable=False)
+    purpose: str = Field(nullable=False)
+    start_at: datetime = Field(nullable=False, index=True)  # UTC
+    end_at: datetime = Field(nullable=False)  # UTC
+    status: str = Field(default="BOOKED", index=True)  # BOOKED, CANCELLED
+    cancelled_at: Optional[datetime] = Field(default=None)
+    cancelled_by: Optional[str] = Field(default=None)
+    cancel_reason: Optional[str] = Field(default=None)
+    reminder_issued_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # ============================================================================
 # 4. ALERTS & NOTIFICATION ENGINE
 # ============================================================================

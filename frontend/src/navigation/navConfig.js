@@ -114,6 +114,12 @@ export const VIEW_DEFINITIONS = {
     icon: "medical_services",
     description: "Approve doctors and assign the residents they may see"
   },
+  bookings: {
+    id: "bookings",
+    label: "Room Scheduling",
+    icon: "event_available",
+    description: "Book corporate rooms, cancel bookings, and see upcoming meetings"
+  },
   family: {
     id: "family",
     label: "Family Portal",
@@ -158,13 +164,13 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SPACE]: {
     corporate_staff: {
-      allowedViews: ["corporate", "occupancy", "alerts", "profile"],
+      allowedViews: ["corporate", "occupancy", "bookings", "alerts", "profile"],
       defaultView: "corporate",
       badgeText: "SPACE • Staff",
       theme: "space"
     },
     facility_manager: {
-      allowedViews: ["corporate", "occupancy", "assets", "analytics", "alerts", "devices", "profile"],
+      allowedViews: ["corporate", "occupancy", "bookings", "assets", "analytics", "alerts", "devices", "profile"],
       defaultView: "corporate",
       badgeText: "SPACE • Facility Manager",
       theme: "space"
