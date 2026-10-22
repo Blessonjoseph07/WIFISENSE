@@ -119,7 +119,7 @@ export default function OccupancyView({
   const activeIsOccupied = activeDetail.is_occupied ?? false;
   const activeActivity =
     activeDetail.current_activity || (activeIsOccupied ? "Presence" : "Empty");
-  const activeConfidence = Math.round((activeDetail.model_confidence || 0.95) * 100);
+  const activeConfidence = activeDetail.model_confidence ? Math.round(activeDetail.model_confidence * 100) : null;  // never invent a value
   const activeClassification =
     activeRm.classification || activeDetail.classification || activeRm.room_type;
   const activeExpected =
@@ -211,8 +211,8 @@ export default function OccupancyView({
           </div>
           <p className="text-body-md text-slate-500 dark:text-slate-400 mt-1">
             {isCare
-              ? "Real-time resident living quarters occupancy, posture telemetry, and fall-risk sensing."
-              : "Real-time workplace room occupancy, schedule discrepancy tracking, and energy telemetry."}
+              ? "Resident living quarters occupancy, posture and fall-risk sensing (demo, dataset replay or live data; see the source badges)."
+              : "Workplace room occupancy, schedule discrepancy tracking and energy telemetry (demo, dataset replay or live data)."}
           </p>
         </div>
 
@@ -228,7 +228,7 @@ export default function OccupancyView({
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 shadow-sm">
             <span className="text-slate-400 block text-[10px] uppercase font-bold">
-              Live Occupied
+              Occupied
             </span>
             <span className="font-bold text-teal-600 dark:text-teal-400 font-mono text-sm">
               {
@@ -579,7 +579,7 @@ export default function OccupancyView({
                   </span>
                 </div>
                 <span className="text-[10px] font-mono text-slate-400 mt-1">
-                  CSI Confidence: <strong className="text-teal-605">{activeConfidence}%</strong>
+                  Confidence: <strong className="text-teal-605">{activeConfidence === null ? "not measured" : `${activeConfidence}%`}</strong>
                 </span>
               </div>
             </div>

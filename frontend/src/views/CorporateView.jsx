@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE } from "../config";
 
 export default function CorporateView({
   exportCorporateAnalytics = () => {},
@@ -19,14 +20,14 @@ export default function CorporateView({
   const fetchSchedulesAndEnergy = async () => {
     if (!token) return;
     try {
-      const unexpRes = await fetch("http://127.0.0.1:8000/schedules/unexpected-occupancy", {
+      const unexpRes = await fetch(`${API_BASE}/schedules/unexpected-occupancy`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (unexpRes.ok) {
         setUnexpectedEvents(await unexpRes.json());
       }
 
-      const energyRes = await fetch("http://127.0.0.1:8000/schedules/energy-recommendations", {
+      const energyRes = await fetch(`${API_BASE}/schedules/energy-recommendations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (energyRes.ok) {
@@ -45,7 +46,7 @@ export default function CorporateView({
     if (!token) return;
     setLoadingRoomId(roomId);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/rooms/${roomId}/energy-action`, {
+      const res = await fetch(`${API_BASE}/rooms/${roomId}/energy-action`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -96,7 +97,7 @@ export default function CorporateView({
     if (!token) return;
     setBulkLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/schedules/energy-actions/bulk", {
+      const res = await fetch(`${API_BASE}/schedules/energy-actions/bulk`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

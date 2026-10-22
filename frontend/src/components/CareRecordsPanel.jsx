@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { API_BASE } from "../config";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 const STATUS_STYLE = {
   SCHEDULED: "bg-sky-100 text-sky-800",

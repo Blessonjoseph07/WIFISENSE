@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE } from "../config";
 import { ConfidenceBadge, SignalBadge, SourceBadge, VerificationPanel } from "./DetectionBadges";
 
 export default function EmergencyFallModal({
@@ -23,7 +24,7 @@ export default function EmergencyFallModal({
   const fetchActiveEmergency = async () => {
     if (!authToken) return;
     try {
-      const res = await fetch("http://127.0.0.1:8000/alerts/emergency-active", {
+      const res = await fetch(`${API_BASE}/alerts/emergency-active`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) {
@@ -71,19 +72,19 @@ export default function EmergencyFallModal({
     setLoading(true);
     try {
       if (actionType === "acknowledge") {
-        await fetch(`http://127.0.0.1:8000/alerts/${emergencyData.alert_id}/acknowledge`, {
+        await fetch(`${API_BASE}/alerts/${emergencyData.alert_id}/acknowledge`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         });
         setEmergencyData((prev) => ({ ...prev, status: "acknowledged" }));
       } else if (actionType === "responding") {
-        await fetch(`http://127.0.0.1:8000/alerts/${emergencyData.alert_id}/responding`, {
+        await fetch(`${API_BASE}/alerts/${emergencyData.alert_id}/responding`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
         });
         setEmergencyData((prev) => ({ ...prev, status: "responding" }));
       } else if (actionType === "resolve") {
-        await fetch(`http://127.0.0.1:8000/alerts/${emergencyData.alert_id}/resolve`, {
+        await fetch(`${API_BASE}/alerts/${emergencyData.alert_id}/resolve`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -162,7 +163,7 @@ export default function EmergencyFallModal({
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-600 text-[18px]">visibility</span>
               <span>
-                <strong>GLOBAL OVERSIGHT:</strong> Monitoring incident response in real time. On-site facility staff and caregivers are responsible for immediate operational dispatch.
+                <strong>GLOBAL OVERSIGHT:</strong> Monitoring incident response. On-site facility staff and caregivers are responsible for immediate operational dispatch.
               </span>
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0">
@@ -230,7 +231,7 @@ export default function EmergencyFallModal({
             alert={panelAlert}
             canVerify={isCareOps}
             authToken={authToken}
-            API_BASE="http://127.0.0.1:8000"
+            API_BASE={API_BASE}
             onVerified={(data) => {
               setVerified(data);
               onActionComplete();

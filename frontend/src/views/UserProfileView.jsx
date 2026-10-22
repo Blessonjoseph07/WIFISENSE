@@ -1,9 +1,10 @@
 import React from "react";
+import { API_BASE as DEFAULT_API_BASE } from "../config";
 
 export default function UserProfileView({
   user = null,
   role = "",
-  API_BASE = "http://localhost:8000",
+  API_BASE = DEFAULT_API_BASE,
   fileInputRef = { current: null },
 }) {
   return (

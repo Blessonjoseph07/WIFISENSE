@@ -81,6 +81,9 @@ jobs:
           echo "=== RUNNING DATASET REPLAY & DETECTION TESTS ==="
           python test_dataset_replay.py
 
+          echo "=== RUNNING ORGANIZATION-SCOPED AUDIT LOG TESTS ==="
+          python test_audit_scoping.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js
@@ -93,4 +96,8 @@ jobs:
         run: |
           npm install
           npm run build
+
+      - name: Frontend tests (session expiry, no hard-coded hosts, no misleading claims)
+        working-directory: ./frontend
+        run: npm test
 
