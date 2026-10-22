@@ -53,7 +53,7 @@ def get_occupancy_summary(
         org = orgs_map.get(bld.organization_id) if bld and bld.organization_id else None
         org_type = org.type if org else None
 
-        stmt_evt = select(SensingEvent).where(SensingEvent.room_id == r.id).order_by(SensingEvent.timestamp.desc())
+        stmt_evt = select(SensingEvent).where(SensingEvent.room_id == r.id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc())
         latest_event = session.exec(stmt_evt).first()
         
         is_occupied = False
