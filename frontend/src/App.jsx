@@ -1259,7 +1259,7 @@ export default function App() {
         {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
         <div className="bg-slate-50 text-slate-800 font-body-md antialiased min-h-screen flex flex-col lg:flex-row transition-all duration-300">
         {/* 3D Wi-Fi Modem Visualizer Showcase Panel (Subtle Light Theme) */}
-        <div className="flex flex-col w-full lg:w-[55%] xl:w-[58%] bg-slate-50 relative p-3 sm:p-5 justify-between border-b lg:border-b-0 lg:border-r border-slate-200/90 min-h-[480px] lg:min-h-screen">
+        <div className="flex flex-col w-full lg:w-[55%] xl:w-[58%] bg-slate-50 relative p-3 sm:p-5 justify-between border-b lg:border-b-0 lg:border-r border-slate-200/90 min-h-[480px] lg:min-h-screen overflow-hidden min-w-0">
           {/* Header Title Bar */}
           <div className="flex items-center justify-between z-20 mb-3 px-2">
             <div className="flex items-center gap-3">
@@ -1290,7 +1290,7 @@ export default function App() {
           </div>
 
           {/* Bottom Features Info Strip */}
-          <div className="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-200/70 z-20 text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-200/70 z-20 text-left">
             <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
               <div className="text-[10px] font-mono text-slate-400 uppercase font-medium">Hardware</div>
               <div className="text-xs font-semibold text-slate-800 mt-0.5">ESP32-S3 (2.4 GHz CSI)</div>
@@ -1307,7 +1307,7 @@ export default function App() {
         </div>
 
         {/* Login Panel (Clean Light Theme) */}
-        <div className="flex-1 flex flex-col justify-center p-6 sm:p-10 lg:p-14 relative bg-white overflow-y-auto">
+        <div className="flex-1 min-w-0 order-first lg:order-none flex flex-col justify-center p-6 sm:p-10 lg:p-14 relative bg-white overflow-y-auto">
           <div className="w-full max-w-md mx-auto">
             <div className="mb-stack-lg text-center md:text-left">
               <h1 className="font-headline-lg text-headline-lg text-slate-900 mb-2 font-bold tracking-tight">Welcome to WiFi Sense</h1>
