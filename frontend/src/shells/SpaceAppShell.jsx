@@ -117,12 +117,12 @@ export default function SpaceAppShell({
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <div className="flex items-center gap-stack-md text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">domain</span>
-            <span>Corporate Deployment: <span className="text-slate-950 dark:text-white font-extrabold">
+          <div className="flex items-center gap-stack-md min-w-0 flex-1 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 shrink-0">domain</span>
+            <span className="min-w-0 truncate"><span className="hidden xl:inline">Corporate Deployment: </span><span className="text-slate-950 dark:text-white font-extrabold">
               {organizations[0]?.name || "Amal Jyothi College of Engineering"}
             </span></span>
-            <span className="bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-extrabold">SPACE REPOSITORY</span>
+            <span className="hidden 2xl:inline-block shrink-0 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-extrabold">SPACE REPOSITORY</span>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-gutter shrink-0">

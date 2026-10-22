@@ -31,6 +31,8 @@ import AlertsView from "./views/AlertsView";
 import DoctorPortalView from "./views/DoctorPortalView";
 import MedicalProvidersView from "./views/MedicalProvidersView";
 import SensingMonitorView from "./views/SensingMonitorView";
+import RoomBookingsView from "./views/RoomBookingsView";
+import BookingReminders from "./components/BookingReminders";
 import UserProfileView from "./views/UserProfileView";
 import EmergencyFallModal from "./components/EmergencyFallModal";
 import { SourceBadge } from "./components/DetectionBadges";
@@ -1594,6 +1596,11 @@ export default function App() {
             </div>
           )}
 
+          {/* Five-minute "please vacate" reminder for corporate users */}
+          {appContext === "CORPORATE" && !isSystemAdmin && role !== "system_admin" && (
+            <BookingReminders authToken={token} API_BASE={API_BASE} onOpenSchedule={() => setCurrentView("bookings")} />
+          )}
+
           {/* Operational Emergency Banner for Elder Care Responders Only */}
           {activeFallAlert && isCareOps && (
             <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 pulse-animation relative z-25">
@@ -1774,6 +1781,15 @@ export default function App() {
           {/* ============================================================================
             6b. MEDICAL PROVIDERS (organization staff) AND DOCTOR PORTAL
           ============================================================================ */}
+          {currentView === "bookings" && isViewAllowed("bookings", appContext, role, isSystemAdmin) && (
+            <RoomBookingsView
+              authToken={token}
+              API_BASE={API_BASE}
+              rooms={rooms}
+              canManage={role === "facility_manager"}
+            />
+          )}
+
           {currentView === "sensing" && isViewAllowed("sensing", appContext, role, isSystemAdmin) && (
             <SensingMonitorView authToken={token} API_BASE={API_BASE} devices={devices} rooms={rooms} />
           )}
