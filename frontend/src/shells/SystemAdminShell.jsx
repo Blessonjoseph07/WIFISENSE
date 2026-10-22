@@ -132,12 +132,12 @@ export default function SystemAdminShell({
             <span className="bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-violet-300 text-[10px] px-2 py-0.5 rounded-full font-extrabold">SYSTEM CONSOLE</span>
           </div>
 
-          <div className="flex items-center gap-gutter">
+          <div className="flex items-center gap-1 sm:gap-gutter shrink-0">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-xs font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
             </div>
-            <div className="flex items-center gap-stack-sm border-l border-slate-200 dark:border-slate-800 pl-gutter">
+            <div className="flex items-center gap-1 sm:gap-stack-sm sm:border-l border-slate-200 dark:border-slate-800 sm:pl-gutter">
               <button
                 onClick={() => {
                   if (devices.length > 0) {
