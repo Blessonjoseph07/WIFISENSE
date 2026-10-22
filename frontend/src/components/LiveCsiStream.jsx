@@ -134,7 +134,7 @@ export default function LiveCsiStream({ deviceId, authToken, API_BASE }) {
     <div className={`${card} p-5 space-y-5`} data-testid="live-csi-stream">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Live CSI stream</h3>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">CSI packet stream</h3>
           {snap && <SourceBadge source={snap.provenance} />}
           <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full ${flowing ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${flowing ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
