@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import LiveCsiStream from "../components/LiveCsiStream";
+import ReplayEvaluationPanel from "../components/ReplayEvaluationPanel";
 import {
   ACTIVITY_LABEL,
   ConfidenceBadge,
@@ -146,7 +147,6 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
   const roomName = (id) => rooms.find((r) => r.id === id)?.name;
   const rows = history[mode];
   const modeMeta = MODES.find((m) => m.id === mode);
-  const evalForDataset = replay?.by_dataset || {};
 
   return (
     <div className="space-y-6 text-left" data-testid="sensing-monitor">
@@ -262,6 +262,10 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
 
         {selectedDevice && <LiveCsiStream key={selectedDevice} deviceId={selectedDevice} authToken={authToken} API_BASE={API_BASE} />}
 
+        {mode === "dataset" && replay && replay.windows_evaluated > 0 && (
+          <ReplayEvaluationPanel replay={replay} rows={rows} model={model} />
+        )}
+
         {/* Detections */}
         <div className="space-y-4">
           <div className={`${card} p-5`}>
@@ -332,29 +336,6 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
             </p>
           </div>
 
-          {mode === "dataset" && replay && replay.windows_evaluated > 0 && (
-            <div className={`${card} p-5`} data-testid="replay-evaluation">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Replay check: recorded label vs the system's result</h3>
-              <div className="space-y-3">
-                {Object.entries(evalForDataset).map(([name, v]) => (
-                  <div key={name} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">{name}</div>
-                    <div className="grid grid-cols-2 gap-3 mt-2 text-xs">
-                      <div>
-                        <div className="text-slate-400">Recorded falls flagged as possible fall</div>
-                        <div className="font-mono text-base text-slate-900 dark:text-white">{v.falls_flagged} of {v.recorded_falls}</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-400">Non-falls falsely flagged</div>
-                        <div className="font-mono text-base text-slate-900 dark:text-white">{v.non_falls_flagged} of {v.non_falls}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-slate-500 mt-3">{replay.statement}</p>
-            </div>
-          )}
         </div>
       </div>
 
