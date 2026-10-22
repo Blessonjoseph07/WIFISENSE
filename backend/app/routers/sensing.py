@@ -10,7 +10,7 @@ from app.models.entities import SensingDevice, Room, Floor, Building, SensingEve
 from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut, SensingHistoryOut
 from app.core.confidence import confidence_level, signal_level, requires_verification
 from app.services.notifications import process_alert_notifications
-from app.services import detection, fall_model
+from app.services import detection, fall_model, csi_physics
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
 STAFF_ROLES = ["system_admin", "facility_manager", "caregiver", "corporate_staff"]
@@ -524,3 +524,65 @@ def get_device_csi_telemetry(
         "fall_score": (last_event.extracted_features or {}).get("fall_score"), "source": last_event.source,
     } if last_event else None)
     return out
+
+
+@router.get("/devices/{device_id}/live", dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_device_live_stream(
+    device_id: str,
+    after_id: int = Query(0, ge=0, description="Return only packets stored after this id (incremental polling)"),
+    window: int = Query(60, ge=8, le=200, description="Packets used for the statistics"),
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """Real-time view of what a device has sent: per-packet amplitude and phase per subcarrier plus link statistics.
+
+    Same access rule and same honesty rule as csi-telemetry: nothing is generated here, a silent device returns no
+    packets, and `mode` says whether the packets are DEMO, DATASET REPLAY or LIVE HARDWARE. There are no x/y
+    coordinates in the result: one transmitter-receiver pair cannot provide them."""
+    device = session.get(SensingDevice, device_id)
+    if not device or not user_can_access_room(current_user, device.room_id, session):
+        raise HTTPException(status_code=404, detail="Device not found.")
+
+    source = device.allowed_source or "live"
+    mode = {"simulated": "DEMO", "dataset": "DATASET REPLAY", "live": "LIVE HARDWARE"}.get(source, source.upper())
+    rows = session.exec(
+        select(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id).order_by(RawCsiTelemetry.id.desc()).limit(window)
+    ).all()
+    rows.reverse()
+
+    parsed: List[Dict[str, Any]] = []
+    for r in rows:
+        data = r.csi_data if isinstance(r.csi_data, dict) else {}
+        ap = csi_physics.iq_to_amp_phase(data.get("iq"))
+        parsed.append({
+            "id": r.id, "seq": r.sequence_number, "rssi": r.rssi, "noise": r.noise_floor,
+            "t": r.created_at.replace(tzinfo=r.created_at.tzinfo or timezone.utc).timestamp() if r.created_at else None,
+            "ts": r.timestamp.isoformat() if r.timestamp else None,
+            "channel": r.channel, "bandwidth_mhz": r.bandwidth_mhz,
+            "amp": ap["amplitude"] if ap else None, "phase": ap["phase"] if ap else None,
+            "meta": {k: data[k] for k in ("src_mac", "rate", "sig_mode", "mcs", "cwb", "smoothing", "not_sounding",
+                                          "aggregation", "stbc", "fec_coding", "sgi", "ant", "agc_gain", "fft_gain")
+                     if k in data},
+        })
+
+    last = rows[-1] if rows else None
+    link = csi_physics.link_info(last.channel if last else None, last.bandwidth_mhz if last else None)
+    new_packets = [
+        {"id": p["id"], "seq": p["seq"], "timestamp": p["ts"], "rssi_dbm": p["rssi"], "noise_floor_dbm": p["noise"],
+         "snr_db": (p["rssi"] - p["noise"]) if p["noise"] is not None else None,
+         "amplitude": p["amp"], "phase": p["phase"], "meta": p["meta"]}
+        for p in parsed if p["id"] > after_id
+    ]
+    total = session.exec(select(func.count()).select_from(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id)).one()
+    return {
+        "device_id": device.id, "mac_address": device.mac_address, "mode": mode, "provenance": source,
+        "device_status": device.device_status,
+        "last_seen_at": device.last_seen_at.isoformat() if device.last_seen_at else None,
+        "packets_total": int(total), "has_data": bool(rows),
+        "link": link,
+        "stats": csi_physics.window_stats(parsed),
+        "latest_id": rows[-1].id if rows else after_id,
+        "packets": new_packets,
+        "limits": "No x/y position is reported: a single transmitter-receiver pair measures the channel between two radios, "
+                  "not where a person stands. Wavelength is derived from the reported channel number.",
+    }
