@@ -64,7 +64,19 @@ Backend settings come from the environment (see `backend/.env.example`):
 | `MAX_UPLOAD_BYTES` | no | `5242880` | Profile photo size limit. |
 | `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | no | – | Creates the first system administrator on startup. |
 
-The frontend reads `VITE_API_BASE` (see `frontend/.env.example`), defaulting to `http://localhost:8000`.
+The frontend gets the API address from one place, `frontend/src/config.js`:
+
+| Situation | API address used |
+|---|---|
+| `VITE_API_BASE` set when building (see `frontend/.env.example`) | that URL, for example `https://api.example.com` when the API is on another host |
+| not set, `npm run dev` | `http://localhost:8000` |
+| not set, production build (`npm run build`) | the same origin as the page (the API served behind the same host or reverse proxy) |
+
+When hosting the API on a different origin than the frontend, also set the backend's `ALLOWED_ORIGINS` to the frontend's
+address. No component contains an API host; `npm test` fails if one is added.
+
+**Sessions:** an expired access token is refreshed once automatically (`frontend/src/session.js`). If the refresh fails
+the stored login is cleared and the sign-in screen shows "Your session expired. Please sign in again."
 
 ---
 

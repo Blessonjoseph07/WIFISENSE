@@ -394,7 +394,7 @@ export default function WifiModemVisualizer() {
               CSI Signal Propagation
             </span>
             <span className="text-xs font-semibold text-slate-800">
-              Wi-Fi 6 Continuous Sensing
+              Wi-Fi CSI propagation (illustration)
             </span>
           </div>
         </div>
@@ -428,14 +428,14 @@ export default function WifiModemVisualizer() {
 
       {/* FLOATING RF TELEMETRY CARDS (Light, Delicate Theme) */}
       <div className="relative z-10 px-4 sm:p-5 pointer-events-none flex justify-between items-end">
-        {/* Live CSI metrics box */}
+        {/* Illustration only: the numbers below are random sample values, not measurements */}
         <div className="bg-white/90 backdrop-blur-md p-3.5 rounded-xl border border-slate-200/80 max-w-[210px] text-left shadow-sm pointer-events-auto">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider font-semibold">
               Channel State
             </span>
-            <span className="text-[10px] font-mono text-emerald-700 font-semibold px-1.5 py-0.5 bg-emerald-50 rounded border border-emerald-200">
-              64 OFDM
+            <span className="text-[10px] font-mono text-violet-700 font-semibold px-1.5 py-0.5 bg-violet-50 rounded border border-violet-200" title="Random sample values for this illustration. Not from any device.">
+              ILLUSTRATION
             </span>
           </div>
           <div className="space-y-1 font-mono text-xs">

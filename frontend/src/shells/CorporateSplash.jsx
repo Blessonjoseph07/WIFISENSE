@@ -53,7 +53,7 @@ export default function CorporateSplash({ user, onContinue }) {
         <div className="flex items-center gap-4">
           <span className="hidden sm:inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#CBDDCB] text-[#223B2B] border border-[#B8CEB8]">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
-            Corporate Facility Engine Live
+            Corporate Facility Engine
           </span>
         </div>
       </header>
@@ -75,7 +75,7 @@ export default function CorporateSplash({ user, onContinue }) {
           </h1>
 
           <p className="text-base sm:text-lg text-[#324B3A] mb-8 max-w-lg leading-relaxed font-normal">
-            Intelligent spatial analytics and real-time facility intelligence powered by Wi-Fi CSI sensing. Monitor occupancy, optimize workstation efficiency, and streamline property operations with zero wearable requirements.
+            Intelligent spatial analytics and facility intelligence powered by Wi-Fi CSI sensing. Monitor occupancy, optimize workstation efficiency, and streamline property operations with zero wearable requirements.
           </p>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
@@ -102,7 +102,7 @@ export default function CorporateSplash({ user, onContinue }) {
                 <div className="w-8 h-8 rounded-full bg-[#7C9982] text-white flex items-center justify-center text-[10px] font-bold border-2 border-[#DCE7DC]">AI</div>
               </div>
               <div className="text-left">
-                <div className="text-xs font-bold text-[#193223]">Live Telemetry</div>
+                <div className="text-xs font-bold text-[#193223]">Wi-Fi CSI sensing</div>
                 <div className="text-[10px] text-[#476550]">Zero Privacy Invasion</div>
               </div>
             </div>
@@ -422,11 +422,11 @@ export default function CorporateSplash({ user, onContinue }) {
                 {/* Bottom Row: Active Telemetry & Node Diagnostics */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
                   
-                  {/* Card 1: Active Space Telemetry */}
+                  {/* Card 1: Sample space telemetry */}
                   <div className="bg-white rounded-2xl p-3.5 border border-[#E6EAE3] shadow-sm">
                     <div className="flex items-center justify-between mb-2.5">
                       <h4 className="text-xs font-bold text-[#182F21]">Active Space Telemetry</h4>
-                      <span className="text-[10px] font-semibold text-[#54705D]">Real-Time CSI</span>
+                      <span className="text-[10px] font-semibold text-[#54705D]">Sample view (illustration)</span>
                     </div>
 
                     <div className="space-y-2">

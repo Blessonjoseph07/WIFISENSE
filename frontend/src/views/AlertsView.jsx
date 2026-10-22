@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_BASE as DEFAULT_API_BASE } from "../config";
 import { DetectionChips, DetectionEvidence, VerificationPanel } from "../components/DetectionBadges";
 
 export default function AlertsView({
@@ -11,7 +12,7 @@ export default function AlertsView({
   handleAcknowledge = () => {},
   setShowResolveModal = () => {},
   authToken = "",
-  API_BASE = "http://127.0.0.1:8000",
+  API_BASE = DEFAULT_API_BASE,
   role = "",
   isSystemAdmin = false,
   appContext = "",
@@ -117,7 +118,7 @@ export default function AlertsView({
         </div>
         <div className="text-body-md font-body-md text-slate-500 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-          Live Incident Monitoring: Active
+          Incident list refreshes every few seconds
         </div>
       </div>
 

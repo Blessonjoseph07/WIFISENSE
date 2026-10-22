@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE } from "../config";
 import CareRecordsPanel from "./CareRecordsPanel";
 
 export default function ResidentProfileModal({ residentId, onClose, authToken }) {
@@ -10,7 +11,7 @@ export default function ResidentProfileModal({ residentId, onClose, authToken })
   useEffect(() => {
     if (!residentId || !authToken) return;
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/residents/${residentId}/profile-details`, {
+    fetch(`${API_BASE}/residents/${residentId}/profile-details`, {
       headers: { Authorization: `Bearer ${authToken}` },
     })
       .then((res) => {
@@ -248,7 +249,7 @@ export default function ResidentProfileModal({ residentId, onClose, authToken })
                   <div className="grid grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CURRENT ACTIVITY</span>
-                      <span className="font-bold text-base text-slate-900 dark:text-white mt-0.5 block">{profile.current_activity}</span>
+                      <span className="font-bold text-base text-slate-900 dark:text-white mt-0.5 block">{profile.current_activity ? profile.current_activity.replace(/_/g, " ") : "No sensing data yet"}</span>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">SAFETY STATUS</span>
@@ -273,7 +274,7 @@ export default function ResidentProfileModal({ residentId, onClose, authToken })
                       <div className="grid grid-cols-4 gap-2 font-mono">
                         <div>
                           <span className="text-slate-400 text-[10px] block">SIGNAL QUALITY</span>
-                          <strong className="text-teal-700 dark:text-teal-400 text-sm">{profile.latest_sensing_event.signal_quality}%</strong>
+                          <strong className="text-teal-700 dark:text-teal-400 text-sm">{profile.latest_sensing_event.signal_quality === null || profile.latest_sensing_event.signal_quality === undefined ? "—" : `${profile.latest_sensing_event.signal_quality}%`}</strong>
                         </div>
                         <div>
                           <span className="text-slate-400 text-[10px] block">SUBCARRIERS</span>

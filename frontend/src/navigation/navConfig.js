@@ -22,7 +22,7 @@ export const VIEW_DEFINITIONS = {
     id: "dashboard",
     label: "Monitoring Dashboard",
     icon: "sensors",
-    description: "Live sensor feeds and spatial telemetry"
+    description: "Room overview; every value is labelled demo, dataset replay or live hardware"
   },
   caregiver: {
     id: "caregiver",
@@ -46,7 +46,7 @@ export const VIEW_DEFINITIONS = {
     id: "occupancy",
     label: "Room Occupancy View",
     icon: "meeting_room",
-    description: "Real-time occupancy status across all rooms"
+    description: "Occupancy status across all rooms"
   },
   assets: {
     id: "assets",
