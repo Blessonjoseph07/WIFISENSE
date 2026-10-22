@@ -1,0 +1,28 @@
+# Render blueprint for the API. Set the values marked "sync: false" in the Render dashboard (never in this file).
+services:
+  - type: web
+    name: wifisense-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.10.13"
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL            # Neon connection string: postgresql://USER:PASS@HOST/DB?sslmode=require
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PAYMENT_WEBHOOK_SECRET  # required in production; the payment mode is a SANDBOX
+        generateValue: true
+      - key: ALLOWED_ORIGINS         # your Vercel URL, e.g. https://wifisense.vercel.app (no trailing slash)
+        sync: false
+      - key: SEED_DEMO_DATA
+        value: "1"
+      - key: SEED_PROFILE            # minimal = one user per role
+        value: minimal
+      - key: SEED_PASSWORD           # 12+ characters, chosen by you; becomes the password of every demo account
+        sync: false
