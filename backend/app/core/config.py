@@ -1,4 +1,5 @@
 import os
+import secrets
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -31,6 +32,17 @@ class Settings:
     SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "alerts@wifisense.com")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+    # Payments. Only the SANDBOX provider exists: it simulates a payment provider, no real money moves and no card or
+    # payment details are ever collected or stored. The price below is a placeholder for the sandbox, not a business decision.
+    PAYMENTS_MODE: str = os.getenv("PAYMENTS_MODE", "sandbox").lower()
+    PAYMENT_WEBHOOK_SECRET: str = os.getenv("PAYMENT_WEBHOOK_SECRET", "")
+    CARE_MONTHLY_PRICE_MINOR: int = int(os.getenv("CARE_MONTHLY_PRICE_MINOR", "49900"))   # 499.00
+    CARE_MONTHLY_CURRENCY: str = os.getenv("CARE_MONTHLY_CURRENCY", "INR")
+    SUBSCRIPTION_PERIOD_DAYS: int = int(os.getenv("SUBSCRIPTION_PERIOD_DAYS", "30"))
+    SUBSCRIPTION_GRACE_DAYS: int = int(os.getenv("SUBSCRIPTION_GRACE_DAYS", "3"))
+    WEBHOOK_TOLERANCE_SECONDS: int = int(os.getenv("WEBHOOK_TOLERANCE_SECONDS", "300"))
+    PAYMENTS_SANDBOX_SIMULATOR_ENABLED: bool = True
+
     def __init__(self):
         self.ENVIRONMENT = os.getenv("ENVIRONMENT", self.ENVIRONMENT)
         self.DATABASE_URL = os.getenv("DATABASE_URL", self.DATABASE_URL)
@@ -40,6 +52,21 @@ class Settings:
                 "SECRET_KEY environment variable is required. "
                 "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
             )
+        self.PAYMENTS_MODE = os.getenv("PAYMENTS_MODE", self.PAYMENTS_MODE).lower()
+        if self.PAYMENTS_MODE != "sandbox":
+            raise RuntimeError("PAYMENTS_MODE must be 'sandbox': no real payment provider is implemented.")
+        sim_env = os.getenv("PAYMENTS_SANDBOX_SIMULATOR_ENABLED")
+        if sim_env is not None:
+            self.PAYMENTS_SANDBOX_SIMULATOR_ENABLED = sim_env.strip().lower() in ("1", "true", "yes", "on")
+        else:
+            self.PAYMENTS_SANDBOX_SIMULATOR_ENABLED = (self.ENVIRONMENT.lower() != "production")
+        self.PAYMENT_WEBHOOK_SECRET = os.getenv("PAYMENT_WEBHOOK_SECRET", "")
+        if not self.PAYMENT_WEBHOOK_SECRET:
+            # Sandbox only: a random per-process secret, never written anywhere. External callers (tests, a future real
+            # provider) must set PAYMENT_WEBHOOK_SECRET so that they can sign.
+            if self.ENVIRONMENT.lower() == "production":
+                raise RuntimeError("PAYMENT_WEBHOOK_SECRET is required in production.")
+            self.PAYMENT_WEBHOOK_SECRET = secrets.token_urlsafe(32)
         if self.ENVIRONMENT.lower() == "production":
             if self.SECRET_KEY == "b3d162fc8cd92b516f863efbd4cfbd892abf4857b29a8a72":
                 raise RuntimeError(

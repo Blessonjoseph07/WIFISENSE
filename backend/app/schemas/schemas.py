@@ -688,6 +688,10 @@ class FamilySubscriptionOut(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     renewal_date: Optional[datetime] = None
+    cancel_at_period_end: bool = False
+    cancelled_at: Optional[datetime] = None
+    last_payment_status: Optional[str] = None
+    provider: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

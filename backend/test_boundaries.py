@@ -225,46 +225,58 @@ def run_tests():
         assert "current_activity" in act_data
         print("[PASS] ACTIVE subscription: Full real-time resident telemetry accessible.")
 
-        # Scenario B: PENDING subscription -> NO real-time resident data
+        # Subscription state is now driven by the payment provider (signed webhooks) and by time, not by staff: staff
+        # can only place or lift a hold. So the PENDING / EXPIRED states below are put in place directly in the database,
+        # exactly as the lifecycle code would leave them, and the gating is what is being tested.
+        from sqlmodel import Session as _S
+        from app.core.database import engine as _engine
+        from app.models.entities import FamilySubscription as _Sub
+
+        def force_status(new_status):
+            with _S(_engine) as _db:
+                row = _db.get(_Sub, sub_id)
+                row.status = new_status
+                _db.add(row)
+                _db.commit()
+
+        def assert_gated(expected_status):
+            status, data = api_call("/family/resident-status", method="GET", token=family['access_token'])
+            assert status == 200
+            assert data["has_active_subscription"] is False
+            assert data["subscription_status"] == expected_status
+            assert "presence_status" not in data
+            assert "recent_activity_history" not in data
+            assert "current_activity" not in data
+            assert "need an active subscription" in data["reason"]
+            assert data["emergency"]["available_without_subscription"] is True
+            return data
+
+        # Staff must not be able to mark a subscription paid / active / pending by hand any more
         status, _ = api_call(f"/family/subscriptions/{sub_id}", method="PATCH", token=care_fm['access_token'], data={"status": "PENDING"})
-        assert status == 200
-        status, pend_data = api_call("/family/resident-status", method="GET", token=family['access_token'])
-        assert status == 200
-        assert pend_data["has_active_subscription"] is False
-        assert pend_data["subscription_status"] == "PENDING"
-        assert "presence_status" not in pend_data
-        assert "recent_activity_history" not in pend_data
-        assert "current_activity" not in pend_data
-        assert "Active family subscription required" in pend_data["reason"]
+        assert status == 422, f"staff must not set arbitrary statuses, got {status}"
+        status, _ = api_call(f"/family/subscriptions/{sub_id}", method="PATCH", token=care_fm['access_token'], data={"status": "ACTIVE"})
+        assert status == 409, f"staff cannot activate without a hold to lift, got {status}"
+        print("[PASS] Staff cannot mark a subscription PENDING/ACTIVE by hand (422 / 409): only a verified payment can.")
+
+        # Scenario B: PENDING subscription -> NO optional resident data
+        force_status("PENDING")
+        assert_gated("PENDING")
         print("[PASS] PENDING subscription: Real-time telemetry withheld; subscription status communicated.")
 
-        # Scenario C: EXPIRED subscription -> NO real-time resident data
-        status, _ = api_call(f"/family/subscriptions/{sub_id}", method="PATCH", token=care_fm['access_token'], data={"status": "EXPIRED"})
-        assert status == 200
-        status, exp_data = api_call("/family/resident-status", method="GET", token=family['access_token'])
-        assert status == 200
-        assert exp_data["has_active_subscription"] is False
-        assert exp_data["subscription_status"] == "EXPIRED"
-        assert "presence_status" not in exp_data
-        assert "recent_activity_history" not in exp_data
-        assert "current_activity" not in exp_data
-        assert "Active family subscription required" in exp_data["reason"]
+        # Scenario C: EXPIRED subscription -> NO optional resident data
+        force_status("EXPIRED")
+        assert_gated("EXPIRED")
         print("[PASS] EXPIRED subscription: Real-time telemetry withheld; subscription status communicated.")
 
-        # Scenario D: SUSPENDED subscription -> NO real-time resident data
+        # Scenario D: SUSPENDED by staff -> NO optional resident data
+        force_status("ACTIVE")
         status, _ = api_call(f"/family/subscriptions/{sub_id}", method="PATCH", token=care_fm['access_token'], data={"status": "SUSPENDED"})
         assert status == 200
-        status, susp_data = api_call("/family/resident-status", method="GET", token=family['access_token'])
-        assert status == 200
-        assert susp_data["has_active_subscription"] is False
-        assert susp_data["subscription_status"] == "SUSPENDED"
-        assert "presence_status" not in susp_data
-        assert "recent_activity_history" not in susp_data
-        assert "current_activity" not in susp_data
-        assert "Active family subscription required" in susp_data["reason"]
+        assert_gated("SUSPENDED")
         print("[PASS] SUSPENDED subscription: Real-time telemetry withheld; subscription status communicated.")
     finally:
-        # Restore John's subscription back to ACTIVE
+        # Restore John's subscription back to ACTIVE (lifting the hold; the seeded row is facility-managed)
+        force_status("SUSPENDED")
         api_call(f"/family/subscriptions/{sub_id}", method="PATCH", token=care_fm['access_token'], data={"status": "ACTIVE"})
 
     # Verify restored state
