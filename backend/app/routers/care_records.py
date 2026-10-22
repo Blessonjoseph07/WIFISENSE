@@ -27,9 +27,9 @@ from app.schemas.schemas import (
 
 router = APIRouter(tags=["Care Records"])
 
-READ_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver"]
-WRITE_ROLES = ["system_admin", "organization_admin", "facility_manager"]  # doctors, prescriptions
-SCHEDULE_ROLES = ["system_admin", "organization_admin", "facility_manager", "caregiver"]  # appointments, med log
+READ_ROLES = ["system_admin", "facility_manager", "caregiver"]
+WRITE_ROLES = ["system_admin", "facility_manager"]  # doctors, prescriptions
+SCHEDULE_ROLES = ["system_admin", "facility_manager", "caregiver"]  # appointments, med log
 
 
 _to_utc_naive = as_utc  # historical name: values are now stored as timezone-aware UTC

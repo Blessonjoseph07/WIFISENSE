@@ -28,7 +28,7 @@ export default function FamilyPortalView({
   const [showAddResident, setShowAddResident] = useState(false);
 
   const token = authToken || localStorage.getItem("token") || "";
-  const isAdmin = role === "system_admin" || role === "organization_admin" || role === "facility_manager";
+  const isAdmin = role === "system_admin" || role === "facility_manager";
 
   const fetchConnectionsAndSubscriptions = async () => {
     if (!token) return;

@@ -84,7 +84,7 @@ export default function App() {
   const [isSystemAdmin, setIsSystemAdmin] = useState(localStorage.getItem("is_system_admin") === "true");
   
   const isSysAdmin = Boolean(isSystemAdmin || role === "system_admin");
-  const isCareOps = appContext === "ELDER_CARE" && !isSysAdmin && (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
+  const isCareOps = appContext === "ELDER_CARE" && !isSysAdmin && (role === "facility_manager" || role === "caregiver");
   
   // Navigation State & Browser History Management
   const [currentView, _setCurrentView] = useState(() => {
@@ -478,16 +478,16 @@ export default function App() {
       }
 
       // If elder-care admin or system admin, fetch pending access requests
-      if ((isSystemAdmin || appContext === "ELDER_CARE") && (role === "system_admin" || role === "organization_admin")) {
+      if ((isSystemAdmin || appContext === "ELDER_CARE") && (role === "system_admin" || role === "facility_manager")) {
         const reqRes = await fetch(`${API_BASE}/family/requests`, { headers });
         if (reqRes.ok) {
           setAccessRequests(await reqRes.json());
         }
       }
 
-      // Fetch sharing policies for elder-care org_admin, facility_manager, or system_admin
+      // Fetch sharing policies for elder-care facility_manager or system_admin
       if (
-        (isSystemAdmin || role === "system_admin" || role === "organization_admin" || role === "facility_manager") &&
+        (isSystemAdmin || role === "system_admin" || role === "facility_manager") &&
         appContext !== "CORPORATE"
       ) {
         try {
@@ -1402,7 +1402,6 @@ export default function App() {
                     <option value="family_member">Family Member (Elder-Care)</option>
                     <option value="facility_manager">Facility Manager</option>
                     <option value="corporate_staff">Corporate Staff (Smart Workplace)</option>
-                    <option value="organization_admin">Organization Administrator</option>
                   </select>
                 </div>
                 <div className="text-left">
@@ -1719,9 +1718,10 @@ export default function App() {
               handleReviewRequest={handleReviewRequest}
               sharingPolicies={sharingPolicies}
               onUpdateSharingPolicy={handleUpdateSharingPolicy}
-              canEditPolicies={isSystemAdmin || role === "system_admin" || role === "organization_admin"}
+              canEditPolicies={isSystemAdmin || role === "system_admin" || role === "facility_manager"}
               userRole={role}
-              initialTab="organizations"
+              isSystemAdmin={isSystemAdmin || role === "system_admin"}
+              initialTab={isSystemAdmin || role === "system_admin" ? "organizations" : "policies"}
             />
           )}
 
@@ -1733,7 +1733,7 @@ export default function App() {
               policies={sharingPolicies}
               organizations={organizations}
               residents={residents}
-              canEdit={isSystemAdmin || role === "system_admin" || role === "organization_admin"}
+              canEdit={isSystemAdmin || role === "system_admin" || role === "facility_manager"}
               userRole={role}
               onUpdatePolicy={handleUpdateSharingPolicy}
               isLoading={isLoading}
@@ -2359,7 +2359,7 @@ export default function App() {
       {token &&
         !isSysAdmin &&
         appContext === "ELDER_CARE" &&
-        (role === "caregiver" || role === "organization_admin" || role === "facility_manager") && (
+        (role === "caregiver" || role === "facility_manager") && (
           <EmergencyFallModal
             authToken={token}
             role={role}

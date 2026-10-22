@@ -35,7 +35,7 @@ from app.services.payments.webhooks import handle_webhook, subscription_org_id
 router = APIRouter(prefix="/payments", tags=["Family Subscription (SANDBOX payments)"])
 
 FAMILY = ["family_member"]
-ADMINS = ["system_admin", "organization_admin", "facility_manager"]
+ADMINS = ["system_admin", "facility_manager"]
 SANDBOX_NOTICE = ("SANDBOX: payments are simulated. No real money moves and no card or payment details are collected "
                   "or stored.")
 

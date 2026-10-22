@@ -19,7 +19,7 @@ export default function EmergencyFallModal({
     appContext === "ELDER_CARE" &&
     !isSystemAdmin &&
     role !== "system_admin" &&
-    (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
+    (role === "facility_manager" || role === "caregiver");
 
   const fetchActiveEmergency = async () => {
     if (!authToken) return;

@@ -118,7 +118,7 @@ def list_family_connections(
         conns = session.exec(select(FamilyConnection).where(FamilyConnection.family_user_id == current_user.id)).all()
     else:
         # Facility Manager / Admin view
-        if not is_sysadmin and (role_name not in ["facility_manager", "organization_admin"] or app_context == "CORPORATE"):
+        if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
             raise HTTPException(status_code=403, detail="Not authorized to manage family connections.")
         
         stmt = select(FamilyConnection)
@@ -163,7 +163,7 @@ def review_family_connection(
     current_user: User = Depends(get_current_user)
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only elder-care facility managers and administrators can review family connection requests."
@@ -242,7 +242,7 @@ def list_family_subscriptions(
             lifecycle.reconcile(session, s_)
         return subs
 
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Not authorized to inspect subscriptions.")
 
     visible = [s_ for s_ in session.exec(select(FamilySubscription)).all() if _staff_can_see_subscription(session, current_user, s_)]
@@ -261,7 +261,7 @@ def update_family_subscription(
     """Facility staff can place a hold (SUSPENDED) or lift it. They cannot mark a subscription paid: only a verified
     payment webhook does that. Staff only reach subscriptions of their own organization."""
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Only elder care facility managers can update subscription states.")
 
     sub = session.get(FamilySubscription, subscription_id)
@@ -547,7 +547,7 @@ def review_access_request_legacy(
     current_user: User = Depends(get_current_user)
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Not authorized to review family requests.")
 
     db_req = session.get(AccessRequest, request_id)
