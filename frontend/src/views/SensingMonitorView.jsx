@@ -187,9 +187,9 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
         })}
       </div>
 
-      <div className="grid grid-cols-1 2xl:grid-cols-3 gap-6">
+      <div className="space-y-6">
         {/* Devices + telemetry */}
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
           <div className={`${card} p-5`}>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Devices in this mode</h3>
             {modeDevices.length === 0 ? (
@@ -260,8 +260,10 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
           )}
         </div>
 
+        {selectedDevice && <LiveCsiStream key={selectedDevice} deviceId={selectedDevice} authToken={authToken} API_BASE={API_BASE} />}
+
         {/* Detections */}
-        <div className="2xl:col-span-2 space-y-4">
+        <div className="space-y-4">
           <div className={`${card} p-5`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -355,8 +357,6 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
           )}
         </div>
       </div>
-
-      {selectedDevice && <LiveCsiStream key={selectedDevice} deviceId={selectedDevice} authToken={authToken} API_BASE={API_BASE} />}
 
       {/* About the model */}
       <div className={`${card} p-5`}>
