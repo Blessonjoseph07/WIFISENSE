@@ -33,6 +33,8 @@ jobs:
         working-directory: ./backend
         env:
           SEED_DEMO_DATA: "1"
+          # throwaway secret shared by the server and test_family_subscription.py (sandbox webhooks); not a real credential
+          PAYMENT_WEBHOOK_SECRET: "ci-sandbox-webhook-secret-not-a-credential"
         run: |
           # 1. Initialize and seed SQLite database cleanly
           python -c "from app.core.database import init_db, engine; from sqlmodel import Session; from app.core.seed import seed_database; init_db(); session=Session(engine); seed_database(session)"
@@ -83,6 +85,18 @@ jobs:
 
           echo "=== RUNNING ORGANIZATION-SCOPED AUDIT LOG TESTS ==="
           python test_audit_scoping.py
+
+          echo "=== RUNNING FAMILY SUBSCRIPTION (SANDBOX PAYMENTS) TESTS ==="
+          python test_family_subscription.py
+
+          echo "=== RUNNING COMPREHENSIVE BUSINESS LOGIC TESTS ==="
+          python test_business_logic.py
+
+          echo "=== RUNNING GLOBAL ADMIN ALERT ACCESS TESTS ==="
+          python test_global_admin_alert_access.py
+
+          echo "=== RUNNING SHARING POLICY UI FLOW TESTS ==="
+          python test_ui_flow_sharing_policy.py
 
           kill $UVICORN_PID 2>/dev/null || true
 
