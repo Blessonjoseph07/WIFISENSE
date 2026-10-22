@@ -1596,8 +1596,8 @@ export default function App() {
 
           {/* Operational Emergency Banner for Elder Care Responders Only */}
           {activeFallAlert && isCareOps && (
-            <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 rounded-xl flex items-center justify-between pulse-animation relative z-25">
-              <div className="flex items-center gap-3">
+            <div className="bg-red-50 border border-red-500 text-red-700 dark:bg-red-950/20 dark:text-red-400 p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 pulse-animation relative z-25">
+              <div className="flex items-center gap-3 min-w-0">
                 <span className="material-symbols-outlined text-red-500 text-2xl fill">warning</span>
                 <div className="text-left font-sans">
                   <h3 className="text-[10px] font-bold uppercase tracking-wider text-red-600 flex items-center gap-2">

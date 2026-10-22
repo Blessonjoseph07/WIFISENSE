@@ -24,6 +24,7 @@ export default function SpaceAppShell({
   children
 }) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -36,7 +37,10 @@ export default function SpaceAppShell({
   return (
     <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex transition-all duration-300">
       {/* SideNavbar — WIFISENSE SPACE Shell */}
-      <nav className="fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white dark:bg-slate-900 border-r border-indigo-100 dark:border-slate-800 shadow-sm">
+      {navOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setNavOpen(false)} aria-hidden="true" />
+      )}
+      <nav className={`fixed left-0 top-0 bottom-0 w-sidebar-width flex flex-col z-45 bg-white dark:bg-slate-900 border-r border-indigo-100 dark:border-slate-800 shadow-sm transition-transform duration-200 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         {/* Logo / Header with SPACE Branding */}
         <div className="p-4 border-b border-indigo-100 dark:border-slate-800 flex items-center gap-3 bg-gradient-to-r from-indigo-50/60 to-blue-50/30 dark:from-indigo-950/20 dark:to-transparent">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-800/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-xs">
@@ -59,7 +63,7 @@ export default function SpaceAppShell({
             return (
               <button
                 key={item.id}
-                onClick={() => setCurrentView(item.id)}
+                onClick={() => { setCurrentView(item.id); setNavOpen(false); }}
                 className={`flex items-center justify-between gap-stack-sm rounded-lg p-2.5 text-left w-full transition-all cursor-pointer ${
                   isActive
                     ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 shadow-xs font-extrabold"
@@ -102,9 +106,17 @@ export default function SpaceAppShell({
       </nav>
 
       {/* Main Content Wrapper */}
-      <div className="ml-sidebar-width flex-1 flex flex-col min-h-screen">
+      <div className="lg:ml-sidebar-width flex-1 min-w-0 flex flex-col min-h-screen">
         {/* TopAppBar */}
-        <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-indigo-100 dark:border-slate-800 fixed top-0 right-0 left-sidebar-width h-header-height z-30 flex items-center justify-between px-gutter">
+        <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-indigo-100 dark:border-slate-800 fixed top-0 right-0 left-0 lg:left-sidebar-width gap-2 h-header-height z-30 flex items-center justify-between px-gutter">
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            className="lg:hidden shrink-0 p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            aria-label="Open navigation menu"
+          >
+            <span className="material-symbols-outlined">menu</span>
+          </button>
           <div className="flex items-center gap-stack-md text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
             <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">domain</span>
             <span>Corporate Deployment: <span className="text-slate-950 dark:text-white font-extrabold">
