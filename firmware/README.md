@@ -40,8 +40,8 @@ cd firmware\csi_recv ; idf.py -p COM4 monitor
 ```
 You should see `RX ready: channel 11 HT20, lltf-only CSI (expect len=128) ...` and then lines starting `CSI_IQ,`. If you see
 `dropped CSI: len=...` or `dropped frame: sig_mode=...`, the TX board is not sending 6 Mbps legacy OFDM on channel 11.
-The `CSI_IQ` lines are printed on UART0 (the board's USB-UART port). If you only see boot messages and no `CSI_IQ`, you are
-on the native USB port: use the UART port.
+The `CSI_IQ` lines (208 hex digits = 104 int8 values) are sent through the normal console, which is mirrored to both the
+UART port and the native USB port (Windows lists the native one as "USB Serial Device"), so either cable works.
 
 ## Bridge to the API
 ```bash

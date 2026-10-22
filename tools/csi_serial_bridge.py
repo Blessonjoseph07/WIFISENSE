@@ -35,18 +35,24 @@ N_IQ = 104
 MAC_RE = re.compile(r"^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$")
 
 
+def hex_to_int8(h: str) -> Optional[List[int]]:
+    """'ff01...' (two hex digits per int8, two's complement) -> list of ints, or None if malformed."""
+    if len(h) % 2 or not re.fullmatch(r"[0-9a-fA-F]*", h):
+        return None
+    return [b - 256 if b > 127 else b for b in bytes.fromhex(h)]
+
+
 def parse_iq_line(line: str) -> Optional[Dict]:
-    """CSI_IQ,seq,mac,rssi,rate,sig_mode,mcs,cwb,noise_floor,channel,first_word_invalid,[i0,q0,...]  -> dict or None."""
+    """CSI_IQ,seq,mac,rssi,rate,sig_mode,mcs,cwb,noise_floor,channel,first_word_invalid,<208 hex digits>  -> dict or None."""
     if not line.startswith("CSI_IQ,"):
         return None
-    head, sep, tail = line.strip().partition(",[")
-    if not sep or not tail.endswith("]"):
-        return None
-    f = head.split(",")
-    if len(f) != 11:          # type,seq,mac,rssi,rate,sig_mode,mcs,cwb,noise_floor,channel,first_word_invalid
+    f = line.strip().split(",")
+    if len(f) != 12:          # type,seq,mac,rssi,rate,sig_mode,mcs,cwb,noise_floor,channel,first_word_invalid,iq_hex
         return None
     try:
-        iq = [int(v) for v in tail[:-1].split(",")]
+        iq = hex_to_int8(f[11])
+        if iq is None:
+            return None
         out = {"seq": int(f[1]), "mac": f[2].lower(), "rssi": int(f[3]), "rate": int(f[4]), "sig_mode": int(f[5]),
                "mcs": int(f[6]), "cwb": int(f[7]), "noise": int(f[8]), "channel": int(f[9]), "iq": iq}
     except ValueError:
@@ -61,15 +67,16 @@ def parse_iq_line(line: str) -> Optional[Dict]:
 
 
 def parse_raw_line(line: str) -> Optional[Dict]:
-    """CSI_RAW,seq,[v0,...,v127]"""
+    """CSI_RAW,seq,<256 hex digits>"""
     if not line.startswith("CSI_RAW,"):
         return None
-    head, sep, tail = line.strip().partition(",[")
-    if not sep or not tail.endswith("]"):
+    f = line.strip().split(",")
+    if len(f) != 3:
         return None
     try:
-        return {"seq": int(head.split(",")[1]), "buf": [int(v) for v in tail[:-1].split(",")]}
-    except (ValueError, IndexError):
+        buf = hex_to_int8(f[2])
+        return {"seq": int(f[1]), "buf": buf} if buf is not None else None
+    except ValueError:
         return None
 
 

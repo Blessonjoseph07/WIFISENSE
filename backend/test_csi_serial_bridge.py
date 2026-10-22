@@ -31,12 +31,16 @@ def fake_buffer(seed=0):
     return buf
 
 
+def hx(vals):
+    return "".join(f"{v & 0xFF:02x}" for v in vals)
+
+
 def iq_line(seq, iq, mac=TX, sig_mode=0, cwb=0, rssi=-55):
-    return f"CSI_IQ,{seq},{mac},{rssi},11,{sig_mode},0,{cwb},-92,11,0,[{','.join(str(v) for v in iq)}]"
+    return f"CSI_IQ,{seq},{mac},{rssi},11,{sig_mode},0,{cwb},-92,11,0,{hx(iq)}"
 
 
 def raw_line(seq, buf):
-    return f"CSI_RAW,{seq},[{','.join(str(v) for v in buf)}]"
+    return f"CSI_RAW,{seq},{hx(buf)}"
 
 
 def run_bridge(lines, *extra):
@@ -63,7 +67,8 @@ def run():
     assert pkt["csi_data"]["iq"] == iq and pkt["csi_data"]["src_mac"] == TX
     assert not {"label", "activity", "class", "event_type"} & set(pkt["csi_data"]), "no labels may ever be added"
     assert bridge.parse_iq_line(iq_line(1, iq[:-2])) is None, "wrong length"
-    assert bridge.parse_iq_line(iq_line(1, iq[:-1] + [200])) is None, "out of int8 range"
+    assert bridge.parse_iq_line(iq_line(1, iq)[:-3] + "zz0") is None, "non-hex payload"
+    assert bridge.parse_iq_line(iq_line(1, iq).replace(",11,0,", ",11,0,0,", 1)) is None, "extra field"
     assert bridge.parse_iq_line(iq_line(1, iq, sig_mode=1)) is None, "HT frame"
     assert bridge.parse_iq_line(iq_line(1, iq, cwb=1)) is None, "40 MHz frame"
     assert bridge.parse_iq_line(iq_line(1, iq, rssi=5)) is None, "impossible rssi"
