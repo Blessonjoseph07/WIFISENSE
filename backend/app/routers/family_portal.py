@@ -367,11 +367,12 @@ def get_linked_resident_status(
     severity_threshold = policy.share_alert_severity_threshold if policy else "MEDIUM"
 
     is_present = False
-    activity = "Resting"
+    activity = None          # unknown until a sensing event exists: never a default like "Resting"
     last_update = None
+    data_source = None
 
     latest_event = session.exec(
-        select(SensingEvent).where(SensingEvent.room_id == target_res.room_id).order_by(SensingEvent.timestamp.desc())
+        select(SensingEvent).where(SensingEvent.room_id == target_res.room_id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc())
     ).first()
 
     if latest_event:
@@ -381,18 +382,21 @@ def get_linked_resident_status(
             if activity not in ["Empty", "Unoccupied"]:
                 is_present = True
         last_update = latest_event.timestamp.strftime("%H:%M:%S")
+        data_source = latest_event.source
+    has_data = latest_event is not None
 
     # Filtered recent activity history
     recent_activity_history = []
     if share_activity_detail:
         recent_events = session.exec(
-            select(SensingEvent).where(SensingEvent.room_id == target_res.room_id).order_by(SensingEvent.timestamp.desc()).limit(5)
+            select(SensingEvent).where(SensingEvent.room_id == target_res.room_id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc()).limit(5)
         ).all()
         for ev in recent_events:
             act = session.get(ActivityType, ev.inferred_activity_id)
             recent_activity_history.append({
                 "timestamp": ev.timestamp.strftime("%H:%M"),
-                "activity": act.name if act else "Telemetry Detected"
+                "activity": act.name if act else "Telemetry Detected",
+                "source": ev.source
             })
 
     # Filtered alerts according to severity threshold
@@ -426,16 +430,16 @@ def get_linked_resident_status(
             "last_name": target_res.last_name,
             "room_name": room.name if (room and share_room_name) else "Resident Suite"
         },
-        "presence_status": "Present" if is_present else ("Not Detected" if share_presence else "Restricted"),
-        "current_activity": activity if share_activity_detail else "Restricted by Sharing Policy",
-        "last_updated": last_update or datetime.now(timezone.utc).strftime("%H:%M:%S"),
+        # Presence is only reported when the sharing policy allows it AND a sensing event exists.
+        "presence_status": ("Restricted" if not share_presence
+                            else "No data" if not has_data
+                            else "Present" if is_present else "Not Detected"),
+        "current_activity": ("Restricted by Sharing Policy" if not share_activity_detail else activity),
+        "has_data": has_data,
+        "data_source": data_source,
+        "last_updated": last_update,
         "recent_activity_history": recent_activity_history,
         "alerts": alerts_list,
-        "facility_contact": {
-            "name": "Elder Care Central Desk",
-            "phone": "+91 4828 251122",
-            "email": "caredesk@wifisense.com"
-        }
     }
 
 # Backward-compatibility routes for legacy access requests

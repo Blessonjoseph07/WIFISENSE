@@ -20,7 +20,7 @@ export default function ElderCareSplash({ onContinue }) {
             Elderly care
           </h1>
           <p className="text-lg md:text-xl text-[#8C6D58] mb-10 max-w-md leading-relaxed font-medium">
-            Welcome to the Wifisense Elder Care monitoring portal. Connect with your residents, monitor real-time health data, and ensure a safer environment.
+            Welcome to the Wifisense Elder Care monitoring portal. Connect with your residents, review resident information and alerts, and ensure a safer environment.
           </p>
           <button 
             onClick={onContinue}

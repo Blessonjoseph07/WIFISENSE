@@ -526,11 +526,26 @@ def list_audit_logs(
     limit: int = 100,
     offset: int = 0,
     action: Optional[str] = None,
-    session: Session = Depends(get_session)
+    organization_id: Optional[str] = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
-    """Returns paginated audit logs for system governance and compliance monitoring."""
+    """Paginated audit trail. The system administrator sees everything; an organization administrator sees only events
+    attributed to their own organization (events that cannot be attributed to one organization stay system-admin only)."""
+    scopes = get_user_scopes(current_user)
     stmt = select(AuditLog)
+    if not scopes["is_system_admin"]:
+        org_ids = set(scopes["organization_ids"])
+        for building_id in scopes["building_ids"]:
+            building = session.get(Building, building_id)
+            if building:
+                org_ids.add(building.organization_id)
+        if organization_id and organization_id not in org_ids:
+            return []
+        stmt = stmt.where(AuditLog.organization_id.in_(list(org_ids)))
+    elif organization_id:
+        stmt = stmt.where(AuditLog.organization_id == organization_id)
     if action:
         stmt = stmt.where(AuditLog.what_action == action)
-    stmt = stmt.order_by(AuditLog.created_at.desc()).offset(offset).limit(min(limit, 500))
+    stmt = stmt.order_by(AuditLog.created_at.desc()).offset(offset).limit(max(1, min(limit, 500)))
     return session.exec(stmt).all()

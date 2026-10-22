@@ -830,10 +830,11 @@ def get_resident_profile_details(
 
     # Sensing telemetry
     latest_event = session.exec(
-        select(SensingEvent).where(SensingEvent.room_id == resident.room_id).order_by(SensingEvent.timestamp.desc())
+        select(SensingEvent).where(SensingEvent.room_id == resident.room_id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc())
     ).first()
 
-    current_activity = "Resting"
+    # No sensing event means no activity is known: do not invent "Resting".
+    current_activity = None
     latest_event_dict = None
     if latest_event:
         act = session.get(ActivityType, latest_event.inferred_activity_id)
@@ -845,13 +846,14 @@ def get_resident_profile_details(
             "confidence": latest_event.model_confidence,
             "rssi": latest_event.rssi,
             "subcarriers": latest_event.subcarrier_count,
-            "signal_quality": latest_event.signal_quality or 94,
+            "signal_quality": latest_event.signal_quality,  # None when not measured (never a made-up 94)
+            "source": latest_event.source,
             "event_type": latest_event.event_type or "SensingTelemetry"
         }
 
     # Recent history
     recent_events = session.exec(
-        select(SensingEvent).where(SensingEvent.room_id == resident.room_id).order_by(SensingEvent.timestamp.desc()).limit(6)
+        select(SensingEvent).where(SensingEvent.room_id == resident.room_id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc()).limit(6)
     ).all()
     recent_history = []
     for ev in recent_events:
@@ -860,7 +862,8 @@ def get_resident_profile_details(
             "timestamp": ev.timestamp.strftime("%H:%M:%S"),
             "activity": act.name if act else "Unknown",
             "confidence": round(ev.model_confidence * 100, 1),
-            "signal_quality": ev.signal_quality or 94
+            "signal_quality": ev.signal_quality,
+            "source": ev.source
         })
 
     # Active alert
@@ -1183,7 +1186,7 @@ def detect_unexpected_occupancy(session: Session = Depends(get_session), current
     
     for rm in corporate_rooms:
         latest_event = session.exec(
-            select(SensingEvent).where(SensingEvent.room_id == rm.id).order_by(SensingEvent.timestamp.desc())
+            select(SensingEvent).where(SensingEvent.room_id == rm.id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc())
         ).first()
         if not latest_event:
             continue
@@ -1236,7 +1239,7 @@ def get_energy_efficiency_recommendations(session: Session = Depends(get_session
             continue
             
         latest_event = session.exec(
-            select(SensingEvent).where(SensingEvent.room_id == rm.id).order_by(SensingEvent.timestamp.desc())
+            select(SensingEvent).where(SensingEvent.room_id == rm.id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc())
         ).first()
         act = session.get(ActivityType, latest_event.inferred_activity_id) if latest_event else None
         is_vacant = (not act) or (act.name in ["Empty", "Unoccupied"])
@@ -1348,7 +1351,7 @@ def execute_bulk_energy_actions(
         if e_state.get("ac_status") == "ON" or e_state.get("lighting_status") == "ON":
             # Check if vacant
             latest_event = session.exec(
-                select(SensingEvent).where(SensingEvent.room_id == rm.id).order_by(SensingEvent.timestamp.desc())
+                select(SensingEvent).where(SensingEvent.room_id == rm.id, SensingEvent.source != "dataset").order_by(SensingEvent.timestamp.desc())
             ).first()
             act = session.get(ActivityType, latest_event.inferred_activity_id) if latest_event else None
             is_vacant = (not act) or (act.name in ["Empty", "Unoccupied"])
