@@ -15,6 +15,10 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
     SEED_DEMO_DATA: bool = os.getenv("SEED_DEMO_DATA", "1") == "1"
+    # "full" keeps the complete demo data set (needed by the test scripts). "minimal" keeps one user per role.
+    SEED_PROFILE: str = os.getenv("SEED_PROFILE", "full").strip().lower()
+    # When set, every seeded demo account gets this password instead of its well-known one.
+    SEED_PASSWORD: str = os.getenv("SEED_PASSWORD", "")
     ALLOWED_ORIGINS: list = [
         origin.strip()
         for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
@@ -67,6 +71,16 @@ class Settings:
             if self.ENVIRONMENT.lower() == "production":
                 raise RuntimeError("PAYMENT_WEBHOOK_SECRET is required in production.")
             self.PAYMENT_WEBHOOK_SECRET = secrets.token_urlsafe(32)
+        self.SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "1") == "1"
+        self.SEED_PROFILE = os.getenv("SEED_PROFILE", "full").strip().lower()
+        self.SEED_PASSWORD = os.getenv("SEED_PASSWORD", "")
+        if self.SEED_PROFILE not in ("full", "minimal"):
+            raise RuntimeError("SEED_PROFILE must be 'full' or 'minimal'.")
+        if self.ENVIRONMENT.lower() == "production" and self.SEED_DEMO_DATA and len(self.SEED_PASSWORD) < 12:
+            raise RuntimeError(
+                "Refusing to seed demo accounts in production with their well-known passwords. "
+                "Set SEED_PASSWORD (12+ characters, known only to you) or set SEED_DEMO_DATA=0."
+            )
         if self.ENVIRONMENT.lower() == "production":
             if self.SECRET_KEY == "b3d162fc8cd92b516f863efbd4cfbd892abf4857b29a8a72":
                 raise RuntimeError(

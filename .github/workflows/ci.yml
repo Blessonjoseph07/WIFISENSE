@@ -104,6 +104,9 @@ jobs:
           echo "=== RUNNING ROOM BOOKING TESTS ==="
           python test_room_bookings.py
 
+          echo "=== RUNNING DEMO SEED PROFILE TEST ==="
+          python test_seed_profile.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js
