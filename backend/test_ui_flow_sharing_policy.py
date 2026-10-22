@@ -18,10 +18,15 @@ import os
 import json
 import urllib.request
 import urllib.error
+import uuid
 from pathlib import Path
 from sqlmodel import Session, select
 from app.core.database import engine
-from app.models.entities import AuditLog, SharingPolicy, Organization, User
+from app.core.security import hash_password
+from app.models.entities import (
+    AuditLog, SharingPolicy, Organization, User, UserRole,
+    Building, Floor, Room, Resident, AccessRequest
+)
 
 # Environment-configurable endpoints and paths for cross-environment portability
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -252,6 +257,125 @@ def test_cross_organization_tenant_isolation_and_gating():
     assert status == 400, f"Assigning organization_admin should fail with 400, got {status}: {res}"
     assert "reserved for Phase 2" in str(res), f"Expected clear Phase 2 reservation message, got: {res}"
     print(f"[PASS] Attempting to assign organization_admin rejected with HTTP 400: {res['detail']}.")
+
+    # 5. Access Requests: Scoping and cross-org review boundary
+    # a) Caregiver blocked from GET /family/requests -> 403
+    cg = login(CAREGIVER_EMAIL, CAREGIVER_PASSWORD)
+    status, res = api_call("/family/requests", token=cg["access_token"])
+    assert status == 403, f"Caregiver should be blocked from GET /family/requests, got {status}: {res}"
+
+    # b) Corporate FM blocked from GET /family/requests -> 403
+    status, res = api_call("/family/requests", token=corp_fm["access_token"])
+    assert status == 403, f"Corporate FM should be blocked from GET /family/requests, got {status}: {res}"
+
+    # c) Elder-care FM of Org A gets only Org A requests
+    status, care_reqs = api_call("/family/requests", token=care_fm["access_token"])
+    assert status == 200, f"Expected 200 from GET /family/requests, got {status}"
+    assert len(care_reqs) > 0, "Expected seeded access requests for elder-care org"
+    org_a_req_id = care_reqs[0]["id"]
+
+    # d) Create temporary Org B with its own elder-care resident, access request, and FM
+    test_org_b_id = "test-org-b-" + uuid.uuid4().hex[:8]
+    test_bld_b_id = "test-bld-b-" + uuid.uuid4().hex[:8]
+    test_flr_b_id = "test-flr-b-" + uuid.uuid4().hex[:8]
+    test_rm_b_id = "test-rm-b-" + uuid.uuid4().hex[:8]
+    test_res_b_id = "test-res-b-" + uuid.uuid4().hex[:8]
+    test_req_b_id = "test-req-b-" + uuid.uuid4().hex[:8]
+    test_fm_b_id = "test-fm-b-" + uuid.uuid4().hex[:8]
+    test_fm_b_email = f"fmb_{uuid.uuid4().hex[:6]}@wifisense.com"
+    test_fm_b_pass = "TestPass123!"
+
+    with Session(engine) as session:
+        org_b = Organization(id=test_org_b_id, name="Test Org B", type="ELDER_CARE")
+        session.add(org_b)
+        bld_b = Building(id=test_bld_b_id, organization_id=test_org_b_id, name="Building B")
+        session.add(bld_b)
+        flr_b = Floor(id=test_flr_b_id, building_id=test_bld_b_id, floor_number=1)
+        session.add(flr_b)
+        rm_b = Room(id=test_rm_b_id, floor_id=test_flr_b_id, name="Room B1", room_type="Resident Bedroom")
+        session.add(rm_b)
+        res_b = Resident(id=test_res_b_id, room_id=test_rm_b_id, first_name="Resident", last_name="B")
+        session.add(res_b)
+        req_b = AccessRequest(
+            id=test_req_b_id,
+            requesting_user_id=target_user_id,
+            resident_id=test_res_b_id,
+            status="pending"
+        )
+        session.add(req_b)
+        user_b = User(
+            id=test_fm_b_id,
+            email=test_fm_b_email,
+            password_hash=hash_password(test_fm_b_pass),
+            first_name="FM",
+            last_name="OrgB",
+            is_active=True
+        )
+        session.add(user_b)
+        session.commit()
+
+        ur_b = UserRole(
+            user_id=test_fm_b_id,
+            role_id=3,  # facility_manager
+            organization_id=test_org_b_id
+        )
+        session.add(ur_b)
+        session.commit()
+
+    try:
+        fm_b = login(test_fm_b_email, test_fm_b_pass)
+        assert fm_b["role"] == "facility_manager"
+
+        # e) FM of Org B calling GET /family/requests only sees Org B request
+        status, fm_b_reqs = api_call("/family/requests", token=fm_b["access_token"])
+        assert status == 200
+        req_b_ids = [r["id"] for r in fm_b_reqs]
+        assert test_req_b_id in req_b_ids, "Org B FM must see Org B request"
+        assert org_a_req_id not in req_b_ids, "Org B FM must NOT see Org A request!"
+
+        # f) FM of Org A calling GET /family/requests does NOT see Org B request
+        status, fm_a_reqs = api_call("/family/requests", token=care_fm["access_token"])
+        assert status == 200
+        req_a_ids = [r["id"] for r in fm_a_reqs]
+        assert test_req_b_id not in req_a_ids, "Org A FM must NOT see Org B request!"
+
+        # g) System Admin calling GET /family/requests sees BOTH
+        status, sys_reqs = api_call("/family/requests", token=sysadmin["access_token"])
+        assert status == 200
+        sys_req_ids = [r["id"] for r in sys_reqs]
+        assert test_req_b_id in sys_req_ids and org_a_req_id in sys_req_ids, "SysAdmin must see all requests"
+
+        # h) Cross-org negative test: FM of Org B cannot review Org A request -> 403 Forbidden
+        status, res = api_call(
+            f"/family/requests/{org_a_req_id}",
+            method="PATCH",
+            token=fm_b["access_token"],
+            data={"status": "approved"}
+        )
+        assert status == 403, f"Cross-org FM review of AccessRequest should fail with 403, got {status}: {res}"
+        print("[PASS] Cross-organization access request review rejected with HTTP 403 Forbidden.")
+        print("[PASS] Scoped GET /family/requests and cross-org tenant isolation verified.")
+    finally:
+        # Cleanup test Org B entities
+        with Session(engine) as session:
+            for entity_type, entity_id in [
+                (UserRole, test_fm_b_id),
+                (User, test_fm_b_id),
+                (AccessRequest, test_req_b_id),
+                (Resident, test_res_b_id),
+                (Room, test_rm_b_id),
+                (Floor, test_flr_b_id),
+                (Building, test_bld_b_id),
+                (Organization, test_org_b_id),
+            ]:
+                if entity_type == UserRole:
+                    for ur_obj in session.exec(select(UserRole).where(UserRole.user_id == entity_id)).all():
+                        session.delete(ur_obj)
+                else:
+                    obj = session.get(entity_type, entity_id)
+                    if obj:
+                        session.delete(obj)
+            session.commit()
 
 def test_unauthorized_roles_blocked_flow():
     """
