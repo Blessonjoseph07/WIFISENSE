@@ -61,6 +61,7 @@ class AuditLogOut(BaseModel):
     result: str
     details: Optional[Dict[str, Any]] = None
     ip_address: Optional[str] = None
+    organization_id: Optional[str] = None
     created_at: datetime
 
     class Config:
