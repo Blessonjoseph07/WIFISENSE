@@ -110,6 +110,8 @@ jobs:
           python test_fall_doctor_notify.py
           echo "=== RUNNING HEALTH ENDPOINT TEST ==="
           python test_health.py
+          echo "=== RUNNING DEMO SEED PROFILE TEST ==="
+          python test_seed_profile.py
 
           kill $UVICORN_PID 2>/dev/null || true
 
