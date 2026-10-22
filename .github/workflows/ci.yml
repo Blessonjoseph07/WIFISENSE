@@ -108,6 +108,8 @@ jobs:
           python test_csi_serial_bridge.py
           echo "=== RUNNING FALL -> DOCTOR NOTIFICATION TESTS ==="
           python test_fall_doctor_notify.py
+          echo "=== RUNNING HEALTH ENDPOINT TEST ==="
+          python test_health.py
 
           kill $UVICORN_PID 2>/dev/null || true
 
