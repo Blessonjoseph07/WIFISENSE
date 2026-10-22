@@ -436,10 +436,16 @@ def assign_role(
 ):
     seed_roles_if_empty(session)
 
+    if assignment.role == "organization_admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role 'organization_admin' is reserved for Phase 2 and cannot be assigned in Phase 1."
+        )
+
     if assignment.role not in ROLE_MAPPING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role. Supported roles: {list(ROLE_MAPPING.keys())}"
+            detail=f"Invalid role. Supported roles: {[r for r in ROLE_MAPPING.keys() if r != 'organization_admin']}"
         )
 
     target_user = session.get(User, assignment.user_id)
@@ -521,7 +527,7 @@ def assign_role(
 
     return target_user
 
-@router.get("/audit-logs", response_model=List[AuditLogOut], dependencies=[Depends(require_roles(["system_admin", "organization_admin"]))])
+@router.get("/audit-logs", response_model=List[AuditLogOut], dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
 def list_audit_logs(
     limit: int = 100,
     offset: int = 0,

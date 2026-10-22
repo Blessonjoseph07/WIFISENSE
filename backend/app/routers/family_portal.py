@@ -118,7 +118,7 @@ def list_family_connections(
         conns = session.exec(select(FamilyConnection).where(FamilyConnection.family_user_id == current_user.id)).all()
     else:
         # Facility Manager / Admin view
-        if not is_sysadmin and (role_name not in ["facility_manager", "organization_admin"] or app_context == "CORPORATE"):
+        if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
             raise HTTPException(status_code=403, detail="Not authorized to manage family connections.")
         
         stmt = select(FamilyConnection)
@@ -155,6 +155,17 @@ def list_family_connections(
         ))
     return out_list
 
+def _resident_org_id(session: Session, resident_id: Optional[str]) -> Optional[str]:
+    """Helper to resolve the parent organization ID of a given resident."""
+    if not resident_id:
+        return None
+    resident = session.get(Resident, resident_id)
+    room = session.get(Room, resident.room_id) if resident else None
+    floor = session.get(Floor, room.floor_id) if room else None
+    building = session.get(Building, floor.building_id) if floor else None
+    return building.organization_id if building else None
+
+
 @router.patch("/connections/{connection_id}/review", response_model=FamilyConnectionOut)
 def review_family_connection(
     connection_id: str,
@@ -163,7 +174,8 @@ def review_family_connection(
     current_user: User = Depends(get_current_user)
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    scopes = get_user_scopes(current_user)
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only elder-care facility managers and administrators can review family connection requests."
@@ -172,6 +184,14 @@ def review_family_connection(
     db_conn = session.get(FamilyConnection, connection_id)
     if not db_conn:
         raise HTTPException(status_code=404, detail="Family connection not found.")
+
+    if not scopes["is_system_admin"]:
+        conn_org_id = _resident_org_id(session, db_conn.resident_id)
+        if not conn_org_id or conn_org_id not in scopes["organization_ids"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to review family connections for another organization."
+            )
 
     if review.status not in ["approved", "rejected", "revoked"]:
         raise HTTPException(status_code=400, detail="Status must be approved, rejected, or revoked.")
@@ -242,7 +262,7 @@ def list_family_subscriptions(
             lifecycle.reconcile(session, s_)
         return subs
 
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Not authorized to inspect subscriptions.")
 
     visible = [s_ for s_ in session.exec(select(FamilySubscription)).all() if _staff_can_see_subscription(session, current_user, s_)]
@@ -261,7 +281,7 @@ def update_family_subscription(
     """Facility staff can place a hold (SUSPENDED) or lift it. They cannot mark a subscription paid: only a verified
     payment webhook does that. Staff only reach subscriptions of their own organization."""
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Only elder care facility managers can update subscription states.")
 
     sub = session.get(FamilySubscription, subscription_id)
@@ -537,7 +557,20 @@ def list_access_requests_legacy(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    return session.exec(select(AccessRequest)).all()
+    role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
+    scopes = get_user_scopes(current_user)
+
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
+        raise HTTPException(status_code=403, detail="Not authorized to inspect family requests.")
+
+    stmt = select(AccessRequest)
+    if not scopes["is_system_admin"]:
+        stmt = stmt.join(Resident, AccessRequest.resident_id == Resident.id)\
+                   .join(Room, Resident.room_id == Room.id)\
+                   .join(Floor, Room.floor_id == Floor.id)\
+                   .join(Building, Floor.building_id == Building.id)\
+                   .where(Building.organization_id.in_(list(scopes["organization_ids"])))
+    return session.exec(stmt).all()
 
 @router.patch("/requests/{request_id}", response_model=AccessRequestOut)
 def review_access_request_legacy(
@@ -547,13 +580,26 @@ def review_access_request_legacy(
     current_user: User = Depends(get_current_user)
 ):
     role_name, app_context, is_sysadmin = get_user_role_and_context(current_user, session)
-    if not is_sysadmin and (role_name not in ["organization_admin", "facility_manager"] or app_context == "CORPORATE"):
+    scopes = get_user_scopes(current_user)
+    if not is_sysadmin and (role_name != "facility_manager" or app_context == "CORPORATE"):
         raise HTTPException(status_code=403, detail="Not authorized to review family requests.")
 
     db_req = session.get(AccessRequest, request_id)
     if not db_req:
         raise HTTPException(status_code=404, detail="Request not found.")
+
+    if not scopes["is_system_admin"]:
+        req_org_id = _resident_org_id(session, db_req.resident_id)
+        if not req_org_id or req_org_id not in scopes["organization_ids"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to review family requests for another organization."
+            )
+
     db_req.status = review.status
+    db_req.reviewed_by = current_user.id
+    db_req.reviewed_at = datetime.now(timezone.utc)
+    db_req.updated_at = datetime.now(timezone.utc)
     session.add(db_req)
     session.commit()
     session.refresh(db_req)

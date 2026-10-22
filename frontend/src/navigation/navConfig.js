@@ -2,7 +2,6 @@
 
 export const BACKEND_ROLES = [
   "system_admin",
-  "organization_admin",
   "facility_manager",
   "caregiver",
   "corporate_staff",
@@ -138,12 +137,6 @@ const MATRIX = {
       badgeText: "CARE • Facility Manager",
       theme: "care"
     },
-    organization_admin: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "sensing", "family", "devices", "assets", "analytics", "profile"],
-      defaultView: "dashboard",
-      badgeText: "CARE • Org Administrator",
-      theme: "care"
-    },
     doctor: {
       allowedViews: ["doctor"],
       defaultView: "doctor",
@@ -174,12 +167,6 @@ const MATRIX = {
       allowedViews: ["corporate", "occupancy", "assets", "analytics", "alerts", "devices", "profile"],
       defaultView: "corporate",
       badgeText: "SPACE • Facility Manager",
-      theme: "space"
-    },
-    organization_admin: {
-      allowedViews: ["corporate", "occupancy", "assets", "analytics", "alerts", "devices", "profile"],
-      defaultView: "corporate",
-      badgeText: "SPACE • Org Administrator",
       theme: "space"
     }
   },

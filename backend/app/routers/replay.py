@@ -21,7 +21,7 @@ from app.schemas.schemas import ReplayEvaluationCreate
 
 router = APIRouter(prefix="/sensing/replay", tags=["Dataset Replay"])
 
-WRITE_ROLES = ["system_admin", "organization_admin", "facility_manager"]
+WRITE_ROLES = ["system_admin", "facility_manager"]
 POSITIVE_LABEL = "fall"
 
 

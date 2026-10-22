@@ -747,7 +747,7 @@ def seed_database(session: Session, force: bool = False):
     session.refresh(kavitha_user)
     session.add(UserRole(
         user_id=kavitha_user.id,
-        role_id=ROLE_MAPPING["organization_admin"],
+        role_id=ROLE_MAPPING["facility_manager"],
         organization_id=org_ajce.id
     ))
 
@@ -854,7 +854,7 @@ def seed_database(session: Session, force: bool = False):
     session.refresh(anjali_user)
     session.add(UserRole(
         user_id=anjali_user.id,
-        role_id=ROLE_MAPPING["organization_admin"],
+        role_id=ROLE_MAPPING["facility_manager"],
         organization_id=org_lab.id
     ))
 

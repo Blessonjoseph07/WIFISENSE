@@ -32,7 +32,7 @@ export default function OccupancyView({
   const isCareOps =
     isCare &&
     !isSysAdmin &&
-    (role === "facility_manager" || role === "caregiver" || role === "organization_admin");
+    (role === "facility_manager" || role === "caregiver");
 
   // Strict context filtering: separate CARE vs SPACE rooms
   const contextRooms = rooms.filter((rm) => {
