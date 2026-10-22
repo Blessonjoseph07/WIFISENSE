@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import LiveCsiStream from "../components/LiveCsiStream";
 import {
   ACTIVITY_LABEL,
   ConfidenceBadge,
@@ -210,7 +211,7 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
                           {online ? "ONLINE" : d.last_seen_at ? "OFFLINE" : "NEVER SEEN"}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">{roomName(d.room_id) || "Unassigned"} · last packet {ago(d.last_seen_at)}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">{roomName(d.room_id) || "Unassigned"} · {(d.allowed_source || "live") === "simulated" ? "last demo event" : "last packet"} {ago(d.last_seen_at)}</div>
                     </button>
                   );
                 })}
@@ -354,6 +355,8 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
           )}
         </div>
       </div>
+
+      {selectedDevice && <LiveCsiStream key={selectedDevice} deviceId={selectedDevice} authToken={authToken} API_BASE={API_BASE} />}
 
       {/* About the model */}
       <div className={`${card} p-5`}>
