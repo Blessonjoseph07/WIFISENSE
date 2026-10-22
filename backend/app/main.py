@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.core.database import init_db, engine
 from app.core.seed import seed_database
 from app.core.bootstrap import bootstrap_system_admin
-from app.routers import auth, crud, sensing, alerts, analytics, family_portal, users, care_records, doctor_portal, replay, payments
+from app.routers import auth, crud, sensing, alerts, analytics, family_portal, users, care_records, doctor_portal, replay, payments, bookings
 
 app = FastAPI(
     title="Wi-Fi Sense Focus API",
@@ -29,6 +29,7 @@ app.include_router(care_records.router)
 app.include_router(doctor_portal.router)
 app.include_router(replay.router)
 app.include_router(payments.router)
+app.include_router(bookings.router)
 app.include_router(sensing.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
