@@ -104,6 +104,9 @@ jobs:
           echo "=== RUNNING ROOM BOOKING TESTS ==="
           python test_room_bookings.py
 
+          echo "=== RUNNING HEALTH ENDPOINT TEST ==="
+          python test_health.py
+
           kill $UVICORN_PID 2>/dev/null || true
 
       - name: Set up Node.js

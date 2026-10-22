@@ -32,6 +32,7 @@ import DoctorPortalView from "./views/DoctorPortalView";
 import MedicalProvidersView from "./views/MedicalProvidersView";
 import SensingMonitorView from "./views/SensingMonitorView";
 import RoomBookingsView from "./views/RoomBookingsView";
+import EvidenceView from "./views/EvidenceView";
 import BookingReminders from "./components/BookingReminders";
 import UserProfileView from "./views/UserProfileView";
 import EmergencyFallModal from "./components/EmergencyFallModal";
@@ -1781,6 +1782,10 @@ export default function App() {
           {/* ============================================================================
             6b. MEDICAL PROVIDERS (organization staff) AND DOCTOR PORTAL
           ============================================================================ */}
+          {currentView === "evidence" && isViewAllowed("evidence", appContext, role, isSystemAdmin) && (
+            <EvidenceView authToken={token} API_BASE={API_BASE} />
+          )}
+
           {currentView === "bookings" && isViewAllowed("bookings", appContext, role, isSystemAdmin) && (
             <RoomBookingsView
               authToken={token}
