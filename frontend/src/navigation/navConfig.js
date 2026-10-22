@@ -103,6 +103,12 @@ export const VIEW_DEFINITIONS = {
     icon: "stethoscope",
     description: "Assigned residents, medical records, consultations and fall alerts"
   },
+  sensing: {
+    id: "sensing",
+    label: "Sensing Monitor",
+    icon: "sensors",
+    description: "Where each value comes from: demo, dataset replay, or live hardware"
+  },
   providers: {
     id: "providers",
     label: "Medical Providers",
@@ -121,19 +127,19 @@ export const VIEW_DEFINITIONS = {
 const MATRIX = {
   [APP_CONTEXTS.CARE]: {
     caregiver: {
-      allowedViews: ["dashboard", "caregiver", "residents", "alerts", "devices", "occupancy", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "alerts", "sensing", "devices", "occupancy", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Caregiver",
       theme: "care"
     },
     facility_manager: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "sensing", "family", "devices", "assets", "analytics", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Facility Manager",
       theme: "care"
     },
     organization_admin: {
-      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "family", "devices", "assets", "analytics", "profile"],
+      allowedViews: ["dashboard", "caregiver", "residents", "orgadmin", "providers", "sharing_policies", "alerts", "sensing", "family", "devices", "assets", "analytics", "profile"],
       defaultView: "dashboard",
       badgeText: "CARE • Org Administrator",
       theme: "care"
@@ -179,7 +185,7 @@ const MATRIX = {
   },
   [APP_CONTEXTS.SYSTEM]: {
     system_admin: {
-      allowedViews: ["sysadmin", "orgadmin", "providers", "sharing_policies", "devices", "alerts", "analytics", "assets", "occupancy", "dashboard", "profile"],
+      allowedViews: ["sysadmin", "orgadmin", "providers", "sharing_policies", "devices", "alerts", "sensing", "analytics", "assets", "occupancy", "dashboard", "profile"],
       defaultView: "sysadmin",
       badgeText: "SYSTEM CONSOLE",
       theme: "system"

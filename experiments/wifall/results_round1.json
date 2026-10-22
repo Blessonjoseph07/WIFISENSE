@@ -1,0 +1,1407 @@
+{
+ "meta": {
+  "n_clips": 928,
+  "n_features": 24,
+  "features": [
+   "motion_mean",
+   "motion_median",
+   "motion_max",
+   "motion_rel",
+   "burst_max",
+   "burst_mean",
+   "burst_std",
+   "burst_ratio",
+   "burst_pos",
+   "burst_frac",
+   "diff_mean",
+   "diff_peak",
+   "diff_peak_rel",
+   "band_0.5_2",
+   "band_2_5",
+   "band_5_10",
+   "band_10_20",
+   "band_20_40",
+   "pc1_frac",
+   "level",
+   "level_cv",
+   "rssi_mean",
+   "rssi_std",
+   "n_packets"
+  ],
+  "seed": 0,
+  "clips_per_person": {
+   "ID0": 32,
+   "ID1": 32,
+   "ID2": 640,
+   "ID3": 32,
+   "ID4": 32,
+   "ID5": 32,
+   "ID6": 32,
+   "ID7": 32,
+   "ID8": 32,
+   "ID9": 32
+  },
+  "clips_per_action": {
+   "Jump": 116,
+   "fall": 464,
+   "sit": 116,
+   "stand": 114,
+   "walk": 118
+  },
+  "fall_share": 0.5
+ },
+ "binary": {
+  "full": {
+   "OneFeatureThreshold(motion_mean)": {
+    "pooled": {
+     "tp": 425,
+     "fn": 39,
+     "fp": 330,
+     "tn": 134,
+     "recall": 0.915948275862069,
+     "precision": 0.5629139072847682,
+     "fpr": 0.7112068965517241,
+     "balanced_acc": 0.6023706896551724
+    },
+    "per_person_summary": {
+     "recall": {
+      "mean": 0.89875,
+      "min": 0.625,
+      "max": 1.0
+     },
+     "precision": {
+      "mean": 0.5746093430976529,
+      "min": 0.5161290322580645,
+      "max": 0.625
+     },
+     "fpr": {
+      "mean": 0.673125,
+      "min": 0.5,
+      "max": 0.9375
+     },
+     "balanced_acc": {
+      "mean": 0.6128125,
+      "min": 0.53125,
+      "max": 0.6875
+     }
+    },
+    "per_person": {
+     "ID0": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 13,
+      "tn": 3,
+      "recall": 1.0,
+      "precision": 0.5517241379310345,
+      "fpr": 0.8125,
+      "balanced_acc": 0.59375,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID1": {
+      "tp": 12,
+      "fn": 4,
+      "fp": 9,
+      "tn": 7,
+      "recall": 0.75,
+      "precision": 0.5714285714285714,
+      "fpr": 0.5625,
+      "balanced_acc": 0.59375,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID2": {
+      "tp": 296,
+      "fn": 24,
+      "fp": 234,
+      "tn": 86,
+      "recall": 0.925,
+      "precision": 0.5584905660377358,
+      "fpr": 0.73125,
+      "balanced_acc": 0.596875,
+      "n": 640,
+      "n_fall": 320
+     },
+     "ID3": {
+      "tp": 13,
+      "fn": 3,
+      "fp": 8,
+      "tn": 8,
+      "recall": 0.8125,
+      "precision": 0.6190476190476191,
+      "fpr": 0.5,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID4": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 14,
+      "tn": 2,
+      "recall": 1.0,
+      "precision": 0.5333333333333333,
+      "fpr": 0.875,
+      "balanced_acc": 0.5625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID5": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 15,
+      "tn": 1,
+      "recall": 1.0,
+      "precision": 0.5161290322580645,
+      "fpr": 0.9375,
+      "balanced_acc": 0.53125,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID6": {
+      "tp": 15,
+      "fn": 1,
+      "fp": 9,
+      "tn": 7,
+      "recall": 0.9375,
+      "precision": 0.625,
+      "fpr": 0.5625,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID7": {
+      "tp": 10,
+      "fn": 6,
+      "fp": 8,
+      "tn": 8,
+      "recall": 0.625,
+      "precision": 0.5555555555555556,
+      "fpr": 0.5,
+      "balanced_acc": 0.5625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID8": {
+      "tp": 15,
+      "fn": 1,
+      "fp": 10,
+      "tn": 6,
+      "recall": 0.9375,
+      "precision": 0.6,
+      "fpr": 0.625,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID9": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 10,
+      "tn": 6,
+      "recall": 1.0,
+      "precision": 0.6153846153846154,
+      "fpr": 0.625,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     }
+    }
+   },
+   "LogisticRegression": {
+    "pooled": {
+     "tp": 342,
+     "fn": 122,
+     "fp": 147,
+     "tn": 317,
+     "recall": 0.7370689655172413,
+     "precision": 0.6993865030674846,
+     "fpr": 0.3168103448275862,
+     "balanced_acc": 0.7101293103448276
+    },
+    "per_person_summary": {
+     "recall": {
+      "mean": 0.6828125,
+      "min": 0.125,
+      "max": 1.0
+     },
+     "precision": {
+      "mean": 0.7242021282377366,
+      "min": 0.5333333333333333,
+      "max": 1.0
+     },
+     "fpr": {
+      "mean": 0.3725,
+      "min": 0.0,
+      "max": 0.875
+     },
+     "balanced_acc": {
+      "mean": 0.65515625,
+      "min": 0.5625,
+      "max": 0.75
+     }
+    },
+    "per_person": {
+     "ID0": {
+      "tp": 2,
+      "fn": 14,
+      "fp": 0,
+      "tn": 16,
+      "recall": 0.125,
+      "precision": 1.0,
+      "fpr": 0.0,
+      "balanced_acc": 0.5625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID1": {
+      "tp": 15,
+      "fn": 1,
+      "fp": 7,
+      "tn": 9,
+      "recall": 0.9375,
+      "precision": 0.6818181818181818,
+      "fpr": 0.4375,
+      "balanced_acc": 0.75,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID2": {
+      "tp": 245,
+      "fn": 75,
+      "fp": 92,
+      "tn": 228,
+      "recall": 0.765625,
+      "precision": 0.7270029673590505,
+      "fpr": 0.2875,
+      "balanced_acc": 0.7390625,
+      "n": 640,
+      "n_fall": 320
+     },
+     "ID3": {
+      "tp": 14,
+      "fn": 2,
+      "fp": 7,
+      "tn": 9,
+      "recall": 0.875,
+      "precision": 0.6666666666666666,
+      "fpr": 0.4375,
+      "balanced_acc": 0.71875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID4": {
+      "tp": 9,
+      "fn": 7,
+      "fp": 2,
+      "tn": 14,
+      "recall": 0.5625,
+      "precision": 0.8181818181818182,
+      "fpr": 0.125,
+      "balanced_acc": 0.71875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID5": {
+      "tp": 5,
+      "fn": 11,
+      "fp": 1,
+      "tn": 15,
+      "recall": 0.3125,
+      "precision": 0.8333333333333334,
+      "fpr": 0.0625,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID6": {
+      "tp": 5,
+      "fn": 11,
+      "fp": 1,
+      "tn": 15,
+      "recall": 0.3125,
+      "precision": 0.8333333333333334,
+      "fpr": 0.0625,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID7": {
+      "tp": 15,
+      "fn": 1,
+      "fp": 11,
+      "tn": 5,
+      "recall": 0.9375,
+      "precision": 0.5769230769230769,
+      "fpr": 0.6875,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID8": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 12,
+      "tn": 4,
+      "recall": 1.0,
+      "precision": 0.5714285714285714,
+      "fpr": 0.75,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID9": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 14,
+      "tn": 2,
+      "recall": 1.0,
+      "precision": 0.5333333333333333,
+      "fpr": 0.875,
+      "balanced_acc": 0.5625,
+      "n": 32,
+      "n_fall": 16
+     }
+    }
+   },
+   "RandomForest": {
+    "pooled": {
+     "tp": 365,
+     "fn": 99,
+     "fp": 225,
+     "tn": 239,
+     "recall": 0.7866379310344828,
+     "precision": 0.6186440677966102,
+     "fpr": 0.4849137931034483,
+     "balanced_acc": 0.6508620689655172
+    },
+    "per_person_summary": {
+     "recall": {
+      "mean": 0.6484375,
+      "min": 0.0,
+      "max": 1.0
+     },
+     "precision": {
+      "mean": 0.6024751920451535,
+      "min": 0.0,
+      "max": 0.7777777777777778
+     },
+     "fpr": {
+      "mean": 0.36124999999999996,
+      "min": 0.0625,
+      "max": 0.75
+     },
+     "balanced_acc": {
+      "mean": 0.64359375,
+      "min": 0.46875,
+      "max": 0.75
+     }
+    },
+    "per_person": {
+     "ID0": {
+      "tp": 0,
+      "fn": 16,
+      "fp": 1,
+      "tn": 15,
+      "recall": 0.0,
+      "precision": 0.0,
+      "fpr": 0.0625,
+      "balanced_acc": 0.46875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID1": {
+      "tp": 13,
+      "fn": 3,
+      "fp": 8,
+      "tn": 8,
+      "recall": 0.8125,
+      "precision": 0.6190476190476191,
+      "fpr": 0.5,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID2": {
+      "tp": 275,
+      "fn": 45,
+      "fp": 176,
+      "tn": 144,
+      "recall": 0.859375,
+      "precision": 0.6097560975609756,
+      "fpr": 0.55,
+      "balanced_acc": 0.6546875,
+      "n": 640,
+      "n_fall": 320
+     },
+     "ID3": {
+      "tp": 13,
+      "fn": 3,
+      "fp": 6,
+      "tn": 10,
+      "recall": 0.8125,
+      "precision": 0.6842105263157895,
+      "fpr": 0.375,
+      "balanced_acc": 0.71875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID4": {
+      "tp": 10,
+      "fn": 6,
+      "fp": 4,
+      "tn": 12,
+      "recall": 0.625,
+      "precision": 0.7142857142857143,
+      "fpr": 0.25,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID5": {
+      "tp": 7,
+      "fn": 9,
+      "fp": 2,
+      "tn": 14,
+      "recall": 0.4375,
+      "precision": 0.7777777777777778,
+      "fpr": 0.125,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID6": {
+      "tp": 3,
+      "fn": 13,
+      "fp": 1,
+      "tn": 15,
+      "recall": 0.1875,
+      "precision": 0.75,
+      "fpr": 0.0625,
+      "balanced_acc": 0.5625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID7": {
+      "tp": 12,
+      "fn": 4,
+      "fp": 7,
+      "tn": 9,
+      "recall": 0.75,
+      "precision": 0.631578947368421,
+      "fpr": 0.4375,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID8": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 8,
+      "tn": 8,
+      "recall": 1.0,
+      "precision": 0.6666666666666666,
+      "fpr": 0.5,
+      "balanced_acc": 0.75,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID9": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 12,
+      "tn": 4,
+      "recall": 1.0,
+      "precision": 0.5714285714285714,
+      "fpr": 0.75,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     }
+    },
+    "calibration": {
+     "bins": [
+      {
+       "bin": "0.5-0.6",
+       "n": 275,
+       "mean_confidence": 0.5486644265162448,
+       "accuracy": 0.5418181818181819
+      },
+      {
+       "bin": "0.6-0.7",
+       "n": 281,
+       "mean_confidence": 0.6471597730396663,
+       "accuracy": 0.6156583629893239
+      },
+      {
+       "bin": "0.7-0.8",
+       "n": 198,
+       "mean_confidence": 0.7441500666841576,
+       "accuracy": 0.7626262626262627
+      },
+      {
+       "bin": "0.8-0.9",
+       "n": 116,
+       "mean_confidence": 0.8469970797880283,
+       "accuracy": 0.7758620689655172
+      },
+      {
+       "bin": "0.9-1.0",
+       "n": 58,
+       "mean_confidence": 0.9438565727057108,
+       "accuracy": 0.7068965517241379
+      }
+     ],
+     "ece": 0.03921146851831126
+    }
+   }
+  },
+  "capped": {
+   "OneFeatureThreshold(motion_mean)": {
+    "pooled": {
+     "tp": 424,
+     "fn": 40,
+     "fp": 331,
+     "tn": 133,
+     "recall": 0.9137931034482759,
+     "precision": 0.56158940397351,
+     "fpr": 0.7133620689655172,
+     "balanced_acc": 0.6002155172413793
+    },
+    "per_person_summary": {
+     "recall": {
+      "mean": 0.8925000000000001,
+      "min": 0.5,
+      "max": 1.0
+     },
+     "precision": {
+      "mean": 0.5724492954453917,
+      "min": 0.5,
+      "max": 0.6363636363636364
+     },
+     "fpr": {
+      "mean": 0.6793750000000001,
+      "min": 0.375,
+      "max": 1.0
+     },
+     "balanced_acc": {
+      "mean": 0.6065625,
+      "min": 0.5,
+      "max": 0.6875
+     }
+    },
+    "per_person": {
+     "ID0": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 13,
+      "tn": 3,
+      "recall": 1.0,
+      "precision": 0.5517241379310345,
+      "fpr": 0.8125,
+      "balanced_acc": 0.59375,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID1": {
+      "tp": 12,
+      "fn": 4,
+      "fp": 9,
+      "tn": 7,
+      "recall": 0.75,
+      "precision": 0.5714285714285714,
+      "fpr": 0.5625,
+      "balanced_acc": 0.59375,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID2": {
+      "tp": 296,
+      "fn": 24,
+      "fp": 234,
+      "tn": 86,
+      "recall": 0.925,
+      "precision": 0.5584905660377358,
+      "fpr": 0.73125,
+      "balanced_acc": 0.596875,
+      "n": 640,
+      "n_fall": 320
+     },
+     "ID3": {
+      "tp": 14,
+      "fn": 2,
+      "fp": 8,
+      "tn": 8,
+      "recall": 0.875,
+      "precision": 0.6363636363636364,
+      "fpr": 0.5,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID4": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 16,
+      "tn": 0,
+      "recall": 1.0,
+      "precision": 0.5,
+      "fpr": 1.0,
+      "balanced_acc": 0.5,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID5": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 14,
+      "tn": 2,
+      "recall": 1.0,
+      "precision": 0.5333333333333333,
+      "fpr": 0.875,
+      "balanced_acc": 0.5625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID6": {
+      "tp": 15,
+      "fn": 1,
+      "fp": 9,
+      "tn": 7,
+      "recall": 0.9375,
+      "precision": 0.625,
+      "fpr": 0.5625,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID7": {
+      "tp": 8,
+      "fn": 8,
+      "fp": 6,
+      "tn": 10,
+      "recall": 0.5,
+      "precision": 0.5714285714285714,
+      "fpr": 0.375,
+      "balanced_acc": 0.5625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID8": {
+      "tp": 15,
+      "fn": 1,
+      "fp": 9,
+      "tn": 7,
+      "recall": 0.9375,
+      "precision": 0.625,
+      "fpr": 0.5625,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID9": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 13,
+      "tn": 3,
+      "recall": 1.0,
+      "precision": 0.5517241379310345,
+      "fpr": 0.8125,
+      "balanced_acc": 0.59375,
+      "n": 32,
+      "n_fall": 16
+     }
+    }
+   },
+   "LogisticRegression": {
+    "pooled": {
+     "tp": 324,
+     "fn": 140,
+     "fp": 151,
+     "tn": 313,
+     "recall": 0.6982758620689655,
+     "precision": 0.6821052631578948,
+     "fpr": 0.3254310344827586,
+     "balanced_acc": 0.6864224137931034
+    },
+    "per_person_summary": {
+     "recall": {
+      "mean": 0.6653125,
+      "min": 0.375,
+      "max": 0.9375
+     },
+     "precision": {
+      "mean": 0.7157747970983264,
+      "min": 0.5,
+      "max": 0.8888888888888888
+     },
+     "fpr": {
+      "mean": 0.2846875,
+      "min": 0.0625,
+      "max": 0.5625
+     },
+     "balanced_acc": {
+      "mean": 0.6903125,
+      "min": 0.5,
+      "max": 0.78125
+     }
+    },
+    "per_person": {
+     "ID0": {
+      "tp": 8,
+      "fn": 8,
+      "fp": 1,
+      "tn": 15,
+      "recall": 0.5,
+      "precision": 0.8888888888888888,
+      "fpr": 0.0625,
+      "balanced_acc": 0.71875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID1": {
+      "tp": 10,
+      "fn": 6,
+      "fp": 5,
+      "tn": 11,
+      "recall": 0.625,
+      "precision": 0.6666666666666666,
+      "fpr": 0.3125,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID2": {
+      "tp": 229,
+      "fn": 91,
+      "fp": 111,
+      "tn": 209,
+      "recall": 0.715625,
+      "precision": 0.6735294117647059,
+      "fpr": 0.346875,
+      "balanced_acc": 0.684375,
+      "n": 640,
+      "n_fall": 320
+     },
+     "ID3": {
+      "tp": 9,
+      "fn": 7,
+      "fp": 4,
+      "tn": 12,
+      "recall": 0.5625,
+      "precision": 0.6923076923076923,
+      "fpr": 0.25,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID4": {
+      "tp": 11,
+      "fn": 5,
+      "fp": 2,
+      "tn": 14,
+      "recall": 0.6875,
+      "precision": 0.8461538461538461,
+      "fpr": 0.125,
+      "balanced_acc": 0.78125,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID5": {
+      "tp": 12,
+      "fn": 4,
+      "fp": 3,
+      "tn": 13,
+      "recall": 0.75,
+      "precision": 0.8,
+      "fpr": 0.1875,
+      "balanced_acc": 0.78125,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID6": {
+      "tp": 11,
+      "fn": 5,
+      "fp": 2,
+      "tn": 14,
+      "recall": 0.6875,
+      "precision": 0.8461538461538461,
+      "fpr": 0.125,
+      "balanced_acc": 0.78125,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID7": {
+      "tp": 6,
+      "fn": 10,
+      "fp": 6,
+      "tn": 10,
+      "recall": 0.375,
+      "precision": 0.5,
+      "fpr": 0.375,
+      "balanced_acc": 0.5,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID8": {
+      "tp": 13,
+      "fn": 3,
+      "fp": 8,
+      "tn": 8,
+      "recall": 0.8125,
+      "precision": 0.6190476190476191,
+      "fpr": 0.5,
+      "balanced_acc": 0.65625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID9": {
+      "tp": 15,
+      "fn": 1,
+      "fp": 9,
+      "tn": 7,
+      "recall": 0.9375,
+      "precision": 0.625,
+      "fpr": 0.5625,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     }
+    }
+   },
+   "RandomForest": {
+    "pooled": {
+     "tp": 341,
+     "fn": 123,
+     "fp": 249,
+     "tn": 215,
+     "recall": 0.7349137931034483,
+     "precision": 0.5779661016949152,
+     "fpr": 0.5366379310344828,
+     "balanced_acc": 0.5991379310344828
+    },
+    "per_person_summary": {
+     "recall": {
+      "mean": 0.6409374999999999,
+      "min": 0.3125,
+      "max": 1.0
+     },
+     "precision": {
+      "mean": 0.6453291114030513,
+      "min": 0.5217391304347826,
+      "max": 0.8333333333333334
+     },
+     "fpr": {
+      "mean": 0.3984375,
+      "min": 0.0625,
+      "max": 0.8125
+     },
+     "balanced_acc": {
+      "mean": 0.6212500000000001,
+      "min": 0.53125,
+      "max": 0.71875
+     }
+    },
+    "per_person": {
+     "ID0": {
+      "tp": 7,
+      "fn": 9,
+      "fp": 3,
+      "tn": 13,
+      "recall": 0.4375,
+      "precision": 0.7,
+      "fpr": 0.1875,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID1": {
+      "tp": 11,
+      "fn": 5,
+      "fp": 5,
+      "tn": 11,
+      "recall": 0.6875,
+      "precision": 0.6875,
+      "fpr": 0.3125,
+      "balanced_acc": 0.6875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID2": {
+      "tp": 251,
+      "fn": 69,
+      "fp": 195,
+      "tn": 125,
+      "recall": 0.784375,
+      "precision": 0.5627802690582959,
+      "fpr": 0.609375,
+      "balanced_acc": 0.5875,
+      "n": 640,
+      "n_fall": 320
+     },
+     "ID3": {
+      "tp": 11,
+      "fn": 5,
+      "fp": 7,
+      "tn": 9,
+      "recall": 0.6875,
+      "precision": 0.6111111111111112,
+      "fpr": 0.4375,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID4": {
+      "tp": 12,
+      "fn": 4,
+      "fp": 11,
+      "tn": 5,
+      "recall": 0.75,
+      "precision": 0.5217391304347826,
+      "fpr": 0.6875,
+      "balanced_acc": 0.53125,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID5": {
+      "tp": 9,
+      "fn": 7,
+      "fp": 5,
+      "tn": 11,
+      "recall": 0.5625,
+      "precision": 0.6428571428571429,
+      "fpr": 0.3125,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID6": {
+      "tp": 5,
+      "fn": 11,
+      "fp": 1,
+      "tn": 15,
+      "recall": 0.3125,
+      "precision": 0.8333333333333334,
+      "fpr": 0.0625,
+      "balanced_acc": 0.625,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID7": {
+      "tp": 7,
+      "fn": 9,
+      "fp": 4,
+      "tn": 12,
+      "recall": 0.4375,
+      "precision": 0.6363636363636364,
+      "fpr": 0.25,
+      "balanced_acc": 0.59375,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID8": {
+      "tp": 12,
+      "fn": 4,
+      "fp": 5,
+      "tn": 11,
+      "recall": 0.75,
+      "precision": 0.7058823529411765,
+      "fpr": 0.3125,
+      "balanced_acc": 0.71875,
+      "n": 32,
+      "n_fall": 16
+     },
+     "ID9": {
+      "tp": 16,
+      "fn": 0,
+      "fp": 13,
+      "tn": 3,
+      "recall": 1.0,
+      "precision": 0.5517241379310345,
+      "fpr": 0.8125,
+      "balanced_acc": 0.59375,
+      "n": 32,
+      "n_fall": 16
+     }
+    },
+    "calibration": {
+     "bins": [
+      {
+       "bin": "0.5-0.6",
+       "n": 359,
+       "mean_confidence": 0.5505009100823864,
+       "accuracy": 0.48746518105849584
+      },
+      {
+       "bin": "0.6-0.7",
+       "n": 322,
+       "mean_confidence": 0.6490783093430609,
+       "accuracy": 0.639751552795031
+      },
+      {
+       "bin": "0.7-0.8",
+       "n": 169,
+       "mean_confidence": 0.7406365941750557,
+       "accuracy": 0.6804733727810651
+      },
+      {
+       "bin": "0.8-0.9",
+       "n": 72,
+       "mean_confidence": 0.833398966517022,
+       "accuracy": 0.7638888888888888
+      },
+      {
+       "bin": "0.9-1.0",
+       "n": 6,
+       "mean_confidence": 0.910978835978836,
+       "accuracy": 0.8333333333333334
+      }
+     ],
+     "ece": 0.04447330317750575
+    }
+   }
+  },
+  "majority_baseline": {
+   "tp": 0,
+   "fn": 464,
+   "fp": 0,
+   "tn": 464,
+   "recall": 0.0,
+   "precision": 0.0,
+   "fpr": 0.0,
+   "balanced_acc": 0.5
+  }
+ },
+ "five_class": {
+  "full": {
+   "LogisticRegression": {
+    "pooled_balanced_acc": 0.3650888984588883,
+    "pooled_macro_f1": 0.3433188073988257,
+    "per_class_recall": {
+     "Jump": 0.21551724137931033,
+     "fall": 0.34051724137931033,
+     "sit": 0.47413793103448276,
+     "stand": 0.21052631578947367,
+     "walk": 0.5847457627118644
+    },
+    "confusion_matrix": {
+     "labels": [
+      "Jump",
+      "fall",
+      "sit",
+      "stand",
+      "walk"
+     ],
+     "matrix": [
+      [
+       25,
+       16,
+       43,
+       27,
+       5
+      ],
+      [
+       53,
+       158,
+       169,
+       71,
+       13
+      ],
+      [
+       3,
+       45,
+       55,
+       13,
+       0
+      ],
+      [
+       33,
+       25,
+       14,
+       24,
+       18
+      ],
+      [
+       9,
+       3,
+       14,
+       23,
+       69
+      ]
+     ]
+    },
+    "per_person_summary": {
+     "balanced_acc": {
+      "mean": 0.39250859912445285,
+      "min": 0.3125,
+      "max": 0.6125
+     },
+     "macro_f1": {
+      "mean": 0.33970014466871207,
+      "min": 0.22162464985994398,
+      "max": 0.5111917494270435
+     }
+    }
+   },
+   "RandomForest": {
+    "pooled_balanced_acc": 0.32865783321541725,
+    "pooled_macro_f1": 0.3161690123266202,
+    "per_class_recall": {
+     "Jump": 0.1896551724137931,
+     "fall": 0.6443965517241379,
+     "sit": 0.034482758620689655,
+     "stand": 0.10526315789473684,
+     "walk": 0.6694915254237288
+    },
+    "confusion_matrix": {
+     "labels": [
+      "Jump",
+      "fall",
+      "sit",
+      "stand",
+      "walk"
+     ],
+     "matrix": [
+      [
+       22,
+       45,
+       7,
+       13,
+       29
+      ],
+      [
+       30,
+       299,
+       98,
+       30,
+       7
+      ],
+      [
+       8,
+       95,
+       4,
+       6,
+       3
+      ],
+      [
+       15,
+       40,
+       8,
+       12,
+       39
+      ],
+      [
+       7,
+       12,
+       1,
+       19,
+       79
+      ]
+     ]
+    },
+    "per_person_summary": {
+     "balanced_acc": {
+      "mean": 0.3194728736710444,
+      "min": 0.2,
+      "max": 0.4625
+     },
+     "macro_f1": {
+      "mean": 0.26182137776231723,
+      "min": 0.1676767676767677,
+      "max": 0.43238095238095237
+     }
+    }
+   }
+  },
+  "capped": {
+   "LogisticRegression": {
+    "pooled_balanced_acc": 0.38255470280025017,
+    "pooled_macro_f1": 0.3486301040060618,
+    "per_class_recall": {
+     "Jump": 0.22413793103448276,
+     "fall": 0.33405172413793105,
+     "sit": 0.5344827586206896,
+     "stand": 0.19298245614035087,
+     "walk": 0.6271186440677966
+    },
+    "confusion_matrix": {
+     "labels": [
+      "Jump",
+      "fall",
+      "sit",
+      "stand",
+      "walk"
+     ],
+     "matrix": [
+      [
+       26,
+       4,
+       55,
+       22,
+       9
+      ],
+      [
+       52,
+       155,
+       178,
+       64,
+       15
+      ],
+      [
+       6,
+       37,
+       62,
+       9,
+       2
+      ],
+      [
+       30,
+       26,
+       14,
+       22,
+       22
+      ],
+      [
+       11,
+       2,
+       17,
+       14,
+       74
+      ]
+     ]
+    },
+    "per_person_summary": {
+     "balanced_acc": {
+      "mean": 0.4223835991244528,
+      "min": 0.3,
+      "max": 0.5875
+     },
+     "macro_f1": {
+      "mean": 0.3838616634555247,
+      "min": 0.2587301587301587,
+      "max": 0.5424652540442014
+     }
+    }
+   },
+   "RandomForest": {
+    "pooled_balanced_acc": 0.3655410809314344,
+    "pooled_macro_f1": 0.34156535254932446,
+    "per_class_recall": {
+     "Jump": 0.25862068965517243,
+     "fall": 0.5818965517241379,
+     "sit": 0.08620689655172414,
+     "stand": 0.07894736842105263,
+     "walk": 0.8220338983050848
+    },
+    "confusion_matrix": {
+     "labels": [
+      "Jump",
+      "fall",
+      "sit",
+      "stand",
+      "walk"
+     ],
+     "matrix": [
+      [
+       30,
+       30,
+       11,
+       11,
+       34
+      ],
+      [
+       27,
+       270,
+       122,
+       39,
+       6
+      ],
+      [
+       3,
+       78,
+       10,
+       16,
+       9
+      ],
+      [
+       15,
+       31,
+       15,
+       9,
+       44
+      ],
+      [
+       12,
+       2,
+       2,
+       5,
+       97
+      ]
+     ]
+    },
+    "per_person_summary": {
+     "balanced_acc": {
+      "mean": 0.392573483427142,
+      "min": 0.2875,
+      "max": 0.5
+     },
+     "macro_f1": {
+      "mean": 0.3564062825089495,
+      "min": 0.20171998624011006,
+      "max": 0.4657431457431457
+     }
+    }
+   }
+  },
+  "majority_accuracy": 0.5,
+  "chance_balanced_acc": 0.2
+ },
+ "leaky_random_split": {
+  "binary": {
+   "tp": 409,
+   "fn": 55,
+   "fp": 74,
+   "tn": 390,
+   "recall": 0.8814655172413793,
+   "precision": 0.8467908902691511,
+   "fpr": 0.15948275862068967,
+   "balanced_acc": 0.8609913793103449
+  },
+  "five_class_balanced_acc": 0.6608011114870754,
+  "note": "Same people appear in train and test. Shown only to demonstrate inflation."
+ },
+ "top_features_fall_vs_not": [
+  [
+   "pc1_frac",
+   0.12875594234411608
+  ],
+  [
+   "level",
+   0.10366416379302433
+  ],
+  [
+   "rssi_mean",
+   0.09813599994070353
+  ],
+  [
+   "diff_mean",
+   0.07922138135698804
+  ],
+  [
+   "rssi_std",
+   0.06443743507662138
+  ],
+  [
+   "level_cv",
+   0.05576735682703057
+  ],
+  [
+   "burst_mean",
+   0.05568092979544079
+  ],
+  [
+   "motion_rel",
+   0.04895889919209983
+  ]
+ ]
+}
