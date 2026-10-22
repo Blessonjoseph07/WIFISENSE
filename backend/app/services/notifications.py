@@ -242,3 +242,24 @@ def process_alert_notifications(
         """
 
         send_alert_email(session, recipients, subject, body, alert_id, html_body=html_body)
+
+
+def try_send_email(recipients: List[str], subject: str, body: str) -> "tuple[bool, Optional[str]]":
+    """Send one email and report the outcome (the existing send_alert_email swallows errors and returns nothing)."""
+    if not recipients:
+        return False, "no recipient"
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg["Subject"] = subject
+    msg["From"] = settings.SMTP_FROM_EMAIL
+    msg["To"] = ", ".join(recipients)
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=5) as server:
+            if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                server.starttls()
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(msg)
+        return True, None
+    except Exception as exc:  # noqa: BLE001 - any delivery problem is reported to the caller, never raised
+        logger.warning("Email to %s not sent: %s", recipients, exc)
+        return False, "the mail server is not reachable or not configured"
