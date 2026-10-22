@@ -316,7 +316,7 @@ export default function SysAdminView({
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {[
-                    { cap: "Real-time CSI Telemetry", admin: true, mgr: true, staff: true },
+                    { cap: "CSI Telemetry (demo, replay and live)", admin: true, mgr: true, staff: true },
                     { cap: "Acknowledge CARE Incident", admin: false, mgr: true, staff: true },
                     { cap: "Mark Responding / Dispatch", admin: false, mgr: true, staff: true },
                     { cap: "Resolve CARE Incident", admin: false, mgr: true, staff: true },

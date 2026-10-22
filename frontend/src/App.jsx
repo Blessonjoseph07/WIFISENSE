@@ -36,7 +36,8 @@ import EmergencyFallModal from "./components/EmergencyFallModal";
 import { SourceBadge } from "./components/DetectionBadges";
 import SharingPolicyManager from "./components/SharingPolicyManager";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+import { API_BASE } from "./config";
+import { installSessionGuard, SESSION_KEYS } from "./session";
 
 export default function App() {
   // Loading & Pre-Entry Screen State (only runs ONCE upon initial boot, never on refreshes)
@@ -616,6 +617,8 @@ export default function App() {
       }
       const data = await res.json();
       localStorage.setItem("token", data.access_token);
+      if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
+      if (sessionGuardRef.current) sessionGuardRef.current.markSignedIn();
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("role", data.role);
       localStorage.setItem("application_context", data.application_context);
@@ -667,12 +670,17 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
-    localStorage.removeItem("application_context");
-    localStorage.removeItem("is_system_admin");
+  const handleLogout = (opts) => {
+    const expired = Boolean(opts && opts.expired === true);
+    if (!expired && token) {
+      // Revoke the refresh token on the server (best effort; the local sign-out never waits for it).
+      fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ refresh_token: localStorage.getItem("refresh_token") })
+      }).catch(() => {});
+    }
+    SESSION_KEYS.forEach((k) => localStorage.removeItem(k));
     try {
       sessionStorage.removeItem("has_seen_elder_splash");
       sessionStorage.removeItem("has_seen_corporate_splash");
@@ -685,7 +693,23 @@ export default function App() {
     setHasSeenElderSplash(false);
     setHasSeenCorporateSplash(false);
     _setCurrentView("dashboard");
+    if (expired) {
+      setShowSplash(false);
+      setLoginError("Your session expired. Please sign in again.");
+    }
   };
+
+  // Keep an expired login from leaving a half-empty screen: refresh once, otherwise sign out with a message.
+  const logoutRef = useRef(null);
+  logoutRef.current = handleLogout;
+  const sessionGuardRef = useRef(null);
+  useEffect(() => {
+    sessionGuardRef.current = installSessionGuard({
+      apiBase: API_BASE,
+      onExpired: () => logoutRef.current && logoutRef.current({ expired: true }),
+      onRefreshed: (newToken) => setToken(newToken)
+    });
+  }, []);
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -1250,13 +1274,13 @@ export default function App() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Contactless Fall & Activity Tracking via Subcarrier Distortion
+                  Contactless monitoring research platform using Wi-Fi CSI
                 </p>
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span className="text-[11px] font-mono text-slate-700 font-medium">RF Engine: ONLINE</span>
+              <span className="text-[11px] font-mono text-slate-700 font-medium">Illustration</span>
             </div>
           </div>
 
@@ -1269,15 +1293,15 @@ export default function App() {
           <div className="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-200/70 z-20 text-left">
             <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
               <div className="text-[10px] font-mono text-slate-400 uppercase font-medium">Hardware</div>
-              <div className="text-xs font-semibold text-slate-800 mt-0.5">Dual-Band CSI Modem</div>
+              <div className="text-xs font-semibold text-slate-800 mt-0.5">ESP32-S3 (2.4 GHz CSI)</div>
             </div>
             <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
               <div className="text-[10px] font-mono text-slate-400 uppercase font-medium">Detection</div>
-              <div className="text-xs font-semibold text-sky-600 mt-0.5">3D Spherical Doppler</div>
+              <div className="text-xs font-semibold text-sky-600 mt-0.5">Signal features + model</div>
             </div>
             <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
               <div className="text-[10px] font-mono text-slate-400 uppercase font-medium">Privacy</div>
-              <div className="text-xs font-semibold text-emerald-600 mt-0.5">100% Zero-Camera</div>
+              <div className="text-xs font-semibold text-emerald-600 mt-0.5">No cameras</div>
             </div>
           </div>
         </div>

@@ -17,8 +17,7 @@ from sqlmodel import Session, select
 
 from app.core.database import engine
 from app.models.entities import (
-    Alert, AlertAcknowledgement, Building, Floor, Organization, RawCsiTelemetry, ReplayEvaluation, Room,
-    SensingDevice, SensingEvent,
+    Alert, AlertAcknowledgement, RawCsiTelemetry, ReplayEvaluation, Resident, SensingDevice, SensingEvent, SharingPolicy,
 )
 from app.services import csi_features, detection, fall_model
 
@@ -73,6 +72,85 @@ def post_packets(device_token, pkts, batch=60):
     return responses
 
 
+def check_resident_status(care_admin, annamma_id, room_id):
+    """Replayed windows must never feed a resident's status; missing data must read as missing, not as a default."""
+    print("\n--- 9. Replay never leaks into resident or family status; 'no data' is not invented ---")
+    fam = login("john@wifisense.com", "johnpassword")
+
+    # The seeded sharing policy can hide activity detail; open it for this check and restore it afterwards.
+    with Session(engine) as session:
+        policy = session.exec(select(SharingPolicy).where(SharingPolicy.resident_id == annamma_id)).first()
+        if not policy:
+            policy = session.exec(select(SharingPolicy).where(SharingPolicy.resident_id == None)).first()  # noqa: E711
+        policy_id = policy.id if policy else None
+        keys = ("share_presence", "share_activity_detail", "share_room_name")
+        original_policy = {k: getattr(policy, k) for k in keys} if policy else {}
+        for k in original_policy:
+            setattr(policy, k, True)
+        if policy:
+            session.add(policy)
+            session.commit()
+        snapshot = [(e.id, e.source, e.signal_quality) for e in session.exec(
+            select(SensingEvent).where(SensingEvent.room_id == room_id, SensingEvent.source != "dataset")).all()]
+
+    def set_events(source=None, quality="keep"):
+        with Session(engine) as session:
+            for eid, src, q in snapshot:
+                ev = session.get(SensingEvent, eid)
+                if not ev:
+                    continue
+                if source == "restore":
+                    ev.source, ev.signal_quality = src, q
+                elif source:
+                    ev.source = source
+                if quality is None:
+                    ev.signal_quality = None
+                session.add(ev)
+            session.commit()
+
+    try:
+        status, fs = api_call("/family/resident-status", token=fam)
+        assert status == 200 and fs["linked"] is True and fs.get("has_active_subscription") is True, fs
+        assert fs["has_data"] is True and fs["data_source"] in ("simulated", "live"), fs
+        assert fs["recent_activity_history"], fs
+        assert all(h["source"] in ("simulated", "live") for h in fs["recent_activity_history"]), \
+            "A replayed (dataset) window appears in the family's view of the resident!"
+        assert "facility_contact" not in fs, "The invented care-desk contact must be gone"
+        status, pd = api_call(f"/residents/{annamma_id}/profile-details", token=care_admin)
+        assert status == 200 and pd["recent_activity_history"]
+        assert all(h["source"] in ("simulated", "live") for h in pd["recent_activity_history"]), \
+            "A replayed (dataset) window appears in the resident profile!"
+        assert pd["latest_sensing_event"]["source"] in ("simulated", "live")
+        print("[PASS] Replayed windows in the resident's room do not appear in the family view or the resident profile; "
+              "each item carries its source.")
+
+        set_events(source="dataset")        # pretend the room has ONLY replayed data
+        status, fs = api_call("/family/resident-status", token=fam)
+        assert fs["has_data"] is False and fs["data_source"] is None, fs
+        assert fs["presence_status"] == "No data" and fs["current_activity"] is None and fs["last_updated"] is None, fs
+        assert fs["recent_activity_history"] == [], fs
+        status, pd = api_call(f"/residents/{annamma_id}/profile-details", token=care_admin)
+        assert pd["current_activity"] is None and pd["latest_sensing_event"] is None and pd["recent_activity_history"] == []
+        print("[PASS] With no usable sensing data the family view says 'No data' with no activity, time or contact "
+              "(it used to invent 'Resting' and the current time).")
+        set_events(source="restore")
+
+        set_events(quality=None)            # signal quality was never measured
+        status, pd = api_call(f"/residents/{annamma_id}/profile-details", token=care_admin)
+        assert pd["latest_sensing_event"]["signal_quality"] is None, "A missing signal quality must not become 94"
+        assert all(h["signal_quality"] is None for h in pd["recent_activity_history"]), pd["recent_activity_history"]
+        print("[PASS] A missing signal quality stays missing (the profile used to substitute 94).")
+    finally:
+        set_events(source="restore")
+        if policy_id:
+            with Session(engine) as session:
+                policy = session.get(SharingPolicy, policy_id)
+                for k, v in original_policy.items():
+                    setattr(policy, k, v)
+                session.add(policy)
+                session.commit()
+
+
 def run_tests():
     print("=== RUNNING DATASET REPLAY / DETECTION / PROVENANCE TESTS (synthetic packets only) ===")
     admin = login("blesson@wifisense.com", "blessonpassword")
@@ -80,9 +158,8 @@ def run_tests():
     corp_fm = login("abhinand@wifisense.com", "abhinandpassword")
 
     with Session(engine) as session:
-        room = session.exec(select(Room).join(Floor).join(Building).join(Organization)
-                            .where(Organization.type == "ELDER_CARE")).first()
-        room_id = room.id
+        annamma = session.exec(select(Resident).where(Resident.first_name == "Annamma")).first()
+        room_id, annamma_id = annamma.room_id, annamma.id   # her family member (john@) lets us check family status
         seeded_demo = session.exec(select(SensingDevice).where(SensingDevice.room_id == room_id)).first()
         seeded_demo_id = seeded_demo.id
 
@@ -356,6 +433,8 @@ def run_tests():
             except ValueError:
                 pass
         print("[PASS] Signal quality is None when unknown, drops with gaps or low SNR; features are finite and reject bad input.")
+
+        check_resident_status(care_admin, annamma_id, room_id)
     finally:
         print("\n--- Cleanup ---")
         with Session(engine) as session:

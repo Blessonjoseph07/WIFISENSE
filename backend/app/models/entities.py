@@ -538,5 +538,9 @@ class AuditLog(SQLModel, table=True):
     result: str = Field(default="SUCCESS") # SUCCESS, FAILURE, DENIED
     details: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     ip_address: Optional[str] = Field(default=None)
+    # Organization the event belongs to, so an organization admin only ever reads their own organization's trail.
+    # NULL means "not attributable to one organization" (for example a login attempt with an unknown e-mail) and is
+    # visible to the system administrator only.
+    organization_id: Optional[str] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
 

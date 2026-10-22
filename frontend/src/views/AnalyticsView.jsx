@@ -461,7 +461,7 @@ export default function AnalyticsView({
             </div>
             <p className="text-xs text-slate-400 mb-6">
               {isCareAnalytics
-                ? "Real-time posture classification derived from Wi-Fi CSI sensing"
+                ? "Posture classification from the sensing data shown (demo, dataset replay or live; see the source badges)"
                 : "Classified telemetry activity across monitored facility spaces"}
             </p>
 
@@ -777,7 +777,7 @@ export default function AnalyticsView({
                 <th className="py-3 px-3">Room Name</th>
                 <th className="py-3 px-3">Classification</th>
                 <th className="py-3 px-3">Expected State</th>
-                <th className="py-3 px-3">Live CSI Sensing</th>
+                <th className="py-3 px-3">CSI Sensing</th>
                 <th className="py-3 px-3">Activity Stance</th>
                 <th className="py-3 px-3">Operational Condition</th>
                 <th className="py-3 px-3 text-right">Confidence</th>
@@ -855,7 +855,7 @@ export default function AnalyticsView({
                     )}
                   </td>
                   <td className="py-3 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
-                    {Math.round((rm.model_confidence || 0.95) * 100)}%
+                    {rm.model_confidence ? `${Math.round(rm.model_confidence * 100)}%` : "—"}
                   </td>
                 </tr>
               ))}

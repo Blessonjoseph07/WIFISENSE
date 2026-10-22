@@ -33,7 +33,7 @@ export default function LandingFeatures({ onGetStarted }) {
       badge: "ELDER CARE",
       badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
       description: "Continuous contactless fall monitoring, bed-exit alerts, and nocturnal wander detection across resident wards.",
-      highlights: ["Zero Wearables Required", "Real-Time Room Status", "Caregiver Shift Logs"]
+      highlights: ["Zero Wearables Required", "Room Status at a Glance", "Caregiver Shift Logs"]
     },
     {
       role: "Wifisense Space",
@@ -185,7 +185,7 @@ export default function LandingFeatures({ onGetStarted }) {
           </h2>
 
           <p className="text-slate-400 text-base sm:text-lg max-w-2xl mb-10 leading-relaxed">
-            Enter the live platform with our 3D Wi-Fi modem visualizer, real-time RF CSI telemetry streams, and pre-seeded multi-role facilities.
+            Explore the platform with a 3D Wi-Fi modem illustration, demo CSI telemetry and pre-seeded multi-role facilities. Demo data is always labelled.
           </p>
 
           <button

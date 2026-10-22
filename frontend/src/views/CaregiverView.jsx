@@ -26,7 +26,7 @@ export default function CaregiverView({
             Elder Care & Safety
           </h2>
           <p className="text-body-md text-slate-500 dark:text-slate-400">
-            Real-time resident monitoring, clinical profiles, emergency contacts, and fall protocol.
+            Resident monitoring, clinical profiles, emergency contacts, and fall protocol.
           </p>
         </div>
         <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
