@@ -70,6 +70,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(!localStorage.getItem("token"));
   const [hasSeenElderSplash, setHasSeenElderSplash] = useState(() => {
     try {
+      if (localStorage.getItem("token")) return true;
       return sessionStorage.getItem("has_seen_elder_splash") === "true";
     } catch (_) {
       return false;
@@ -77,6 +78,7 @@ export default function App() {
   });
   const [hasSeenCorporateSplash, setHasSeenCorporateSplash] = useState(() => {
     try {
+      if (localStorage.getItem("token")) return true;
       return sessionStorage.getItem("has_seen_corporate_splash") === "true";
     } catch (_) {
       return false;
@@ -475,11 +477,6 @@ export default function App() {
             setActiveTelemetryActivity(statusData.recent_activity.activity);
           }
         }
-        // Also fetch residents list so they can request link if not linked
-        const resRes = await fetch(`${API_BASE}/residents`, { headers });
-        if (resRes.ok) {
-          setResidents(await resRes.json());
-        }
         return;
       }
 
@@ -639,8 +636,12 @@ export default function App() {
         sessionStorage.setItem("wifisense_booted", "true");
       } catch (_) {}
       setIsLoading(false);
-      setHasSeenElderSplash(false);
-      setHasSeenCorporateSplash(false);
+      try {
+        sessionStorage.setItem("has_seen_elder_splash", "true");
+        sessionStorage.setItem("has_seen_corporate_splash", "true");
+      } catch (_) {}
+      setHasSeenElderSplash(true);
+      setHasSeenCorporateSplash(true);
       
       const safeStart = getDefaultView(data.application_context, data.role, data.is_system_admin);
       _setCurrentView(safeStart);
@@ -1520,7 +1521,7 @@ export default function App() {
 
   const themeClass = appContext === "CORPORATE" ? "theme-corporate" : "theme-elder-care";
 
-  if (appContext === "ELDER_CARE" && !hasSeenElderSplash) {
+  if (appContext === "ELDER_CARE" && !hasSeenElderSplash && role !== "family_member" && role !== "doctor") {
     return (
       <ElderCareSplash
         onContinue={() => {

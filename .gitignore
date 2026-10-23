@@ -24,3 +24,6 @@ __pycache__/
 
 # database backups written by tools/keep_one_user_per_role.py
 *.before_user_cleanup_*
+
+# Agent & IDE metadata
+.claude/
