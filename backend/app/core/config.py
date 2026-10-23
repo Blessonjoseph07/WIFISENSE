@@ -90,11 +90,6 @@ class Settings:
         self.SEED_PASSWORD = os.getenv("SEED_PASSWORD", "")
         if self.SEED_PROFILE not in ("full", "minimal"):
             raise RuntimeError("SEED_PROFILE must be 'full' or 'minimal'.")
-        if self.ENVIRONMENT.lower() == "production" and self.SEED_DEMO_DATA and len(self.SEED_PASSWORD) < 12:
-            raise RuntimeError(
-                "Refusing to seed demo accounts in production with their well-known passwords. "
-                "Set SEED_PASSWORD (12+ characters, known only to you) or set SEED_DEMO_DATA=0."
-            )
         if self.ENVIRONMENT.lower() == "production":
             if self.SECRET_KEY == "b3d162fc8cd92b516f863efbd4cfbd892abf4857b29a8a72":
                 raise RuntimeError(
@@ -106,7 +101,11 @@ class Settings:
                     "CRITICAL PRODUCTION SAFEGUARD: Production environment cannot run on SQLite file database. "
                     "Configure a production PostgreSQL DATABASE_URL."
                 )
-
+        if self.ENVIRONMENT.lower() == "production" and self.SEED_DEMO_DATA and len(self.SEED_PASSWORD) < 12:
+            raise RuntimeError(
+                "Refusing to seed demo accounts in production with their well-known passwords. "
+                "Set SEED_PASSWORD (12+ characters, known only to you) or set SEED_DEMO_DATA=0."
+            )
 
 
 settings = Settings()
