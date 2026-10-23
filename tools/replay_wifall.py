@@ -136,6 +136,10 @@ def main():
             status, res = call(base, "/sensing/ingest", "POST", {"packets": pkts[i:i + BATCH]}, device_token=token)
             if status != 201:
                 sys.exit(f"Ingest failed ({status}): {res}")
+            if res.get("provenance") != "dataset":
+                sys.exit(f"STOPPED: this device is registered with data source '{res.get('provenance')}', not 'dataset'. "
+                         "The server never runs detection on demo devices and never mixes sources. Register a NEW node with "
+                         "Data source = Dataset replay, copy its token, and run this again. (Nothing was labelled or evaluated.)")
             detections += res["detections"]
         status, flushed = call(base, "/sensing/detect", "POST", {}, device_token=token)
         if status != 200:
