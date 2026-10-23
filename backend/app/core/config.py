@@ -31,6 +31,10 @@ class Settings:
     # Raw CSI retention. raw_csi_telemetry is by far the largest table (about 4.8 GB a day at 90 packets/s), so it is a rolling
     # window: packets already analysed are deleted after RAW_CSI_RETENTION_HOURS, and the oldest analysed packets go first when
     # the table passes RAW_CSI_MAX_ROWS. Detection results, alerts and audit history are never touched. 0 disables a limit.
+    # The fall model was trained on a public dataset (WiFall), not in your rooms. On live hardware it is OFF by default: in a busy
+    # room it flags constantly, and a false "possible fall" is worse than none. Presence/movement is what live hardware shows.
+    # Set LIVE_FALL_DETECTION=1 only for experiments; dataset replay is unaffected.
+    LIVE_FALL_DETECTION: bool = False
     RAW_CSI_RETENTION_HOURS: float = 24.0
     RAW_CSI_MAX_ROWS: int = 300000
     RAW_CSI_PRUNE_INTERVAL_SECONDS: int = 600
@@ -81,6 +85,7 @@ class Settings:
             if self.ENVIRONMENT.lower() == "production":
                 raise RuntimeError("PAYMENT_WEBHOOK_SECRET is required in production.")
             self.PAYMENT_WEBHOOK_SECRET = secrets.token_urlsafe(32)
+        self.LIVE_FALL_DETECTION = os.getenv("LIVE_FALL_DETECTION", "0").strip().lower() in ("1", "true", "yes", "on")
         self.RAW_CSI_RETENTION_HOURS = float(os.getenv("RAW_CSI_RETENTION_HOURS", self.RAW_CSI_RETENTION_HOURS))
         self.RAW_CSI_MAX_ROWS = int(os.getenv("RAW_CSI_MAX_ROWS", self.RAW_CSI_MAX_ROWS))
         self.RAW_CSI_PRUNE_INTERVAL_SECONDS = int(os.getenv("RAW_CSI_PRUNE_INTERVAL_SECONDS", self.RAW_CSI_PRUNE_INTERVAL_SECONDS))

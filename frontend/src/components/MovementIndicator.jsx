@@ -4,6 +4,7 @@ const sub = "bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:borde
 
 const STATES = {
   QUIET: { label: "Quiet", tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", icon: "sensors_off" },
+  PRESENT: { label: "Presence likely", tone: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200", icon: "groups" },
   MOVEMENT: { label: "Movement", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200", icon: "directions_walk" },
   NO_BASELINE: { label: "Not calibrated", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "tune" },
   STALE: { label: "Board not sending", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "signal_disconnected" },
@@ -79,12 +80,18 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
 
       {error && <div className="text-xs text-rose-600">{error}</div>}
       {data && <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{data.headline}. {data.detail}</p>}
+      {data?.activity_ratio != null && data.state !== "STALE" && (
+        <p className="text-[11px] text-slate-500" data-testid="activity-level">
+          Signal activity is <strong>{data.activity_ratio}×</strong> the empty-room level (1× = the room as it was when the baseline was recorded).
+        </p>
+      )}
 
       {blocks.length > 0 && data?.state !== "STALE" && (
         <div>
           <div className="relative h-16 flex items-end gap-1" role="img"
                aria-label="Signal fluctuation per second, newest on the right. The dashed line is the movement threshold.">
-            {thr ? <div className="absolute left-0 right-0 border-t border-dashed border-slate-400/70" style={{ bottom: `${(thr / top) * 100}%` }} /> : null}
+            {data?.baseline?.mean ? <div className="absolute left-0 right-0 border-t border-emerald-500/60" style={{ bottom: `${(data.baseline.mean / top) * 100}%` }} title="empty-room level" /> : null}
+            {thr ? <div className="absolute left-0 right-0 border-t border-dashed border-slate-400/70" style={{ bottom: `${(thr / top) * 100}%` }} title="movement threshold" /> : null}
             {blocks.map((v, i) => (
               <div key={i} className="flex-1 min-w-[4px] rounded-t"
                    title={`fluctuation ${v}`}
@@ -93,7 +100,7 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
           </div>
           <div className="flex justify-between text-[10px] text-slate-400 mt-1">
             <span>about {blocks.length} seconds ago</span>
-            <span>{thr ? "dashed line = empty-room level plus a safety margin" : "no reference yet, so the bars are not judged"}</span>
+            <span>{thr ? "green line = empty room, dashed line = movement" : "no reference yet, so the bars are not judged"}</span>
             <span>now</span>
           </div>
         </div>
