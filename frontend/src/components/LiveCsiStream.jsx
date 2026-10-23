@@ -267,6 +267,15 @@ export default function LiveCsiStream({ deviceId, authToken, API_BASE }) {
             />
           </div>
 
+          {snap.delivery?.batches > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="delivery-metrics">
+              <Tile label="Server time / request" value={fmt(snap.delivery.server_ms?.p50, 0, " ms")} hint={`Median time the server spent on one upload (95th percentile ${fmt(snap.delivery.server_ms?.p95, 0, " ms")}). Measured on the server over its last requests.`} />
+              <Tile label="Delivery delay" value={snap.delivery.ingest_delay_ms ? fmt(snap.delivery.ingest_delay_ms.p50, 0, " ms") : "—"} hint="From the moment the bridge read a packet to the moment the server received it (median). Includes batching and network time, and depends on the two clocks agreeing." />
+              <Tile label="Bridge round trip" value={snap.delivery.client_rtt_ms ? fmt(snap.delivery.client_rtt_ms.p50, 0, " ms") : "—"} hint="Request-to-response time as measured by the bridge itself (median)." />
+              <Tile label="Bridge queue" value={snap.delivery.bridge_queue_depth ?? "—"} hint={`Packets waiting on the bridge to be uploaded${snap.delivery.bridge_packets_dropped ? `; ${snap.delivery.bridge_packets_dropped} dropped because the queue was full` : ""}.`} />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Tile label="Packet rate" value={fmt(stats.arrival_rate_hz, 1, " Hz")} hint="Packets per second as they arrived at the server (batching makes this read higher than the device's own rate)" />
             <Tile label="Packet loss" value={fmt(stats.packet_loss_pct, 1, " %")} hint="Gaps in the device's sequence numbers" />

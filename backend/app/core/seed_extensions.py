@@ -1,4 +1,5 @@
 from sqlmodel import Session, select
+from app.models.entities import SensingDevice
 from datetime import datetime, timedelta
 import uuid
 
@@ -284,8 +285,9 @@ def populate_master_extensions(session: Session, now: datetime):
             session.commit()
 
         # Add latest fall sensing event
+        dev_204 = session.exec(select(SensingDevice).where(SensingDevice.mac_address == "24:0A:C4:00:20:08")).first()
         session.add(SensingEvent(
-            device_id="24:0A:C4:00:20:08", # dev_ec_204 mac or device id
+            device_id=dev_204.id if dev_204 else None,  # devices are keyed by id, not MAC (PostgreSQL enforces this)
             room_id=rm_204.id,
             timestamp=now - timedelta(seconds=42),
             rssi=-42,

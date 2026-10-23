@@ -60,7 +60,7 @@ from app.core.database import engine
 from app.models.entities import (
     User, Role, UserRole, Organization, Building, Floor, Room,
     Resident, SensingDevice, SensingEvent, ActivityType, Alert,
-    AlertAcknowledgement, AuditLog, SharingPolicy, FamilyConnection, FamilySubscription
+    AlertAcknowledgement, AuditLog, SharingPolicy, FamilyConnection, FamilySubscription, RefreshToken
 )
 from app.services.notifications import process_alert_notifications, send_alert_email
 
@@ -597,6 +597,9 @@ def test_analytics_empty_organization_unfabricated_data():
             urs = session.exec(select(UserRole).where(UserRole.user_id == test_user_id)).all()
             for r in urs:
                 session.delete(r)
+            for rt in session.exec(select(RefreshToken).where(RefreshToken.user_id == test_user_id)).all():
+                session.delete(rt)
+            session.flush()
             u = session.get(User, test_user_id)
             if u:
                 session.delete(u)
