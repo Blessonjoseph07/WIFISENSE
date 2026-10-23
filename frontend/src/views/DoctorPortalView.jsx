@@ -22,6 +22,7 @@ export default function DoctorPortalView({ authToken, API_BASE }) {
   const [profile, setProfile] = useState(null);
   const [residents, setResidents] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [record, setRecord] = useState(null);
   const [tab, setTab] = useState("overview");
@@ -53,10 +54,11 @@ export default function DoctorPortalView({ authToken, API_BASE }) {
 
   const loadOverview = useCallback(async () => {
     try {
-      const [p, r, a] = await Promise.all([call("/medical/me"), call("/medical/my-residents"), call("/medical/my-alerts?limit=10")]);
+      const [p, r, a, m] = await Promise.all([call("/medical/me"), call("/medical/my-residents"), call("/medical/my-alerts?limit=10"), call("/medical/notifications")]);
       setProfile(p);
       setResidents(r);
       setAlerts(a);
+      setMessages(m);
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -148,6 +150,16 @@ export default function DoctorPortalView({ authToken, API_BASE }) {
   const toggleFollowUp = (c) =>
     act(() => call(`/medical/consultations/${c.id}/follow-up`, "PATCH", { done: !c.follow_up_done }), "Follow-up updated.");
 
+  const markRead = async (id) => {
+    try {
+      const updated = await call(`/medical/notifications/${id}/read`, "POST", {});
+      setMessages((prev) => prev.map((m) => (m.id === id ? updated : m)));
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const unreadMessages = messages.filter((m) => !m.read);
   const needsAttention = alerts.filter((a) => a.requires_verification || a.status !== "resolved").length;
 
   return (
@@ -172,6 +184,30 @@ export default function DoctorPortalView({ authToken, API_BASE }) {
       {notice && !error && (
         <div className="p-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-medium" role="status">
           {notice}
+        </div>
+      )}
+
+      {messages.length > 0 && (
+        <div className={`${card} p-4 ${unreadMessages.length ? "border-red-300 dark:border-red-900" : ""}`} data-testid="doctor-messages">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-red-600">mark_email_unread</span>
+              Messages from care staff
+              {unreadMessages.length > 0 && <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">{unreadMessages.length} new</span>}
+            </h3>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {messages.slice(0, 6).map((m) => (
+              <li key={m.id} className={`py-2.5 flex items-start justify-between gap-3 ${m.read ? "opacity-60" : ""}`}>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{m.resident_name} <span className="font-normal text-slate-500">· {m.room_name}</span></div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 break-words">{m.message}</p>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{fmt(m.created_at)}</div>
+                </div>
+                {!m.read && <button type="button" onClick={() => markRead(m.id)} className={ghostBtn}>Mark read</button>}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
