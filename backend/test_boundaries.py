@@ -2,7 +2,8 @@ import json
 import urllib.request
 import urllib.error
 
-API_BASE = "http://127.0.0.1:8000"
+import os
+API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 
 def api_call(endpoint, method="GET", data=None, token=None):
     url = f"{API_BASE}{endpoint}"
@@ -167,6 +168,10 @@ def run_tests():
     legacy_email = f"legacy.ec.{uuid.uuid4().hex[:6]}@test.com"
     legacy_user_id = str(uuid.uuid4())
     with Session(engine) as db:
+        from app.models.entities import Role
+        if db.get(Role, 6) is None:  # the legacy role row may be gone; PostgreSQL enforces the foreign key
+            db.add(Role(id=6, name="emergency_contact"))
+            db.commit()
         legacy_u = User(
             id=legacy_user_id,
             email=legacy_email,
@@ -203,6 +208,10 @@ def run_tests():
             db.exec(sa_delete := select(UserRole).where(UserRole.user_id == legacy_user_id))
             for ur in db.exec(sa_delete).all():
                 db.delete(ur)
+            from app.models.entities import RefreshToken
+            for rt in db.exec(select(RefreshToken).where(RefreshToken.user_id == legacy_user_id)).all():
+                db.delete(rt)
+            db.flush()
             u_to_del = db.get(User, legacy_user_id)
             if u_to_del:
                 db.delete(u_to_del)

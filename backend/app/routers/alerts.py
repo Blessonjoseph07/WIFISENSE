@@ -126,8 +126,10 @@ def get_active_fall_emergency(
         return {"has_emergency": False}
 
     room = session.get(Room, alert.room_id)
-    resident = session.exec(select(Resident).where(Resident.room_id == alert.room_id)).first() if room else None
-    
+    # A room can hold more than one resident: prefer the one the alert names, otherwise a stable order (never database order).
+    candidates = session.exec(select(Resident).where(Resident.room_id == alert.room_id).order_by(Resident.created_at, Resident.id)).all() if room else []
+    resident = next((r for r in candidates if f"{r.first_name} {r.last_name}" in (alert.message or "")), None) or (candidates[0] if candidates else None)
+
     # Retrieve emergency contact
     primary_contact = None
     if resident:

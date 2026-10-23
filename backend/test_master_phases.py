@@ -2,7 +2,8 @@ import urllib.request
 import urllib.error
 import json
 
-BASE_URL = "http://127.0.0.1:8000"
+import os
+BASE_URL = os.getenv("API_BASE", "http://127.0.0.1:8000")
 
 def api_call(method, path, headers=None, body=None):
     url = f"{BASE_URL}{path}"
