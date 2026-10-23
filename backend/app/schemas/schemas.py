@@ -157,6 +157,10 @@ class RoomOut(BaseModel):
     dimensions_metadata: Optional[Dict[str, Any]]
     created_at: datetime
     updated_at: datetime
+    # Where the room lives, so pickers can say "Elder Care / St. Peter's / Wing A" instead of a bare room name.
+    building_name: Optional[str] = None
+    organization_name: Optional[str] = None
+    organization_type: Optional[str] = None
 
     class Config:
         from_attributes = True
