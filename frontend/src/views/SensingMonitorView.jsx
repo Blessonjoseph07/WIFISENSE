@@ -261,7 +261,15 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
           )}
         </div>
 
-        {mode === "live" && <HardwarePlainSummary rows={rows} devices={modeDevices} />}
+        {mode === "live" && (
+          <HardwarePlainSummary
+            rows={rows}
+            devices={modeDevices}
+            deviceId={selectedDevice || [...modeDevices].sort((a, b) => String(b.last_seen_at || "").localeCompare(String(a.last_seen_at || "")))[0]?.id}
+            authToken={authToken}
+            API_BASE={API_BASE}
+          />
+        )}
 
         {selectedDevice && <LiveCsiStream key={selectedDevice} deviceId={selectedDevice} authToken={authToken} API_BASE={API_BASE} />}
 

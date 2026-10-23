@@ -12,7 +12,8 @@ from app.models.entities import SensingDevice, Room, Floor, Building, SensingEve
 from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut, SensingHistoryOut
 from app.core.confidence import confidence_level, signal_level, requires_verification
 from app.services.notifications import process_alert_notifications
-from app.services import detection, fall_model, csi_physics, ingest_metrics
+from app.services import detection, fall_model, csi_physics, ingest_metrics, movement
+from app.core.audit import record_audit_event
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
 STAFF_ROLES = ["system_admin", "facility_manager", "caregiver", "corporate_staff"]
@@ -562,6 +563,126 @@ def get_device_csi_telemetry(
         "fall_score": (last_event.extracted_features or {}).get("fall_score"), "source": last_event.source,
     } if last_event else None)
     return out
+
+
+MOVEMENT_CAVEATS = [
+    "This shows movement on the Wi-Fi link between the two boards. It does not count, locate or identify people.",
+    "A person standing or lying completely still barely changes the signal, so 'quiet' does not mean 'nobody is there'.",
+    "A fan, a door, a pet or someone in the next room can also raise it. Recalibrate when the room changes.",
+]
+MOVEMENT_BLOCKS_SHOWN = 24
+STALE_SECONDS = 20
+
+
+def _movement_device(device_id: str, session: Session, current_user) -> SensingDevice:
+    device = session.get(SensingDevice, device_id)
+    if not device or not user_can_access_room(current_user, device.room_id, session):
+        raise HTTPException(status_code=404, detail="Device not found.")
+    return device
+
+
+def _calibration(session: Session, device_id: str) -> Optional[RoomCalibration]:
+    return session.exec(select(RoomCalibration).where(RoomCalibration.device_id == device_id)).first()
+
+
+def _recent_records(session: Session, device_id: str, n: int):
+    rows = session.exec(
+        select(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id).order_by(RawCsiTelemetry.id.desc()).limit(n)
+    ).all()
+    rows.reverse()
+    return rows
+
+
+def _human_duration(seconds: float) -> str:
+    s = int(seconds)
+    if s < 120:
+        return f"{s} seconds"
+    if s < 7200:
+        return f"{s // 60} minutes"
+    if s < 172800:
+        return f"{s // 3600} hours"
+    return f"{s // 86400} days"
+
+
+def _seconds_since(dt) -> Optional[float]:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return max(0.0, (datetime.now(timezone.utc) - dt).total_seconds())
+
+
+@router.get("/devices/{device_id}/movement", dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_device_movement(
+    device_id: str,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """Is the signal between the boards fluctuating more than it does in an empty, still room? Computed from the device's own
+    stored packets, nothing is generated. See app/services/movement.py for exactly what this can and cannot say."""
+    device = _movement_device(device_id, session, current_user)
+
+    def build():
+        records = _recent_records(session, device_id, MOVEMENT_BLOCKS_SHOWN * movement.BLOCK)
+        blocks = movement.block_variations(records)[-MOVEMENT_BLOCKS_SHOWN:]
+        cal = _calibration(session, device_id)
+        baseline = ((cal.subcarrier_profile or {}).get("movement_baseline") if cal else None)
+        verdict = movement.classify(blocks, baseline)
+        idle = _seconds_since(records[-1].created_at) if records else None
+        if records and idle is not None and idle > STALE_SECONDS:
+            verdict = {"state": "STALE", "headline": "Board is not sending",
+                       "detail": f"The last packet arrived {_human_duration(idle)} ago, so there is no current reading."}
+        return {"state": verdict["state"], "headline": verdict["headline"], "detail": verdict["detail"],
+                "blocks": [round(b, 4) for b in blocks], "baseline": baseline,
+                "threshold": baseline["threshold"] if baseline else None,
+                "seconds_since_last_packet": round(idle, 1) if idle is not None else None,
+                "block_packets": movement.BLOCK}
+    out = dict(movement.cached(f"{device_id}", build))
+    source = device.allowed_source or "live"
+    out.update({
+        "device_id": device.id, "mode": {"simulated": "DEMO", "dataset": "DATASET REPLAY", "live": "LIVE HARDWARE"}.get(source, source.upper()),
+        "caveats": MOVEMENT_CAVEATS,
+    })
+    return out
+
+
+@router.post("/devices/{device_id}/movement/baseline", dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
+def record_movement_baseline(
+    device_id: str,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """Record the empty-room reference from the packets the device is sending right now. The operator must make sure the room
+    is empty and still for about 15 seconds first; an unstable reference is refused."""
+    device = _movement_device(device_id, session, current_user)
+    records = _recent_records(session, device_id, 12 * movement.BLOCK)
+    idle = _seconds_since(records[-1].created_at) if records else None
+    if idle is None or idle > 30:
+        raise HTTPException(status_code=409, detail="The board is not sending right now. Start it, wait a few seconds, and try again.")
+    blocks = movement.block_variations(records)
+    baseline = movement.baseline_from(blocks)
+    if not baseline:
+        raise HTTPException(status_code=409, detail=f"Not enough readings yet: need about {movement.MIN_BASELINE_BLOCKS * movement.BLOCK} packets, have {len(records)}.")
+    if baseline["mean"] > 0 and baseline["std"] / baseline["mean"] > 0.6:
+        raise HTTPException(status_code=409, detail="The signal was changing too much to be an empty, still room. Leave the room, wait 15 seconds and try again.")
+    cal = _calibration(session, device_id)
+    profile = dict((cal.subcarrier_profile or {}) if cal else {})
+    profile["movement_baseline"] = baseline
+    if cal:
+        cal.subcarrier_profile = profile
+        cal.baseline_captured_at = datetime.now(timezone.utc)
+        cal.updated_at = datetime.now(timezone.utc)
+        session.add(cal)
+    else:
+        session.add(RoomCalibration(room_id=device.room_id, device_id=device.id, subcarrier_profile=profile))
+    session.commit()
+    with movement._cache_lock:
+        movement._cache.pop(f"{device_id}", None)
+    record_audit_event(session=session, what_action="MOVEMENT_BASELINE_RECORDED", resource_type="DEVICE", resource_id=device.id,
+                       who_user_id=current_user.id, who_email=current_user.email,
+                       details={"blocks": baseline["blocks"], "mean": baseline["mean"], "threshold": baseline["threshold"]}, request=request)
+    return {"device_id": device.id, "baseline": baseline, "note": "Movement is now judged against this empty-room reference."}
 
 
 @router.get("/devices/{device_id}/live", dependencies=[Depends(require_roles(STAFF_ROLES))])
