@@ -78,3 +78,16 @@ jobs:
         working-directory: ./frontend
         run: npm test
 
+
+  # Branch protection on master requires a check with this exact name; it passes only if every matrix leg passed.
+  backend-gate:
+    name: Backend Boundary & Regression Tests
+    runs-on: ubuntu-latest
+    needs: backend-regression-tests
+    if: ${{ always() }}
+    steps:
+      - name: Require SQLite and PostgreSQL legs to pass
+        run: |
+          if [ "${{ needs.backend-regression-tests.result }}" != "success" ]; then
+            echo "Backend tests: ${{ needs.backend-regression-tests.result }}"; exit 1
+          fi
