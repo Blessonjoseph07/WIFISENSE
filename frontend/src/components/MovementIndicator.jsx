@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 const sub = "bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl";
 
@@ -22,20 +22,40 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
 
+  // One dropped request must not turn the box red: keep the last good reading, never stack requests, give each one a time limit,
+  // and only report a problem after several failures in a row.
+  const inFlight = useRef(false);
+  const failures = useRef(0);
+  const [lastOk, setLastOk] = useState(null);
+
   const load = useCallback(async () => {
-    if (!deviceId) return;
+    if (!deviceId || inFlight.current) return;
+    inFlight.current = true;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
     try {
-      const res = await fetch(`${API_BASE}/sensing/devices/${deviceId}/movement`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const res = await fetch(`${API_BASE}/sensing/devices/${deviceId}/movement`, {
+        headers: { Authorization: `Bearer ${authToken}` }, signal: ctl.signal,
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
+      failures.current = 0;
+      setLastOk(Date.now());
       setError(null);
     } catch (e) {
-      setError(`Could not read the movement indicator (${e.message}).`);
+      failures.current += 1;
+      if (failures.current >= 3) {
+        setError(`The connection to the server is unstable (${e.name === "AbortError" ? "no answer in 8 s" : e.message}). Retrying; the reading below is the last one received.`);
+      }
+    } finally {
+      clearTimeout(timer);
+      inFlight.current = false;
     }
   }, [deviceId, API_BASE, authToken]);
 
   useEffect(() => {
     setData(null);
+    failures.current = 0;
     load();
     const t = setInterval(load, 2000);
     return () => clearInterval(t);
@@ -80,6 +100,13 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
 
       {error && <div className="text-xs text-rose-600">{error}</div>}
       {data && <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{data.headline}. {data.detail}</p>}
+      {data?.activity_ratio != null && data.activity_ratio < 0.75 && data.state !== "STALE" && (
+        <div className="text-xs rounded-lg px-3 py-2 bg-amber-50 text-amber-900 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-900" data-testid="baseline-suspect">
+          The signal is well <strong>below</strong> the empty-room reference ({data.activity_ratio}×). A real empty room cannot be quieter than itself,
+          so the baseline was most likely recorded while people were in the room, and every reading is being judged against the wrong reference.
+          Record the baseline again when the room is empty.
+        </div>
+      )}
       {data?.activity_ratio != null && data.state !== "STALE" && (
         <p className="text-[11px] text-slate-500" data-testid="activity-level">
           Signal activity is <strong>{data.activity_ratio}×</strong> the empty-room level (1× = the room as it was when the baseline was recorded).
