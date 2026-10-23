@@ -8,8 +8,28 @@ on:
 
 jobs:
   backend-regression-tests:
-    name: Backend Boundary & Regression Tests
+    name: Backend tests (${{ matrix.db }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres]
+
+    # PostgreSQL is the production database, so the whole suite runs on it as well as on SQLite.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wifisense
+          POSTGRES_PASSWORD: ci-postgres-not-a-credential
+          POSTGRES_DB: wifisense_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wifisense"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Check out repository
@@ -29,104 +49,45 @@ jobs:
           pip install -r requirements.txt
           pip install httpx pytest
 
-      - name: Initialize Database & Run Backend Tests
+      - name: Seed a fresh database, start the API, run every backend test
         working-directory: ./backend
         env:
           SEED_DEMO_DATA: "1"
           # throwaway secret shared by the server and test_family_subscription.py (sandbox webhooks); not a real credential
           PAYMENT_WEBHOOK_SECRET: "ci-sandbox-webhook-secret-not-a-credential"
-        run: |
-          # 1. Initialize and seed SQLite database cleanly
-          python -c "from app.core.database import init_db, engine; from sqlmodel import Session; from app.core.seed import seed_database; init_db(); session=Session(engine); seed_database(session)"
-          
-          # 2. Start Uvicorn server in background
-          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
-          UVICORN_PID=$!
-          
-          # 3. Wait for backend to become available
-          for i in {1..30}; do
-            if curl -s http://127.0.0.1:8000/docs > /dev/null; then
-              echo "Backend server is up and listening on port 8000 (PID: $UVICORN_PID)."
-              break
-            fi
-            echo "Waiting for server to start ($i/30)..."
-            sleep 1
-          done
-          
-          if ! kill -0 $UVICORN_PID 2>/dev/null; then
-            echo "Uvicorn process died unexpectedly. Logs:"
-            cat uvicorn.log
-            exit 1
-          fi
-          
-          echo "=== RUNNING BOUNDARY TESTS ==="
-          python test_boundaries.py
-          
-          echo "=== RUNNING MASTER PHASES TESTS ==="
-          python test_master_phases.py
-          
-          echo "=== RUNNING PHASE 1 SECURITY TESTS ==="
-          python test_phase1_security.py
-          
-          echo "=== RUNNING DEVICE INGESTION & CSI TELEMETRY TESTS ==="
-          python test_device_ingestion.py
-
-          echo "=== RUNNING CARE RECORDS TESTS ==="
-          python test_care_records.py
-
-          echo "=== RUNNING ALERT CONFIDENCE & VERIFICATION TESTS ==="
-          python test_alert_verification.py
-
-          echo "=== RUNNING MEDICAL PROVIDER WORKFLOW TESTS ==="
-          python test_doctor_workflow.py
-
-          echo "=== RUNNING DATASET REPLAY & DETECTION TESTS ==="
-          python test_dataset_replay.py
-
-          echo "=== RUNNING ORGANIZATION-SCOPED AUDIT LOG TESTS ==="
-          python test_audit_scoping.py
-
-          echo "=== RUNNING FAMILY SUBSCRIPTION (SANDBOX PAYMENTS) TESTS ==="
-          python test_family_subscription.py
-
-          echo "=== RUNNING COMPREHENSIVE BUSINESS LOGIC TESTS ==="
-          python test_business_logic.py
-
-          echo "=== RUNNING GLOBAL ADMIN ALERT ACCESS TESTS ==="
-          python test_global_admin_alert_access.py
-
-          echo "=== RUNNING SHARING POLICY UI FLOW TESTS ==="
-          python test_ui_flow_sharing_policy.py
-
-          echo "=== RUNNING LIVE CSI STREAM TESTS ==="
-          python test_live_stream.py
-
-          echo "=== RUNNING ROOM BOOKING TESTS ==="
-          python test_room_bookings.py
-
-          echo "=== RUNNING CSI SERIAL BRIDGE TESTS ==="
-          python test_csi_serial_bridge.py
-          echo "=== RUNNING FALL -> DOCTOR NOTIFICATION TESTS ==="
-          python test_fall_doctor_notify.py
-          echo "=== RUNNING HEALTH ENDPOINT TEST ==="
-          python test_health.py
-          echo "=== RUNNING DEMO SEED PROFILE TEST ==="
-          python test_seed_profile.py
-
-          kill $UVICORN_PID 2>/dev/null || true
+          # PostgreSQL leg only; the SQLite leg leaves DATABASE_URL unset and uses the default file
+          DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgresql://wifisense:ci-postgres-not-a-credential@127.0.0.1:5432/wifisense_ci' || '' }}
+          PG_ADMIN_URL: ${{ matrix.db == 'postgres' && 'postgresql://wifisense:ci-postgres-not-a-credential@127.0.0.1:5432/postgres' || '' }}
+        run: bash ci_backend_tests.sh
 
       - name: Set up Node.js
+        if: matrix.db == 'sqlite'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Build Frontend
+        if: matrix.db == 'sqlite'
         working-directory: ./frontend
         run: |
           npm install
           npm run build
 
       - name: Frontend tests (session expiry, no hard-coded hosts, no misleading claims)
+        if: matrix.db == 'sqlite'
         working-directory: ./frontend
         run: npm test
 
+
+  # Branch protection on master requires a check with this exact name; it passes only if every matrix leg passed.
+  backend-gate:
+    name: Backend Boundary & Regression Tests
+    runs-on: ubuntu-latest
+    needs: backend-regression-tests
+    if: ${{ always() }}
+    steps:
+      - name: Require SQLite and PostgreSQL legs to pass
+        run: |
+          if [ "${{ needs.backend-regression-tests.result }}" != "success" ]; then
+            echo "Backend tests: ${{ needs.backend-regression-tests.result }}"; exit 1
+          fi

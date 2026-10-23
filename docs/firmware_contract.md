@@ -22,6 +22,8 @@ Batch 5-20 packets per request (max 100). Body:
   "subcarrier_count": 52,
   "csi_data": {
     "iq": [I0, Q0, I1, Q1, ... ],   // EXACTLY 104 integers: 52 subcarriers, I first then Q  (required for detection)
+    // Compact alternative accepted by the API: "iq_b64": base64 of the same 104 signed bytes (use this OR "iq", not both).
+    // The bridge uses it by default (about 43% smaller requests); the stored format is the same.
     "src_mac": "24:0A:C4:..",       // the TX MAC (rx_ctrl.mac)
     "rate": 11, "sig_mode": 0, "mcs": 0, "cwb": 0, "agc_gain": 30, "fft_gain": 12   // optional extras, shown in the UI
   }

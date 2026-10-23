@@ -9,7 +9,7 @@ DEFAULT_SQLITE_PATH = os.path.join(BASE_DIR, "wifisense.db").replace("\\", "/")
 class Settings:
     PROJECT_NAME: str = "Wi-Fi Sense Focus"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH}")
+    DATABASE_URL: str = os.getenv("DATABASE_URL") or f"sqlite:///{DEFAULT_SQLITE_PATH}"
     SECRET_KEY: str = os.getenv("SECRET_KEY", "b3d162fc8cd92b516f863efbd4cfbd892abf4857b29a8a72")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
@@ -27,6 +27,13 @@ class Settings:
     MAX_UPLOAD_BYTES: int = int(os.getenv("MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))
     BOOTSTRAP_ADMIN_EMAIL: str = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "")
     BOOTSTRAP_ADMIN_PASSWORD: str = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
+
+    # Raw CSI retention. raw_csi_telemetry is by far the largest table (about 4.8 GB a day at 90 packets/s), so it is a rolling
+    # window: packets already analysed are deleted after RAW_CSI_RETENTION_HOURS, and the oldest analysed packets go first when
+    # the table passes RAW_CSI_MAX_ROWS. Detection results, alerts and audit history are never touched. 0 disables a limit.
+    RAW_CSI_RETENTION_HOURS: float = 24.0
+    RAW_CSI_MAX_ROWS: int = 300000
+    RAW_CSI_PRUNE_INTERVAL_SECONDS: int = 600
 
     # SMTP Configuration for Alert Notifications
     SMTP_HOST: str = os.getenv("SMTP_HOST", "127.0.0.1")
@@ -49,7 +56,10 @@ class Settings:
 
     def __init__(self):
         self.ENVIRONMENT = os.getenv("ENVIRONMENT", self.ENVIRONMENT)
-        self.DATABASE_URL = os.getenv("DATABASE_URL", self.DATABASE_URL)
+        self.DATABASE_URL = os.getenv("DATABASE_URL") or self.DATABASE_URL
+        # Some hosts hand out "postgres://", which SQLAlchemy no longer accepts.
+        if self.DATABASE_URL.startswith("postgres://"):
+            self.DATABASE_URL = "postgresql://" + self.DATABASE_URL[len("postgres://"):]
         self.SECRET_KEY = os.getenv("SECRET_KEY", self.SECRET_KEY)
         if not self.SECRET_KEY:
             raise RuntimeError(
@@ -71,6 +81,9 @@ class Settings:
             if self.ENVIRONMENT.lower() == "production":
                 raise RuntimeError("PAYMENT_WEBHOOK_SECRET is required in production.")
             self.PAYMENT_WEBHOOK_SECRET = secrets.token_urlsafe(32)
+        self.RAW_CSI_RETENTION_HOURS = float(os.getenv("RAW_CSI_RETENTION_HOURS", self.RAW_CSI_RETENTION_HOURS))
+        self.RAW_CSI_MAX_ROWS = int(os.getenv("RAW_CSI_MAX_ROWS", self.RAW_CSI_MAX_ROWS))
+        self.RAW_CSI_PRUNE_INTERVAL_SECONDS = int(os.getenv("RAW_CSI_PRUNE_INTERVAL_SECONDS", self.RAW_CSI_PRUNE_INTERVAL_SECONDS))
         # Demo data is on by default for development and off by default in production (an explicit opt-in there).
         self.SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "0" if self.ENVIRONMENT.lower() == "production" else "1") == "1"
         self.SEED_PROFILE = os.getenv("SEED_PROFILE", "full").strip().lower()

@@ -1,5 +1,7 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, Request, Query
+import time
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, Request, Response, Query
+from sqlalchemy import insert
 from sqlmodel import Session, select, or_, func
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Union
@@ -10,7 +12,7 @@ from app.models.entities import SensingDevice, Room, Floor, Building, SensingEve
 from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut, SensingHistoryOut
 from app.core.confidence import confidence_level, signal_level, requires_verification
 from app.services.notifications import process_alert_notifications
-from app.services import detection, fall_model, csi_physics
+from app.services import detection, fall_model, csi_physics, ingest_metrics
 
 router = APIRouter(prefix="/sensing", tags=["Sensing Pipeline"])
 STAFF_ROLES = ["system_admin", "facility_manager", "caregiver", "corporate_staff"]
@@ -18,6 +20,19 @@ MAX_INGEST_PAYLOAD_BYTES = 64 * 1024  # 64 KB maximum request/payload limit
 # A device an admin has pulled for repair must not flip itself back to ONLINE by sending packets.
 # OFFLINE is deliberately allowed: a newly registered device starts OFFLINE and becomes ONLINE on first packet.
 INGEST_BLOCKED_STATUSES = {"FAULT_REPORTED", "INSPECTING", "SERVICING"}
+
+def start_ingest_timer(request: Request):
+    """First dependency of /ingest: marks when the server began working on the request (reported as server_ms)."""
+    request.state.t0 = time.perf_counter()
+
+
+def _header_number(request: Request, name: str, cast=float, lo=0, hi=10 ** 9):
+    try:
+        v = cast(request.headers.get(name, ""))
+    except (TypeError, ValueError):
+        return None
+    return v if lo <= v <= hi else None
+
 
 async def verify_ingest_payload_size(request: Request):
     content_length = request.headers.get("content-length")
@@ -91,11 +106,13 @@ def get_authenticated_device(
     "/ingest",
     response_model=CsiIngestOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(verify_ingest_payload_size)],
+    dependencies=[Depends(start_ingest_timer), Depends(verify_ingest_payload_size)],
     summary="Ingest Raw CSI Telemetry Packets"
 )
 def ingest_csi_telemetry(
     payload: Union[CsiIngestBatch, CsiPacketIn],
+    request: Request,
+    response: Response,
     device: SensingDevice = Depends(get_authenticated_device),
     session: Session = Depends(get_session)
 ):
@@ -111,8 +128,9 @@ def ingest_csi_telemetry(
     else:
         packets_to_process = [payload]
 
-    records: List[RawCsiTelemetry] = []
+    rows: List[Dict[str, Any]] = []
     now_utc = datetime.now(timezone.utc)
+    packet_times: List[datetime] = []
 
     for p in packets_to_process:
         if p.mac_address and p.mac_address.strip().lower() != device.mac_address.strip().lower():
@@ -130,8 +148,10 @@ def ingest_csi_telemetry(
         pkt_time = p.timestamp or now_utc
         if pkt_time.tzinfo is None:
             pkt_time = pkt_time.replace(tzinfo=timezone.utc)
+        if p.timestamp:
+            packet_times.append(pkt_time)
 
-        record = RawCsiTelemetry(
+        rows.append(dict(
             device_id=device.id,
             room_id=device.room_id,
             timestamp=pkt_time,
@@ -143,18 +163,17 @@ def ingest_csi_telemetry(
             channel=p.channel,
             csi_data=p.csi_data,
             provenance=device_source,
-            created_at=now_utc
-        )
-        records.append(record)
+            created_at=now_utc,
+            event_id=None,
+        ))
 
-    for rec in records:
-        session.add(rec)
+    # One multi-row INSERT instead of one object per packet: this is the hot path.
+    session.execute(insert(RawCsiTelemetry), rows)
 
     device.device_status = "ONLINE"
     device.last_seen_at = now_utc
     session.add(device)
     session.commit()
-    session.refresh(device)
 
     det = {"detections": [], "note": None}
     try:
@@ -163,17 +182,29 @@ def ingest_csi_telemetry(
         session.rollback()
         det = {"detections": [], "note": f"Detection error ({type(exc).__name__}); packets were stored."}
 
+    server_ms = round((time.perf_counter() - getattr(request.state, "t0", time.perf_counter())) * 1000, 2)
+    response.headers["X-Process-Ms"] = str(server_ms)
+    ingest_metrics.record(
+        device.id, len(rows), server_ms,
+        delay_oldest_ms=round((now_utc - min(packet_times)).total_seconds() * 1000, 1) if packet_times else None,
+        delay_newest_ms=round((now_utc - max(packet_times)).total_seconds() * 1000, 1) if packet_times else None,
+        client_rtt_ms=_header_number(request, "X-Client-Rtt-Ms", float, 0, 600000),
+        client_queue=_header_number(request, "X-Client-Queue", int, 0, 10 ** 7),
+        client_dropped=_header_number(request, "X-Client-Dropped", int, 0, 10 ** 9),
+    )
+
     return CsiIngestOut(
         status="success",
         device_id=device.id,
         mac_address=device.mac_address,
         room_id=device.room_id,
-        ingested_count=len(records),
+        ingested_count=len(rows),
         provenance=device_source,
         device_status=device.device_status,
         last_seen_at=now_utc,
         detections=det["detections"],
         detection_note=det["note"],
+        server_ms=server_ms,
     )
 
 
@@ -185,6 +216,13 @@ def flush_detection(
     """Used at the end of a recorded clip: processes a final partial window of at least 100 packets."""
     det = detection.run_detection(session, device, flush=True)
     return {"device_id": device.id, "provenance": device.allowed_source, "detections": det["detections"], "note": det["note"]}
+
+
+@router.get("/retention", dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
+def raw_csi_retention(session: Session = Depends(get_session)):
+    """The raw-CSI retention policy, how full the table is, and what the last prune removed."""
+    from app.services import retention
+    return retention.retention_status(session)
 
 
 @router.get("/model-info", dependencies=[Depends(require_roles(STAFF_ROLES))])
@@ -583,6 +621,7 @@ def get_device_live_stream(
         "stats": csi_physics.window_stats(parsed),
         "latest_id": rows[-1].id if rows else after_id,
         "packets": new_packets,
+        "delivery": ingest_metrics.summary(device_id),
         "limits": "No x/y position is reported: a single transmitter-receiver pair measures the channel between two radios, "
                   "not where a person stands. Wavelength is derived from the reported channel number.",
     }

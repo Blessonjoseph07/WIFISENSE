@@ -7,7 +7,7 @@ Wi-Fi Sense Focus is an indoor human activity and fall monitoring system powered
 ## 🚀 Quick Start
 
 ### 1. Backend Service (FastAPI)
-The backend uses Python 3.8+ and SQLite (or PostgreSQL).
+The backend uses Python 3.8+. SQLite is fine for local development; PostgreSQL is the production database (the whole test suite runs on both).
 
 ```bash
 # Navigate to backend directory
@@ -58,7 +58,8 @@ Backend settings come from the environment (see `backend/.env.example`):
 | Variable | Required | Default | Purpose |
 | :--- | :--- | :--- | :--- |
 | `SECRET_KEY` | yes | – | JWT signing key. Startup fails if unset. |
-| `DATABASE_URL` | no | `sqlite:///./wifisense.db` | Database connection string. |
+| `DATABASE_URL` | no (yes in production) | `sqlite:///./wifisense.db` | Database connection string. Production uses PostgreSQL (`postgresql://...`); SQLite is for local development. |
+| `RAW_CSI_RETENTION_HOURS` / `RAW_CSI_MAX_ROWS` | no | `24` / `300000` | Rolling window for raw CSI packets (analysed packets only; detections are kept). See `docs/hosting_and_iot.md`. |
 | `ALLOWED_ORIGINS` | no | `http://localhost:5173` | Comma-separated CORS origins. |
 | `SEED_DEMO_DATA` | no | `0` | Set to `1` to seed demo data on startup. |
 | `MAX_UPLOAD_BYTES` | no | `5242880` | Profile photo size limit. |

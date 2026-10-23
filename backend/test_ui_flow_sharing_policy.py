@@ -296,6 +296,7 @@ def test_cross_organization_tenant_isolation_and_gating():
         session.add(rm_b)
         res_b = Resident(id=test_res_b_id, room_id=test_rm_b_id, first_name="Resident", last_name="B")
         session.add(res_b)
+        session.flush()  # parents first: PostgreSQL enforces the foreign keys SQLite ignores
         req_b = AccessRequest(
             id=test_req_b_id,
             requesting_user_id=target_user_id,
@@ -371,10 +372,15 @@ def test_cross_organization_tenant_isolation_and_gating():
                 if entity_type == UserRole:
                     for ur_obj in session.exec(select(UserRole).where(UserRole.user_id == entity_id)).all():
                         session.delete(ur_obj)
+                    from app.models.entities import RefreshToken
+                    for rt_obj in session.exec(select(RefreshToken).where(RefreshToken.user_id == entity_id)).all():
+                        session.delete(rt_obj)
+                    session.flush()
                 else:
                     obj = session.get(entity_type, entity_id)
                     if obj:
                         session.delete(obj)
+                        session.flush()  # children before parents
             session.commit()
 
 def test_unauthorized_roles_blocked_flow():

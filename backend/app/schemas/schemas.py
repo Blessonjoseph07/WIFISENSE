@@ -1,3 +1,4 @@
+import base64
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 from app.core.confidence import confidence_level, signal_level, requires_verification
 from typing import Optional, List, Dict, Any, Literal
@@ -205,6 +206,19 @@ class CsiPacketIn(BaseModel):
         bad = FORBIDDEN_CSI_LABEL_KEYS.intersection(k.lower() for k in v.keys())
         if bad:
             raise ValueError(f"csi_data must not contain client-supplied labels: {sorted(bad)}")
+        # Compact form: iq_b64 is the same int8 I/Q values as `iq`, base64-encoded (about 3x smaller on the wire).
+        # It is expanded here so everything downstream sees exactly one format.
+        if "iq_b64" in v:
+            if "iq" in v:
+                raise ValueError("csi_data must contain either iq or iq_b64, not both")
+            try:
+                raw = base64.b64decode(v["iq_b64"], validate=True)
+            except (ValueError, TypeError) as exc:
+                raise ValueError("csi_data.iq_b64 is not valid base64") from exc
+            if not 1 <= len(raw) <= 512:
+                raise ValueError("csi_data.iq_b64 must decode to between 1 and 512 int8 values")
+            v = {k: x for k, x in v.items() if k != "iq_b64"}
+            v["iq"] = [b - 256 if b > 127 else b for b in raw]
         return v
 
 class CsiIngestBatch(BaseModel):
@@ -225,6 +239,8 @@ class CsiIngestOut(BaseModel):
     # Detection windows completed by this request (DEMO devices never produce any).
     detections: List[Dict[str, Any]] = Field(default_factory=list)
     detection_note: Optional[str] = None
+    # Time the server spent on this request (also sent as the X-Process-Ms header).
+    server_ms: Optional[float] = None
 
 class DeviceCredentialCreatedOut(BaseModel):
     device_id: str
