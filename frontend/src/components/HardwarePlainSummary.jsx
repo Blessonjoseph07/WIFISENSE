@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { SourceBadge } from "./DetectionBadges";
+import MovementIndicator from "./MovementIndicator";
 
 const card = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm";
 
@@ -39,7 +40,7 @@ function Step({ n, text }) {
  * Live data has no answer key, so it never says whether a result is right: it says what the board sent, what the system
  * concluded, and that a person must check anything flagged. Every number comes from the detections the API returned.
  */
-export default function HardwarePlainSummary({ rows, devices }) {
+export default function HardwarePlainSummary({ rows, devices, deviceId, authToken, API_BASE }) {
   // newest first from the API; the dots read left (older) to right (newer)
   const recent = useMemo(() => [...(rows || [])].slice(0, 40).reverse(), [rows]);
   const flagged = recent.filter(isPossibleFall).length;
@@ -79,6 +80,8 @@ export default function HardwarePlainSummary({ rows, devices }) {
           </ol>
         </>
       )}
+
+      {deviceId && <MovementIndicator deviceId={deviceId} authToken={authToken} API_BASE={API_BASE} />}
 
       {(devices || []).length > 0 && recent.length === 0 && (
         <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
