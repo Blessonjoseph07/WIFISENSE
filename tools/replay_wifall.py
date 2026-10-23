@@ -45,16 +45,30 @@ def call(base, path, method="GET", data=None, jwt=None, device_token=None):
         req.add_header("Authorization", f"Bearer {jwt}")
     if device_token:
         req.add_header("X-Device-Token", device_token)
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = resp.read().decode()
-            return resp.status, (json.loads(body) if body else None)
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()
+    # A small hosted server can restart or sleep: retry gateway errors and dropped connections with a growing wait.
+    for attempt in range(7):
         try:
-            return e.code, json.loads(body)
-        except ValueError:
-            return e.code, body
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                body = resp.read().decode()
+                return resp.status, (json.loads(body) if body else None)
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            if e.code in (502, 503, 504) and attempt < 6:
+                wait = min(5 * 2 ** attempt, 40)
+                print(f"    server answered {e.code} (restarting or busy); retrying in {wait}s ...", flush=True)
+                time.sleep(wait)
+                continue
+            try:
+                return e.code, json.loads(body)
+            except ValueError:
+                return e.code, body
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            if attempt < 6:
+                wait = min(5 * 2 ** attempt, 40)
+                print(f"    connection problem ({e}); retrying in {wait}s ...", flush=True)
+                time.sleep(wait)
+                continue
+            return 0, f"could not reach the server: {e}"
 
 
 def to_utc_iso(stamp):
@@ -92,6 +106,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data-dir", required=True, help="the extracted WiFall folder (contains ID0 ... ID9)")
     ap.add_argument("--limit", type=int, default=0, help="replay at most this many clips (0 = all of the chosen person)")
+    ap.add_argument("--skip", type=int, default=0,
+                    help="resume: skip the first N clips (already done in an earlier run on the same device)")
     ap.add_argument("--pace", type=float, default=0.0, help="seconds to wait between clips")
     ap.add_argument("--include-training-people", action="store_true",
                     help="also replay people the model was trained on (labelled as such; proves nothing about accuracy)")
@@ -125,6 +141,12 @@ def main():
                 clips.append((pid, action, os.path.join(d, fn)))
     if args.limit:
         clips = clips[:args.limit]
+    if args.skip:
+        clips = clips[args.skip:]
+        # packets of an interrupted clip may still be waiting on the server: analyse and discard them so they cannot mix
+        # into the next clip's window (that window is not evaluated).
+        st, flushed = call(base, "/sensing/detect", "POST", {}, device_token=token)
+        print(f"Resuming after {args.skip} clips; flushed leftover packets (HTTP {st}).")
     print(f"Replaying {len(clips)} clips through {base}/sensing/ingest as DATASET REPLAY ...")
 
     tp = fn = fp = tn = 0
