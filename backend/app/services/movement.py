@@ -59,23 +59,37 @@ def baseline_from(blocks: List[float]) -> Optional[Dict[str, Any]]:
     }
 
 
+PRESENCE_BLOCKS = 12        # about 12 seconds: presence is a sustained level, not a single spike
+PRESENCE_SIGMA = 2.0
+PRESENCE_RATIO = 1.15
+
+
 def classify(blocks: List[float], baseline: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """State from the latest blocks against the baseline."""
+    """State from the latest blocks against the empty-room baseline: MOVEMENT (clearly above), PRESENT (held above the empty level
+    for several seconds), QUIET (close to the empty-room level)."""
     if not blocks:
-        return {"state": "NO_DATA", "headline": "No readings yet", "detail": "The board has not sent enough readings."}
-    latest = blocks[-RECENT_BLOCKS:]
+        return {"state": "NO_DATA", "headline": "No readings yet", "detail": "The board has not sent enough readings.",
+                "activity_ratio": None}
     if not baseline:
-        return {"state": "NO_BASELINE", "headline": "Not calibrated",
-                "detail": "Record a baseline while the room is empty and still, then movement can be told apart from quiet."}
-    thr = baseline["threshold"]
+        return {"state": "NO_BASELINE", "headline": "Not calibrated", "activity_ratio": None,
+                "detail": "Record a baseline while the room is empty and still, then presence and movement can be told apart from quiet."}
+    mean, std, thr = baseline["mean"], baseline["std"], baseline["threshold"]
+    latest = blocks[-RECENT_BLOCKS:]
     over = sum(1 for v in latest if v > thr)
     moving = over >= max(1, (len(latest) + 1) // 2) and latest[-1] > thr * 0.9
-    return {
-        "state": "MOVEMENT" if moving else "QUIET",
-        "headline": "Movement on the link" if moving else "Quiet",
-        "detail": ("The signal is fluctuating well above the empty-room baseline." if moving
-                   else "The signal is close to the empty-room baseline. A person standing still would also look quiet."),
-    }
+    recent = blocks[-PRESENCE_BLOCKS:]
+    level = float(np.median(recent))
+    ratio = round(level / mean, 2) if mean > 0 else None
+    present = len(recent) >= 6 and level > max(mean + PRESENCE_SIGMA * std, mean * PRESENCE_RATIO)
+    if moving:
+        return {"state": "MOVEMENT", "headline": "Movement on the link", "activity_ratio": ratio,
+                "detail": "The signal is fluctuating well above the empty-room baseline, so something is moving in the room."}
+    if present:
+        return {"state": "PRESENT", "headline": "Presence likely", "activity_ratio": ratio,
+                "detail": "The signal has stayed above the empty-room level for the last several seconds, so the room is probably "
+                          "occupied even though little is moving."}
+    return {"state": "QUIET", "headline": "Quiet", "activity_ratio": ratio,
+            "detail": "The signal is close to the empty-room level. A person standing completely still could look like this too."}
 
 
 def cached(key: str, builder):

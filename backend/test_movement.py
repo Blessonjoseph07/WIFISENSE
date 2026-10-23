@@ -92,12 +92,40 @@ def run():
     assert m["state"] == "QUIET", m
     print(f"[PASS] with an empty-room baseline (threshold {b['baseline']['threshold']}) the same kind of signal reads QUIET")
 
+    print("--- presence (held above the empty-room level, without strong movement)")
+    send(tok, 600, 700, 1.9)                                # modestly elevated for ~14 blocks
+    time.sleep(1.7)
+    st, m = call(f"/sensing/devices/{did}/movement", token=fm)
+    assert m["state"] == "PRESENT" and m["presence"] is True and 1.15 < m["activity_ratio"] < 1.6, m
+    print(f"[PASS] a signal held {m['activity_ratio']}x above the empty-room level reads PRESENT (presence likely), not MOVEMENT")
+
     print("--- movement")
-    send(tok, 600, 200, 14)                                 # strongly fluctuating readings
+    send(tok, 1300, 200, 14)                                 # strongly fluctuating readings
     time.sleep(1.7)
     st, m = call(f"/sensing/devices/{did}/movement", token=fm)
     assert m["state"] == "MOVEMENT" and max(m["blocks"][-3:]) > m["threshold"], m
     print("[PASS] a strongly fluctuating signal reads MOVEMENT")
+
+    print("--- live hardware: fall detection is off by default")
+    from sqlmodel import Session, select
+    from app.core.database import engine
+    from app.models.entities import RawCsiTelemetry, SensingEvent
+    live = call("/devices", "POST", {"room_id": room["id"], "mac_address": "24:0A:C4:%02X:%02X:%02X" % tuple(uuid.uuid4().bytes[:3]),
+                                     "device_status": "ONLINE", "firmware_version": "t", "allowed_source": "live"}, fm)[1]
+    pk = lambda i: {**packet(i, 3), "provenance": "live"}
+    st, body = call("/sensing/ingest", "POST", {"packets": [pk(i) for i in range(50)]}, headers={"X-Device-Token": live["hardware_token"]})
+    assert st == 201
+    for k in range(50, 350, 50):
+        st, body = call("/sensing/ingest", "POST", {"packets": [pk(i) for i in range(k, k + 50)]}, headers={"X-Device-Token": live["hardware_token"]})
+    assert st == 201 and body["detections"] == [] and "switched off" in (body["detection_note"] or ""), body
+    with Session(engine) as ses:
+        left = ses.exec(select(RawCsiTelemetry).where(RawCsiTelemetry.device_id == live["id"], RawCsiTelemetry.event_id.is_(None))).all()
+        evs = ses.exec(select(SensingEvent).where(SensingEvent.device_id == live["id"])).all()
+    assert not left and not evs, (len(left), len(evs))
+    time.sleep(1.7)
+    st, mv = call(f"/sensing/devices/{live['id']}/movement", token=fm)
+    assert st == 200 and mv["mode"] == "LIVE HARDWARE" and mv["fall_detection"].startswith("off"), mv
+    print("[PASS] 350 live packets: no fall detection, no events, none left 'pending' (they can age out), and the API says so")
 
     print("--- an unstable baseline is refused")
     st, bad = call(f"/sensing/devices/{did}/movement/baseline", "POST", {}, fm)
