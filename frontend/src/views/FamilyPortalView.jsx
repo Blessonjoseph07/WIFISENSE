@@ -564,8 +564,10 @@ export default function FamilyPortalView({
                     <span className="material-symbols-outlined text-[15px] text-emerald-600">room</span>
                     {resRoom}
                   </span>
-                  <span>•</span>
-                  <span>St. Mary's Elder Care Home</span>
+                  {familyStatus?.facility_name && (<>
+                    <span>•</span>
+                    <span>{familyStatus.facility_name}</span>
+                  </>)}
                 </div>
               </div>
             </div>
