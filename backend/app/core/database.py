@@ -5,16 +5,29 @@ from alembic.config import Config
 from app.core.config import BASE_DIR, settings
 
 # For SQLite, connect_args={"check_same_thread": False} is required
+engine_options = {}
 if settings.DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 elif settings.DATABASE_URL.startswith("postgres"):
     # Timestamps are stored as UTC in timezone-less columns. Pinning the session to UTC keeps comparisons between those
     # columns and timezone-aware values correct whatever timezone the database server itself is set to.
-    connect_args = {"options": "-c timezone=utc"}
+    connect_args = {
+        "options": "-c timezone=utc",
+        "connect_timeout": 10,
+        # TCP keepalives: hosted poolers (Supabase, Neon) silently drop idle connections.
+        "keepalives": 1, "keepalives_idle": 30, "keepalives_interval": 10, "keepalives_count": 5,
+    }
+    engine_options = {
+        "pool_pre_ping": True,     # test a pooled connection before use, so a dropped one is replaced, not turned into a 500
+        "pool_recycle": 240,       # never keep a connection longer than 4 minutes (poolers close idle ones)
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "5")),   # small on purpose: free pooler tiers allow few clients
+        "pool_timeout": 20,
+    }
 else:
     connect_args = {}
 
-engine = create_engine(settings.DATABASE_URL, echo=False, connect_args=connect_args)
+engine = create_engine(settings.DATABASE_URL, echo=False, connect_args=connect_args, **engine_options)
 
 def run_migrations():
     """Apply all pending database migrations up to head via Alembic."""
