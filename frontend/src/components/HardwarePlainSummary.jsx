@@ -1,6 +1,7 @@
 import React from "react";
 import { SourceBadge } from "./DetectionBadges";
 import MovementIndicator from "./MovementIndicator";
+import OccupancyLearner from "./OccupancyLearner";
 
 const card = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm";
 
@@ -72,6 +73,7 @@ export default function HardwarePlainSummary({ devices, deviceId, authToken, API
       )}
 
       {deviceId && <MovementIndicator deviceId={deviceId} authToken={authToken} API_BASE={API_BASE} />}
+      {deviceId && <OccupancyLearner deviceId={deviceId} authToken={authToken} API_BASE={API_BASE} />}
 
       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
         <strong>What this means:</strong> this view tells you whether the room looks occupied and whether anything is moving. It does not
