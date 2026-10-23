@@ -1,0 +1,158 @@
+"""
+Phase 2: learn this room. Record short labelled segments, train a small classifier on them, estimate the crowd level live.
+See app/services/occupancy.py for exactly what it is and is not.
+"""
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Literal, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+from sqlmodel import Session, select
+
+from app.core.audit import record_audit_event
+from app.core.database import get_session
+from app.models.entities import RawCsiTelemetry, RoomCalibration
+from app.routers.auth import get_current_user, require_roles
+from app.routers.sensing import (STAFF_ROLES, STALE_SECONDS, _calibration, _human_duration, _movement_device, _recent_records,
+                                 _seconds_since)
+from app.services import movement, occupancy
+
+router = APIRouter(prefix="/sensing", tags=["Occupancy (Phase 2)"])
+MANAGER_ROLES = ["system_admin", "facility_manager"]
+
+CAVEATS = [
+    "This estimates a crowd level from one pair of boards. It does not count, locate or identify people.",
+    "It learned only from what you recorded, at this board placement. If the room or the boards move, record again.",
+    "The held-out accuracy is measured on part of the same recordings; real-world accuracy can be lower. Re-check it on a different day.",
+]
+
+
+class CaptureIn(BaseModel):
+    label: Literal["empty", "few", "busy"]
+    seconds: int = Field(30, ge=5, le=180)
+    # Optional: use the packets stored since this packet id (see latest_id in the live endpoint) instead of "the last N seconds".
+    from_packet_id: Optional[int] = Field(default=None, ge=0)
+
+
+def _state(session: Session, device_id: str) -> Dict[str, Any]:
+    cal = _calibration(session, device_id)
+    return dict(((cal.subcarrier_profile or {}).get("occupancy") or {}) if cal else {})
+
+
+def _save(session: Session, device, occ: Dict[str, Any]) -> None:
+    cal = _calibration(session, device.id)
+    profile = dict((cal.subcarrier_profile or {}) if cal else {})
+    if occ:
+        profile["occupancy"] = occ
+    else:
+        profile.pop("occupancy", None)
+    if cal:
+        cal.subcarrier_profile = profile
+        cal.updated_at = datetime.now(timezone.utc)
+        session.add(cal)
+    else:
+        session.add(RoomCalibration(room_id=device.room_id, device_id=device.id, subcarrier_profile=profile))
+    session.commit()
+    with movement._cache_lock:
+        movement._cache.pop(f"occ:{device.id}", None)
+
+
+def _summary(occ: Dict[str, Any]) -> Dict[str, Any]:
+    sessions = occ.get("sessions") or {}
+    return {l: {"sessions": len(sessions.get(l, [])), "blocks": sum(len(s["blocks"]) for s in sessions.get(l, []))} for l in occupancy.LABELS}
+
+
+@router.get("/devices/{device_id}/occupancy", dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_occupancy(device_id: str, session: Session = Depends(get_session), current_user=Depends(get_current_user)):
+    device = _movement_device(device_id, session, current_user)
+    occ = _state(session, device_id)
+    model = occ.get("model")
+    samples = _summary(occ)
+    out: Dict[str, Any] = {
+        "device_id": device.id,
+        "mode": {"simulated": "DEMO", "dataset": "DATASET REPLAY", "live": "LIVE HARDWARE"}.get(device.allowed_source or "live", "LIVE HARDWARE"),
+        "labels": [{"id": l, "text": occupancy.LABEL_TEXT[l]} for l in occupancy.LABELS],
+        "samples": samples,
+        "can_train": sum(1 for v in samples.values() if v["blocks"] >= occupancy.MIN_BLOCKS_PER_LABEL) >= 2,
+        "min_blocks_per_label": occupancy.MIN_BLOCKS_PER_LABEL,
+        "block_packets": occupancy.BLOCK,
+        "trained": bool(model),
+        "evaluation": occ.get("evaluation"),
+        "caveats": CAVEATS,
+        "prediction": None,
+        "prediction_state": "NO_MODEL" if not model else "READY",
+    }
+    if model:
+        def build():
+            recs = _recent_records(session, device_id, occupancy.PREDICT_BLOCKS * occupancy.BLOCK)
+            idle = _seconds_since(recs[-1].created_at) if recs else None
+            if not recs or idle is None or idle > STALE_SECONDS:
+                return {"state": "NOT_SENDING", "prediction": None,
+                        "detail": f"The last packet arrived {_human_duration(idle)} ago." if idle is not None else "No packets yet."}
+            feats = occupancy.block_features(recs)
+            if len(feats) < 3:
+                return {"state": "NOT_ENOUGH_DATA", "prediction": None, "detail": "Waiting for a few seconds of readings."}
+            return {"state": "READY", "prediction": occupancy.predict(model, feats), "detail": None}
+        res = movement.cached(f"occ:{device_id}", build)
+        out["prediction"], out["prediction_state"], out["prediction_detail"] = res["prediction"], res["state"], res["detail"]
+    return out
+
+
+@router.post("/devices/{device_id}/occupancy/capture", dependencies=[Depends(require_roles(MANAGER_ROLES))])
+def capture_occupancy(device_id: str, body: CaptureIn, request: Request, session: Session = Depends(get_session),
+                      current_user=Depends(get_current_user)):
+    """Save the LAST `seconds` seconds of this device's packets as an example of `label`. Call it when the segment is over."""
+    device = _movement_device(device_id, session, current_user)
+    stmt = select(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id)
+    if body.from_packet_id is not None:
+        stmt = stmt.where(RawCsiTelemetry.id >= body.from_packet_id)
+    else:
+        stmt = stmt.where(RawCsiTelemetry.created_at >= datetime.now(timezone.utc) - timedelta(seconds=body.seconds))
+    recs = session.exec(stmt.order_by(RawCsiTelemetry.id).limit(180 * 130 + 200)).all()
+    idle = _seconds_since(recs[-1].created_at) if recs else None
+    if not recs or idle is None or idle > 15:
+        raise HTTPException(status_code=409, detail="The board is not sending right now, so there is nothing to record.")
+    feats = occupancy.block_features(recs)
+    if len(feats) < 8:
+        raise HTTPException(status_code=409, detail=f"Only {len(recs)} packets arrived in the last {body.seconds} s (need about "
+                                                    f"{8 * occupancy.BLOCK}). Check the board is sending steadily and try again.")
+    occ = _state(session, device_id)
+    sessions = {l: list(v) for l, v in (occ.get("sessions") or {}).items()}
+    lst = sessions.setdefault(body.label, [])
+    lst.append({"captured_at": datetime.now(timezone.utc).isoformat(), "seconds": body.seconds, "packets": len(recs),
+                "blocks": [[round(x, 5) for x in f] for f in feats]})
+    sessions[body.label] = lst[-occupancy.MAX_SESSIONS_PER_LABEL:]
+    occ["sessions"] = sessions
+    occ.pop("model", None)            # the old model no longer matches the data: train again
+    occ.pop("evaluation", None)
+    _save(session, device, occ)
+    record_audit_event(session=session, what_action="OCCUPANCY_SEGMENT_RECORDED", resource_type="DEVICE", resource_id=device.id,
+                       who_user_id=current_user.id, who_email=current_user.email,
+                       details={"label": body.label, "seconds": body.seconds, "blocks": len(feats)}, request=request)
+    return {"label": body.label, "blocks_saved": len(feats), "packets": len(recs), "samples": _summary(occ)}
+
+
+@router.post("/devices/{device_id}/occupancy/train", dependencies=[Depends(require_roles(MANAGER_ROLES))])
+def train_occupancy(device_id: str, request: Request, session: Session = Depends(get_session), current_user=Depends(get_current_user)):
+    device = _movement_device(device_id, session, current_user)
+    occ = _state(session, device_id)
+    try:
+        result = occupancy.train(occ.get("sessions") or {})
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    occ["model"], occ["evaluation"] = result["model"], result["evaluation"]
+    _save(session, device, occ)
+    ev = result["evaluation"]
+    record_audit_event(session=session, what_action="OCCUPANCY_MODEL_TRAINED", resource_type="DEVICE", resource_id=device.id,
+                       who_user_id=current_user.id, who_email=current_user.email,
+                       details={"heldout_accuracy": ev["heldout_accuracy"], "reliable": ev["reliable"], "labels": result["model"]["labels"]}, request=request)
+    return {"evaluation": ev}
+
+
+@router.delete("/devices/{device_id}/occupancy", dependencies=[Depends(require_roles(MANAGER_ROLES))])
+def reset_occupancy(device_id: str, request: Request, session: Session = Depends(get_session), current_user=Depends(get_current_user)):
+    device = _movement_device(device_id, session, current_user)
+    _save(session, device, {})
+    record_audit_event(session=session, what_action="OCCUPANCY_RESET", resource_type="DEVICE", resource_id=device.id,
+                       who_user_id=current_user.id, who_email=current_user.email, request=request)
+    return {"reset": True}

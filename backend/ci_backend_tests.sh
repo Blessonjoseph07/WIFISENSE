@@ -20,7 +20,7 @@ FAILED=""
 for t in test_boundaries test_master_phases test_phase1_security test_device_ingestion test_care_records \
          test_alert_verification test_doctor_workflow test_dataset_replay test_audit_scoping test_family_subscription \
          test_business_logic test_global_admin_alert_access test_ui_flow_sharing_policy test_live_stream test_room_bookings \
-         test_csi_serial_bridge test_fall_doctor_notify test_health test_seed_profile test_retention test_ingest_delivery test_room_picker test_movement \
+         test_csi_serial_bridge test_fall_doctor_notify test_health test_seed_profile test_retention test_ingest_delivery test_room_picker test_movement test_occupancy \
          test_migrate_sqlite_to_postgres; do
   echo "=== $t ==="
   if ! python $t.py; then FAILED="$FAILED $t"; fi
