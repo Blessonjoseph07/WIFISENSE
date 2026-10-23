@@ -28,8 +28,8 @@ services:
         sync: false
       - key: SEED_DEMO_DATA
         value: "1"
-      - key: SEED_PROFILE            # full = the whole demo dataset (all accounts, residents, rooms, devices); minimal = one user per role
-        value: full
+      - key: SEED_PROFILE            # minimal = one user per role (7 accounts); full = the whole demo dataset
+        value: minimal
       - key: SEED_PASSWORD           # 12+ characters, chosen by you; becomes the password of every demo account
         sync: false
       # Raw CSI is a rolling window: analysed packets older than RETENTION_HOURS are deleted, and the oldest analysed packets
