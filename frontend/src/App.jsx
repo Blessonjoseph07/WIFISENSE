@@ -235,6 +235,7 @@ export default function App() {
   const [newDevRmId, setNewDevRmId] = useState("");
   const [newDevMac, setNewDevMac] = useState("");
   const [newDevFirmware, setNewDevFirmware] = useState("v1.0.0");
+  const [newDevSource, setNewDevSource] = useState("live");
 
   const [newResRmId, setNewResRmId] = useState("");
   const [newResFirst, setNewResFirst] = useState("");
@@ -1169,7 +1170,8 @@ export default function App() {
         body: JSON.stringify({
           room_id: newDevRmId || null,
           mac_address: newDevMac,
-          firmware_version: newDevFirmware
+          firmware_version: newDevFirmware,
+          allowed_source: newDevSource
         })
       });
       if (!res.ok) {
@@ -2226,8 +2228,18 @@ export default function App() {
                   value={newDevRmId}
                   onChange={(e) => setNewDevRmId(e.target.value)}
                 >
-                  {rooms.map(rm => (
-                    <option key={rm.id} value={rm.id}>{rm.name}</option>
+                  {Object.entries(rooms.reduce((groups, rm) => {
+                    const label = rm.organization_name
+                      ? `${rm.organization_type === "CORPORATE" ? "Corporate" : "Elder Care"} · ${rm.organization_name}`
+                      : "Other rooms";
+                    (groups[label] = groups[label] || []).push(rm);
+                    return groups;
+                  }, {})).sort(([a], [b]) => a.localeCompare(b)).map(([label, list]) => (
+                    <optgroup key={label} label={label}>
+                      {list.map(rm => (
+                        <option key={rm.id} value={rm.id} title={rm.building_name || undefined}>{rm.name}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
@@ -2250,6 +2262,19 @@ export default function App() {
                   value={newDevFirmware}
                   onChange={(e) => setNewDevFirmware(e.target.value)}
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Data source</label>
+                <select
+                  className="w-full border border-slate-200 dark:border-slate-800 rounded p-2 text-sm bg-slate-50 dark:bg-slate-800 dark:text-white"
+                  value={newDevSource}
+                  onChange={(e) => setNewDevSource(e.target.value)}
+                >
+                  <option value="live">Live hardware (a real ESP32 board)</option>
+                  <option value="dataset">Dataset replay (recorded public data)</option>
+                  <option value="simulated">Demo (simulated values)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">The server stores every packet from this device with this source, so the three are never mixed.</p>
               </div>
               <div className="flex justify-end gap-2 pt-4">
                 <button

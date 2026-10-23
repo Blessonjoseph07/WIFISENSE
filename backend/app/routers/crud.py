@@ -191,14 +191,20 @@ def list_rooms(
     current_user = Depends(get_current_user)
 ):
     scopes = get_user_scopes(current_user)
-    stmt = select(Room)
+    stmt = select(Room, Building, Organization).join(Floor, Room.floor_id == Floor.id).join(
+        Building, Floor.building_id == Building.id).join(Organization, Building.organization_id == Organization.id)
     if not scopes["is_system_admin"]:
-        stmt = stmt.join(Floor).join(Building).where(or_(
+        stmt = stmt.where(or_(
             Building.organization_id.in_(list(scopes["organization_ids"])),
             Building.id.in_(list(scopes["building_ids"])),
             Room.id.in_(list(scopes["room_ids"]))
         ))
-    return session.exec(stmt).all()
+    out = []
+    for room, building, org in session.exec(stmt).all():
+        item = RoomOut.model_validate(room)
+        item.building_name, item.organization_name, item.organization_type = building.name, org.name, org.type
+        out.append(item)
+    return out
 
 # ============================================================================
 # 5. SENSING DEVICES
