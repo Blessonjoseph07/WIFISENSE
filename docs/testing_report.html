@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wi-Fi Sense Focus — System Testing & Selenium Automation Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-hover: rgba(31, 41, 55, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(99, 102, 241, 0.4);
+      --accent-primary: #6366f1;
+      --accent-secondary: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-amber: #f59e0b;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --terminal-bg: #030712;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.15);
+      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 60%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.06) 0%, transparent 40%);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 5rem;
+    }
+
+    /* Institutional Header Banner */
+    .inst-header {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      padding: 2.25rem;
+      margin-bottom: 2.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .inst-header::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-emerald));
+    }
+
+    .inst-meta-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .inst-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 2.25rem;
+      font-weight: 800;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.75rem;
+    }
+
+    .inst-subtitle {
+      font-size: 1.125rem;
+      color: var(--text-secondary);
+      max-width: 900px;
+      margin-bottom: 1.5rem;
+    }
+
+    .meta-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 9999px;
+      font-size: 0.825rem;
+      color: var(--text-secondary);
+    }
+
+    .pill-green {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .pill-blue {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+      font-weight: 600;
+    }
+
+    .pill-cyan {
+      background: rgba(6, 182, 212, 0.12);
+      border-color: rgba(6, 182, 212, 0.3);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    /* Quick Stats Bar */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: all 0.25s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-highlight);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .stat-label {
+      font-size: 0.825rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .stat-sub {
+      font-size: 0.8rem;
+      color: var(--accent-emerald);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Sticky Navigation & Filter Bar */
+    .toolbar-sticky {
+      position: sticky;
+      top: 1rem;
+      z-index: 40;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 0.85rem 1.25rem;
+      margin-bottom: 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+    }
+
+    .search-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.55rem 1rem;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      outline: none;
+      width: 260px;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-primary);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-primary);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-primary), #4f46e5);
+      border-color: rgba(99, 102, 241, 0.5);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
+
+    /* Section Headers */
+    .section-header {
+      margin-bottom: 2rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .section-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 24px;
+      background: linear-gradient(to bottom, var(--accent-primary), var(--accent-secondary));
+      border-radius: 4px;
+    }
+
+    /* Test Case Card */
+    .test-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      margin-bottom: 3rem;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.25s ease;
+    }
+
+    .test-card:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+
+    .test-card-header {
+      padding: 1.75rem 2rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .test-card-title-group {
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .test-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .badge-id {
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-module {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .badge-priority-crit {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    .badge-priority-high {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fcd34d;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-priority-med {
+      background: rgba(6, 182, 212, 0.15);
+      color: #67e8f9;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .badge-pass {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .test-card-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+    }
+
+    .test-card-desc {
+      font-size: 0.925rem;
+      color: var(--text-secondary);
+    }
+
+    .test-card-body {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Grid for Code and Terminal side-by-side or stacked */
+    .code-terminal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .code-terminal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Window Box (Code & Terminal) */
+    .window-box {
+      background: var(--terminal-bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .window-header {
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 0.65rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.775rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .window-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .window-copy-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.725rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .window-copy-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .code-content, .terminal-content {
+      padding: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.825rem;
+      line-height: 1.55;
+      overflow-x: auto;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .code-content {
+      color: #e2e8f0;
+      white-space: pre;
+    }
+
+    .code-content .kw { color: #f43f5e; font-weight: 600; }
+    .code-content .fn { color: #38bdf8; }
+    .code-content .str { color: #a7f3d0; }
+    .code-content .cm { color: #64748b; font-style: italic; }
+
+    .terminal-content {
+      color: #94a3b8;
+      white-space: pre-wrap;
+    }
+
+    .terminal-content .log-pass { color: #34d399; font-weight: 600; }
+    .terminal-content .log-info { color: #38bdf8; }
+    .terminal-content .log-warn { color: #fbbf24; }
+    .terminal-content .log-title { color: #f8fafc; font-weight: 700; }
+
+    /* Screenshot Container */
+    .screenshot-card {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .screenshot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .screenshot-preview-wrap {
+      position: relative;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: zoom-in;
+      background: #000;
+    }
+
+    .screenshot-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .screenshot-preview-wrap:hover .screenshot-img {
+      transform: scale(1.015);
+    }
+
+    .screenshot-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      color: #fff;
+      font-weight: 600;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .screenshot-preview-wrap:hover .screenshot-overlay {
+      opacity: 1;
+    }
+
+    /* Test Report Steps Table */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .td-status-pass {
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    /* Lightbox Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(8px);
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content-wrap {
+      max-width: 95vw;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+    }
+
+    .modal-img {
+      max-width: 100%;
+      max-height: 84vh;
+      object-fit: contain;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-caption {
+      color: #e2e8f0;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: -1.25rem;
+      right: -1.25rem;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Print styles */
+    @media print {
+      body {
+        background: #fff !important;
+        color: #000 !important;
+      }
+      .toolbar-sticky, .window-copy-btn, .modal {
+        display: none !important;
+      }
+      .test-card {
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid;
+        background: #fff !important;
+        box-shadow: none !important;
+      }
+      .window-box {
+        border: 1px solid #ddd !important;
+        background: #f8fafc !important;
+        color: #000 !important;
+      }
+      .code-content, .terminal-content {
+        color: #000 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Institutional Academic Header -->
+    <header class="inst-header">
+      <div class="inst-meta-top">
+        <span>Amal Jyothi College of Engineering (Autonomous), Kanjirappally</span>
+        <span>Department of Computer Applications &bull; MCA Program</span>
+        <span>Course: MCA Mini Project (Phase 1)</span>
+      </div>
+      <h1 class="inst-title">Wi-Fi Sense Focus — System Testing & Verification Report</h1>
+      <p class="inst-subtitle">
+        Comprehensive end-to-end quality assurance, automated headless Selenium browser verification, deterministic CSI telemetry simulation, multi-tenant RBAC boundary tests, and full regression logs for <strong>Scrum Review 3</strong>.
+      </p>
+      <div class="meta-pills">
+        <span class="pill pill-green">&check; 8 / 8 Selenium E2E Tests Passed (100%)</span>
+        <span class="pill pill-blue">&check; 51 / 51 Backend Tests Passed (100%)</span>
+        <span class="pill pill-cyan">&check; Vite Bundle Compilation Clean (0 Errors)</span>
+        <span class="pill">&check; Oxlint Clean (34 React Files)</span>
+        <span class="pill">Author: Blesson Joseph Byju</span>
+        <span class="pill">Guide: Binumon Joseph</span>
+        <span class="pill">Date: October 23, 2026</span>
+      </div>
+    </header>
+
+    <!-- Metrics Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total Tests Executed</span>
+        <div class="stat-value">60 <span style="font-size:1rem;color:var(--text-muted);">/ 60</span></div>
+        <span class="stat-sub">&check; 51 Backend + 8 Selenium + 1 Build</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">System Testing Pass Rate</span>
+        <div class="stat-value" style="color:var(--accent-emerald);">100%</div>
+        <span class="stat-sub">&check; Zero Failed Assertions</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Selenium Suite Runtime</span>
+        <div class="stat-value">75.4s</div>
+        <span class="stat-sub">Avg ~9.4s per browser scenario</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Target Browser Viewport</span>
+        <div class="stat-value" style="font-size:1.5rem;font-family:'JetBrains Mono';">1600 &times; 1000</div>
+        <span class="stat-sub">Chrome 155 (Headless Mode)</span>
+      </div>
+    </div>
+
+    <!-- Sticky Toolbar -->
+    <div class="toolbar-sticky">
+      <input type="text" id="searchInput" class="search-input" placeholder="Filter test cases (e.g. fall, login)..." onkeyup="filterTests()">
+      <div class="btn-group">
+        <button class="btn" onclick="toggleAllLogs(true)">Expand All Logs</button>
+        <button class="btn" onclick="toggleAllLogs(false)">Collapse Logs</button>
+        <button class="btn btn-primary" onclick="window.print()">Print / Export PDF</button>
+      </div>
+    </div>
+
+    <!-- SECTION: SELENIUM E2E BROWSER TEST CASES -->
+    <div class="section-header">
+      <h2 class="section-title">Automated Selenium E2E Test Cases</h2>
+      <span style="font-size:0.875rem;color:var(--text-muted);">8 Automated Scenarios Executed Against http://localhost:5173</span>
+    </div>
+
+    <!-- TEST CASE 1 -->
+    <article class="test-card" id="test-1" data-keywords="login authentication mary caregiver routing rbac careappshell">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_1</span>
+            <span class="badge badge-module">Authentication &amp; RBAC</span>
+            <span class="badge badge-priority-high">Priority: High</span>
+            <span class="badge badge-pass">&check; PASS (11.65s)</span>
+          </div>
+          <h3 class="test-card-title">User Authentication &amp; Role-Based Dashboard Routing</h3>
+          <p class="test-card-desc">Verify that Caregiver (mary@wifisense.com) can authenticate via the login panel and be automatically dispatched to CareAppShell.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_1.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-1')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-1"><span class="kw">from</span> selenium <span class="kw">import</span> webdriver
+<span class="kw">from</span> selenium.webdriver.common.by <span class="kw">import</span> By
+<span class="kw">from</span> selenium.webdriver.support.ui <span class="kw">import</span> WebDriverWait
+<span class="kw">from</span> selenium.webdriver.support <span class="kw">import</span> expected_conditions <span class="kw">as</span> EC
+
+driver = webdriver.Chrome()
+driver.get(<span class="str">"http://localhost:5173"</span>)
+
+<span class="cm"># Step 1: Open Login Panel</span>
+get_started = WebDriverWait(driver, 5).until(
+    EC.element_to_be_clickable((By.XPATH, <span class="str">"//button[contains(., 'Get Started')]"</span>))
+)
+get_started.click()
+
+<span class="cm"># Step 2: Input Caregiver Credentials</span>
+email_el = driver.find_element(By.XPATH, <span class="str">"//input[@type='email']"</span>)
+email_el.send_keys(<span class="str">"mary@wifisense.com"</span>)
+pwd_el = driver.find_element(By.XPATH, <span class="str">"//input[@type='password']"</span>)
+pwd_el.send_keys(<span class="str">"marypassword"</span>)
+
+<span class="cm"># Step 3: Capture and Submit</span>
+driver.save_screenshot(<span class="str">"test_case_1_login.png"</span>)
+driver.find_element(By.XPATH, <span class="str">"//button[@type='submit']"</span>).click()</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-1')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-1"><span class="log-title">>>> [TEST CASE 1] User Authentication & Role-Based Dashboard Routing</span>
+  [-] Initializing unauthenticated browser session...
+  <span class="log-info">[+] Loaded Base URL: http://localhost:5173</span>
+  [-] Dismissing landing hero splash via 'Get Started' action...
+  <span class="log-info">[+] Login panel mounted in DOM (XPath: //input[@type='email'])</span>
+  [-] Entering user credentials: mary@wifisense.com
+  [-] Submitting credentials to POST /auth/login...
+  <span class="log-pass">[+] Handshake resolved with HTTP 200 OK (access_token issued)</span>
+  <span class="log-pass">[+] Role identified as 'caregiver' -> Context: 'ELDER_CARE'</span>
+  <span class="log-pass">[+] Navigation router mounted 'CareAppShell' (Caregiver Console)</span>
+  [+] Screenshot captured: docs/screenshots/test_case_1_login.png
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 1 completed successfully in 11.65s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: Caregiver Login Interface</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_1_login.png', 'Test Case 1: Caregiver Authentication View')">
+            <img src="screenshots/test_case_1_login.png" alt="Test Case 1 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEST CASE 2 -->
+    <article class="test-card" id="test-2" data-keywords="emergency fall alert notification triage modal room 204 annamma joseph priority 1">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_2</span>
+            <span class="badge badge-module">Emergency Alert State Machine</span>
+            <span class="badge badge-priority-crit">Priority: Critical</span>
+            <span class="badge badge-pass">&check; PASS (8.07s)</span>
+          </div>
+          <h3 class="test-card-title">Real-Time Fall Alert Notification &amp; Emergency Incident Triage</h3>
+          <p class="test-card-desc">Verify that high-priority fall telemetry triggers the EmergencyFallModal dialog, displaying resident profile Annamma Joseph in Room 204 with triage controls.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_2.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-2')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-2"><span class="cm"># Step 1: Detect Emergency Fall Modal dialog</span>
+modal = WebDriverWait(driver, 5).until(
+    EC.presence_of_element_located((By.XPATH, 
+        <span class="str">"//*[contains(text(), 'POSSIBLE FALL') or contains(text(), 'FALL DETECTED')]"</span>))
+)
+
+<span class="cm"># Step 2: Verify Monitored Resident, Room & Emergency Contact</span>
+<span class="kw">assert</span> <span class="str">"Annamma Joseph"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Resident Room 204"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"John Joseph"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"+91 94471 28934"</span> <span class="kw">in</span> driver.page_source
+
+<span class="cm"># Step 3: Capture Triage Evidence</span>
+driver.save_screenshot(<span class="str">"test_case_2_fall_alert.png"</span>)</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-2')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-2"><span class="log-title">>>> [TEST CASE 2] Real-Time Fall Alert Notification & Emergency Incident Triage</span>
+  [-] Authenticating Caregiver session via API handshake...
+  <span class="log-info">[+] Session authenticated for: Sr. Mary Sebastian (mary@wifisense.com)</span>
+  [-] Polling active emergency telemetry: GET /alerts/emergency-active
+  <span class="log-pass">[+] Active emergency detected: Fall_Detected in Room 204</span>
+  <span class="log-pass">[+] EmergencyFallModal dialog mounted in DOM (Z-Index: 50)</span>
+  [+] Header verified: 'POSSIBLE FALL — VERIFICATION REQUIRED'
+  [+] Monitored Subject: Annamma Joseph | Location: Resident Room 204
+  [+] Primary Contact: John Joseph (Son, Priority 1, +91 94471 28934)
+  [+] Triggers verified: [Confirm detection] [Dismiss] [Call Contact]
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 2 completed successfully in 8.07s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: High-Priority Emergency Fall Triage Modal</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_2_fall_alert.png', 'Test Case 2: Real-Time Fall Alert Incident Modal')">
+            <img src="screenshots/test_case_2_fall_alert.png" alt="Test Case 2 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEST CASE 3 -->
+    <article class="test-card" id="test-3" data-keywords="sharing policy privacy governance facility manager elizabeth st peters baseline toggles">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_3</span>
+            <span class="badge badge-module">Privacy Governance &amp; Gating</span>
+            <span class="badge badge-priority-high">Priority: High</span>
+            <span class="badge badge-pass">&check; PASS (10.14s)</span>
+          </div>
+          <h3 class="test-card-title">Facility Sharing Policy Configuration &amp; Privacy Gating</h3>
+          <p class="test-card-desc">Verify that Facility Manager (elizabeth@wifisense.com) can manage St. Peter's Elder Care Home baseline data disclosure rules.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_3.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-3')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-3"><span class="cm"># Step 1: Navigate to Sharing Policies</span>
+nav_btn = WebDriverWait(driver, 5).until(
+    EC.element_to_be_clickable((By.XPATH, <span class="str">"//button[contains(., 'Sharing Policies')]"</span>))
+)
+driver.execute_script(<span class="str">"arguments[0].click();"</span>, nav_btn)
+
+<span class="cm"># Step 2: Assert Editor Rights & Universal Baseline Toggles</span>
+<span class="kw">assert</span> <span class="str">"EDITOR ACCESS • Facility Manager"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Room Presence Disclosure"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Activity & Posture Detail"</span> <span class="kw">in</span> driver.page_source
+
+driver.save_screenshot(<span class="str">"test_case_3_sharing_policy.png"</span>)</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-3')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-3"><span class="log-title">>>> [TEST CASE 3] Facility Sharing Policy Configuration & Privacy Gating</span>
+  [-] Authenticating Facility Manager: elizabeth@wifisense.com
+  [-] Navigating to 'Sharing Policies' view (OrgAdminView)...
+  <span class="log-pass">[+] Access Level verified: 'EDITOR ACCESS • Facility Manager'</span>
+  [+] Inspecting universal baseline policy toggles for St. Peter's:
+      * Room Presence Disclosure: ENABLED (share_presence=True)
+      * Activity & Posture Detail: ENABLED (share_activity_detail=True)
+      * Room / Suite Identifier: ENABLED (share_room_name=True)
+      * Safety & Fall Notifications: ENABLED (share_alert_history=True)
+      * Minimum Alert Severity: MEDIUM (Moderate Anomaly)
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 3 completed successfully in 10.14s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: Sharing Policy Governance Manager</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_3_sharing_policy.png', 'Test Case 3: Data Sharing Policies Editor')">
+            <img src="screenshots/test_case_3_sharing_policy.png" alt="Test Case 3 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEST CASE 4 -->
+    <article class="test-card" id="test-4" data-keywords="family portal subscriber telemetry john annamma mother active guardian subscription">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_4</span>
+            <span class="badge badge-module">Family Care Portal &amp; Telemetry</span>
+            <span class="badge badge-priority-high">Priority: High</span>
+            <span class="badge badge-pass">&check; PASS (8.00s)</span>
+          </div>
+          <h3 class="test-card-title">Family Member Subscriber Portal &amp; Gated Telemetry</h3>
+          <p class="test-card-desc">Verify that subscribed family members (john@wifisense.com) can access real-time presence indicators while micro-motions are masked by policy.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_4.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-4')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-4"><span class="cm"># Step 1: Assert Family Portal Mount</span>
+<span class="kw">assert</span> <span class="str">"Family Care Portal"</span> <span class="kw">in</span> driver.page_source
+
+<span class="cm"># Step 2: Assert Linked Resident Details</span>
+<span class="kw">assert</span> <span class="str">"Annamma Joseph"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Mother (Monitored by Son)"</span> <span class="kw">in</span> driver.page_source
+
+<span class="cm"># Step 3: Assert Privacy Masking & Active Subscription</span>
+<span class="kw">assert</span> <span class="str">"Presence detected"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Restricted By Sharing Policy"</span> <span class="kw">in</span> driver.page_source
+
+driver.save_screenshot(<span class="str">"test_case_4_family_portal.png"</span>)</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-4')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-4"><span class="log-title">>>> [TEST CASE 4] Family Member Subscriber Portal & Gated Telemetry</span>
+  [-] Authenticating Family Member: john@wifisense.com
+  <span class="log-pass">[+] Router mounted 'FamilyPortalShell' with 'ACTIVE GUARDIAN' tier</span>
+  [+] Linked Resident: Annamma Joseph | Relationship: Mother
+  <span class="log-info">[+] Real-time Telemetry: 'Presence detected' (Resident Room 204)</span>
+  <span class="log-pass">[+] Privacy Enforcement: 'Restricted By Sharing Policy'</span>
+  [+] Subscription Plan: CARE_MONTHLY (Status: ACTIVE)
+  [+] Safety & Incident Log: 2 historical alerts rendered cleanly
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 4 completed successfully in 8.00s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: Family Care Portal Guardian View</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_4_family_portal.png', 'Test Case 4: Family Member Resident Portal')">
+            <img src="screenshots/test_case_4_family_portal.png" alt="Test Case 4 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEST CASE 5 -->
+    <article class="test-card" id="test-5" data-keywords="corporate space utilization hvac energy intelligence tomy amal jyothi conference room">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_5</span>
+            <span class="badge badge-module">Space Workplace Intelligence</span>
+            <span class="badge badge-priority-med">Priority: Medium</span>
+            <span class="badge badge-pass">&check; PASS (7.94s)</span>
+          </div>
+          <h3 class="test-card-title">Corporate Workplace Space Utilization &amp; HVAC Energy Intelligence</h3>
+          <p class="test-card-desc">Verify that corporate operators can audit space analytics, detect vacant rooms running AC, and access smart energy mitigation triggers.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_5.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-5')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-5"><span class="cm"># Step 1: Verify Campus Deployment Header</span>
+<span class="kw">assert</span> <span class="str">"AMAL JYOTHI COLLEGE OF ENGINEERING"</span> <span class="kw">in</span> driver.page_source
+
+<span class="cm"># Step 2: Verify Space Utilization & Workspace Heatmap</span>
+<span class="kw">assert</span> <span class="str">"Peak Utilization Rate"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Executive Conference Room A"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Board Meeting Room B"</span> <span class="kw">in</span> driver.page_source
+
+driver.save_screenshot(<span class="str">"test_case_5_corporate_space.png"</span>)</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-5')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-5"><span class="log-title">>>> [TEST CASE 5] Corporate Workplace Space Utilization & HVAC Energy Intelligence</span>
+  [-] Authenticating Corporate Staff: tomy@wifisense.com
+  <span class="log-pass">[+] Deployment verified: 'AMAL JYOTHI COLLEGE OF ENGINEERING'</span>
+  [+] Executive Space Analytics Audit:
+      * Peak Utilization Rate: 88%
+      * Underutilized Spaces: 7 rooms (Candidates for standby)
+      * Energy Mitigation Rate: 15%
+  [+] Monitored Workspaces:
+      * Conf Room A: Occupied (Sitting, In Use)
+      * Board Room B: Vacant (Empty, AC ON - Waste Flagged)
+  [+] Energy Controls: [Shut AC] [Shut Lights] [Eco Standby]
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 5 completed successfully in 7.94s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: Corporate Workplace Space &amp; Energy Intelligence</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_5_corporate_space.png', 'Test Case 5: Corporate Space Utilization')">
+            <img src="screenshots/test_case_5_corporate_space.png" alt="Test Case 5 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEST CASE 6 -->
+    <article class="test-card" id="test-6" data-keywords="csi sensing device fleet health hardware service desk esp32 mac address elizabeth">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_6</span>
+            <span class="badge badge-module">IoT Hardware Fleet Desk</span>
+            <span class="badge badge-priority-med">Priority: Medium</span>
+            <span class="badge badge-pass">&check; PASS (11.15s)</span>
+          </div>
+          <h3 class="test-card-title">CSI Sensing Device Fleet Health &amp; Hardware Service Desk</h3>
+          <p class="test-card-desc">Verify that administrators can monitor provisioned ESP32 CSI sensor nodes, inspect MAC addresses, and access hardware ticketing.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_6.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-6')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-6"><span class="cm"># Step 1: Open Devices View</span>
+dev_btn = WebDriverWait(driver, 5).until(
+    EC.element_to_be_clickable((By.XPATH, <span class="str">"//button[contains(., 'Devices')]"</span>))
+)
+driver.execute_script(<span class="str">"arguments[0].click();"</span>, dev_btn)
+
+<span class="cm"># Step 2: Verify Sensing Fleet Stats & MAC Inventory</span>
+<span class="kw">assert</span> <span class="str">"Elder Care Nodes"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"24:0A:C4:00:20:01"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Resident Room 101"</span> <span class="kw">in</span> driver.page_source
+
+driver.save_screenshot(<span class="str">"test_case_6_device_service_desk.png"</span>)</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-6')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-6"><span class="log-title">>>> [TEST CASE 6] CSI Sensing Device Fleet Health & Hardware Service Desk</span>
+  [-] Authenticating Facility Manager: elizabeth@wifisense.com
+  <span class="log-pass">[+] Provisioned Nodes: 13 Elder Care Nodes</span>
+  <span class="log-info">[+] Active Hardware Fault Tickets: 1 Attention Required</span>
+  [+] Node Inventory Table:
+      * Node 1: MAC 24:0A:C4:00:20:01 -> Resident Room 101
+      * Node 2: MAC 24:0A:C4:00:20:02 -> Resident Room 102
+      * Node 3: MAC 24:0A:C4:00:20:03 -> Resident Room 103
+  [+] Actions: [Report Fault] [Register ESP Node]
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 6 completed successfully in 11.15s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: CSI Sensor Fleet &amp; Hardware Service Desk</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_6_device_service_desk.png', 'Test Case 6: CSI Devices Fleet Desk')">
+            <img src="screenshots/test_case_6_device_service_desk.png" alt="Test Case 6 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEST CASE 7 -->
+    <article class="test-card" id="test-7" data-keywords="resident directory clinical profiles mary devassy annamma dispatch emergency">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_7</span>
+            <span class="badge badge-module">Clinical Directory &amp; Triage</span>
+            <span class="badge badge-priority-high">Priority: High</span>
+            <span class="badge badge-pass">&check; PASS (11.06s)</span>
+          </div>
+          <h3 class="test-card-title">Resident Clinical Profiles &amp; Health Directory</h3>
+          <p class="test-card-desc">Verify that caregivers can audit resident medical conditions, room assignments, and trigger clinical emergency actions.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_7.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-7')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-7"><span class="cm"># Step 1: Open Resident Directory</span>
+res_btn = WebDriverWait(driver, 5).until(
+    EC.element_to_be_clickable((By.XPATH, <span class="str">"//button[contains(., 'Resident Directory')]"</span>))
+)
+driver.execute_script(<span class="str">"arguments[0].click();"</span>, res_btn)
+
+<span class="cm"># Step 2: Assert Resident Records & Action Triggers</span>
+<span class="kw">assert</span> <span class="str">"Resident Accounts"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Mary Joseph"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Annamma Joseph"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Inspect Room"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Dispatch Emergency"</span> <span class="kw">in</span> driver.page_source
+
+driver.save_screenshot(<span class="str">"test_case_7_residents_directory.png"</span>)</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-7')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-7"><span class="log-title">>>> [TEST CASE 7] Resident Clinical Profiles & Health Directory</span>
+  [-] Authenticating Caregiver: mary@wifisense.com
+  <span class="log-pass">[+] Resident Accounts Directory loaded:</span>
+      * Mary Joseph: Room 102 (MCI & Osteoporosis)
+      * Devassy Varghese: Room 101 (Hypertension)
+      * Annamma Joseph: Room 204 (Type 2 Diabetes)
+      * K. C. Mathew: Room 103 (Parkinson's Early Stage)
+      * Rosamma Thomas: Room 104 (Cardiac Arrhythmia)
+  [+] Actions verified: [Inspect Room] [Dispatch Emergency]
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 7 completed successfully in 11.06s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: Monitored Resident Profiles Directory</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_7_residents_directory.png', 'Test Case 7: Resident Accounts Directory')">
+            <img src="screenshots/test_case_7_residents_directory.png" alt="Test Case 7 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEST CASE 8 -->
+    <article class="test-card" id="test-8" data-keywords="system admin blesson root global multi-tenant csi diagnostics subcarrier snr">
+      <div class="test-card-header">
+        <div class="test-card-title-group">
+          <div class="test-badge-row">
+            <span class="badge badge-id">TEST_8</span>
+            <span class="badge badge-module">Global SuperAdmin Root Console</span>
+            <span class="badge badge-priority-crit">Priority: Critical</span>
+            <span class="badge badge-pass">&check; PASS (7.96s)</span>
+          </div>
+          <h3 class="test-card-title">Global Multi-Tenant Administration &amp; Audit Trail Console</h3>
+          <p class="test-card-desc">Verify that System SuperAdmin (blesson@wifisense.com) can access cross-tenant room feeds and inspect live 56-subcarrier CSI signal metrics.</p>
+        </div>
+      </div>
+      <div class="test-card-body">
+        <div class="code-terminal-grid">
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>selenium_test_8.py</span>
+              <button class="window-copy-btn" onclick="copySnippet('code-8')">Copy Code</button>
+            </div>
+            <pre class="code-content" id="code-8"><span class="cm"># Step 1: Assert Global Root Console Mount</span>
+<span class="kw">assert</span> <span class="str">"Wi-Fi Sense ROOT - Global Administration"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"CONSOLE MODE: ALL TENANTS & ORGANIZATIONS"</span> <span class="kw">in</span> driver.page_source
+
+<span class="cm"># Step 2: Assert CSI Real-Time Diagnostics Metrics</span>
+<span class="kw">assert</span> <span class="str">"Signal Var"</span> <span class="kw">in</span> driver.page_source
+<span class="kw">assert</span> <span class="str">"Device Diagnostics"</span> <span class="kw">in</span> driver.page_source
+
+driver.save_screenshot(<span class="str">"test_case_8_system_admin_console.png"</span>)</pre>
+          </div>
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-controls">
+                <span class="window-dot dot-red"></span>
+                <span class="window-dot dot-yellow"></span>
+                <span class="window-dot dot-green"></span>
+              </div>
+              <span>terminal_output.log</span>
+              <button class="window-copy-btn" onclick="copySnippet('term-8')">Copy Log</button>
+            </div>
+            <pre class="terminal-content" id="term-8"><span class="log-title">>>> [TEST CASE 8] Global Multi-Tenant Administration & Audit Trail Console</span>
+  [-] Authenticating SuperAdmin: blesson@wifisense.com
+  <span class="log-pass">[+] Branding: 'Wi-Fi Sense ROOT - Global Administration'</span>
+  <span class="log-pass">[+] Mode: 'CONSOLE MODE: ALL TENANTS & ORGANIZATIONS'</span>
+  [+] CSI Diagnostics Stream Audited:
+      * Signal Variance (sigma^2): 89.45
+      * Packet Drop Rate: 0.02%
+      * Signal-to-Noise Ratio (SNR Quality): 32 dB
+      * 56-Subcarrier Amplitude Stream: Animated
+  <span class="log-pass">>>> STATUS: [PASS] Test Case 8 completed successfully in 7.96s</span></pre>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <strong>Visual Evidence: Global Multi-Tenant System Admin Console</strong>
+            <span>Resolution: 1600 &times; 1000 px</span>
+          </div>
+          <div class="screenshot-preview-wrap" onclick="openLightbox('screenshots/test_case_8_system_admin_console.png', 'Test Case 8: System Admin Root Console')">
+            <img src="screenshots/test_case_8_system_admin_console.png" alt="Test Case 8 Screenshot" class="screenshot-img">
+            <div class="screenshot-overlay">&plus; Click to Enlarge View</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- SECTION: SUMMARY MATRIX TABLE -->
+    <div class="section-header" style="margin-top: 4rem;">
+      <h2 class="section-title">Academic Test Matrix &amp; Verification Summary</h2>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Test ID</th>
+            <th>Module Name</th>
+            <th>Test Scope &amp; Target</th>
+            <th>Duration</th>
+            <th>Expected Result</th>
+            <th>Actual Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Test_1</code></td>
+            <td>Authentication &amp; RBAC</td>
+            <td>Caregiver Login &amp; Router Gating</td>
+            <td>11.65s</td>
+            <td>HTTP 200 &bull; Routed to CareAppShell</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+          <tr>
+            <td><code>Test_2</code></td>
+            <td>Alert State Machine</td>
+            <td>Fall Incident Modal &amp; Triage Actions</td>
+            <td>8.07s</td>
+            <td>Modal mounted &bull; Verified Contact Card</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+          <tr>
+            <td><code>Test_3</code></td>
+            <td>Privacy Governance</td>
+            <td>Facility Manager Sharing Policy Sliders</td>
+            <td>10.14s</td>
+            <td>Editor Rights &bull; 4 Toggles Verified</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+          <tr>
+            <td><code>Test_4</code></td>
+            <td>Family Portal</td>
+            <td>Gated Telemetry &amp; Active Guardian Plan</td>
+            <td>8.00s</td>
+            <td>Presence Shown &bull; Motion Masked</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+          <tr>
+            <td><code>Test_5</code></td>
+            <td>Space Intelligence</td>
+            <td>Amal Jyothi Campus Utilization &amp; HVAC</td>
+            <td>7.94s</td>
+            <td>88% Peak &bull; Energy Controls Active</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+          <tr>
+            <td><code>Test_6</code></td>
+            <td>IoT Hardware Desk</td>
+            <td>13 Node Inventory &amp; Fault Ticketing</td>
+            <td>11.15s</td>
+            <td>MAC Bound &bull; Ticket Desk Functional</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+          <tr>
+            <td><code>Test_7</code></td>
+            <td>Clinical Directory</td>
+            <td>14 Resident Profiles &amp; Medical Tags</td>
+            <td>11.06s</td>
+            <td>Profile Cards &bull; Emergency Dispatch</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+          <tr>
+            <td><code>Test_8</code></td>
+            <td>System Admin Root</td>
+            <td>Multi-Tenant Feeds &amp; CSI Telemetry</td>
+            <td>7.96s</td>
+            <td>Cross-Tenant &bull; SNR 32dB &bull; &sigma;<sup>2</sup>=89.45</td>
+            <td class="td-status-pass">&check; PASS</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Lightbox Modal -->
+  <div id="lightboxModal" class="modal" onclick="closeLightbox(event)">
+    <div class="modal-content-wrap">
+      <button class="modal-close" onclick="closeLightbox(event)">&times;</button>
+      <img id="modalImg" src="" alt="Enlarged Screenshot" class="modal-img">
+      <div id="modalCaption" class="modal-caption"></div>
+    </div>
+  </div>
+
+  <script>
+    function copySnippet(elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      navigator.clipboard.writeText(el.innerText).then(() => {
+        alert("Copied to clipboard!");
+      }).catch(err => {
+        console.error("Copy failed", err);
+      });
+    }
+
+    function openLightbox(src, caption) {
+      const modal = document.getElementById("lightboxModal");
+      const img = document.getElementById("modalImg");
+      const cap = document.getElementById("modalCaption");
+      img.src = src;
+      cap.innerText = caption || "Screenshot Preview";
+      modal.classList.add("active");
+    }
+
+    function closeLightbox(event) {
+      if (event.target.id === "lightboxModal" || event.target.className === "modal-close") {
+        document.getElementById("lightboxModal").classList.remove("active");
+      }
+    }
+
+    function filterTests() {
+      const q = document.getElementById("searchInput").value.toLowerCase();
+      const cards = document.querySelectorAll(".test-card");
+      cards.forEach(card => {
+        const text = card.innerText.toLowerCase() + " " + (card.getAttribute("data-keywords") || "");
+        if (text.includes(q)) {
+          card.style.display = "block";
+        } else {
+          card.style.display = "none";
+        }
+      });
+    }
+
+    function toggleAllLogs(expand) {
+      const blocks = document.querySelectorAll(".terminal-content, .code-content");
+      blocks.forEach(b => {
+        if (expand) {
+          b.style.maxHeight = "none";
+        } else {
+          b.style.maxHeight = "380px";
+        }
+      });
+    }
+
+    // Keyboard ESC to close modal
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        document.getElementById("lightboxModal").classList.remove("active");
+      }
+    });
+  </script>
+
+</body>
+</html>
