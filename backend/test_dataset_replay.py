@@ -356,6 +356,8 @@ def run_tests():
 
         # ------------------------------------------------------------------ 7. in-process: live rules
         print("\n--- 7. LIVE HARDWARE rules (detector scores forced, in-process) ---")
+        from app.core.config import settings as _settings
+        _settings.LIVE_FALL_DETECTION = True    # live fall detection is off by default; these checks exercise it explicitly
         with Session(engine) as session:
             live = SensingDevice(mac_address="DE:AD:BE:EF:02:05", room_id=room_id, device_status="ONLINE",
                                  allowed_source="live", hardware_token_hash="x" * 64)
@@ -437,6 +439,8 @@ def run_tests():
         check_resident_status(care_admin, annamma_id, room_id)
     finally:
         print("\n--- Cleanup ---")
+        from app.core.config import settings as _settings_restore
+        _settings_restore.LIVE_FALL_DETECTION = False
         with Session(engine) as session:
             ids = list(created_devices)
             ev_ids = [e.id for e in session.exec(select(SensingEvent).where(SensingEvent.device_id.in_(ids))).all()] if ids else []

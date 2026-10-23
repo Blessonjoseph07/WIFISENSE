@@ -5,6 +5,7 @@ from sqlalchemy import insert
 from sqlmodel import Session, select, or_, func
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Union
+from app.core.config import settings
 from app.core.database import get_session
 from app.core.security import hash_token
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
@@ -568,6 +569,7 @@ def get_device_csi_telemetry(
 MOVEMENT_CAVEATS = [
     "This shows movement on the Wi-Fi link between the two boards. It does not count, locate or identify people.",
     "A person standing or lying completely still barely changes the signal, so 'quiet' does not mean 'nobody is there'.",
+    "Presence is judged against an empty-room baseline recorded at this exact board placement; with no baseline it makes no claim.",
     "A fan, a door, a pet or someone in the next room can also raise it. Recalibrate when the room changes.",
 ]
 MOVEMENT_BLOCKS_SHOWN = 24
@@ -633,6 +635,7 @@ def get_device_movement(
             verdict = {"state": "STALE", "headline": "Board is not sending",
                        "detail": f"The last packet arrived {_human_duration(idle)} ago, so there is no current reading."}
         return {"state": verdict["state"], "headline": verdict["headline"], "detail": verdict["detail"],
+                "activity_ratio": verdict.get("activity_ratio"), "presence": verdict["state"] in ("PRESENT", "MOVEMENT"),
                 "blocks": [round(b, 4) for b in blocks], "baseline": baseline,
                 "threshold": baseline["threshold"] if baseline else None,
                 "seconds_since_last_packet": round(idle, 1) if idle is not None else None,
@@ -642,6 +645,8 @@ def get_device_movement(
     out.update({
         "device_id": device.id, "mode": {"simulated": "DEMO", "dataset": "DATASET REPLAY", "live": "LIVE HARDWARE"}.get(source, source.upper()),
         "caveats": MOVEMENT_CAVEATS,
+        "fall_detection": "on (experimental)" if (source == "live" and settings.LIVE_FALL_DETECTION) else
+                          ("off for live hardware: the model has not been validated in this room" if source == "live" else "not applicable"),
     })
     return out
 
