@@ -236,6 +236,7 @@ export default function App() {
   const [newDevMac, setNewDevMac] = useState("");
   const [newDevFirmware, setNewDevFirmware] = useState("v1.0.0");
   const [newDevSource, setNewDevSource] = useState("live");
+  const [createdDeviceToken, setCreatedDeviceToken] = useState(null);
 
   const [newResRmId, setNewResRmId] = useState("");
   const [newResFirst, setNewResFirst] = useState("");
@@ -1177,6 +1178,11 @@ export default function App() {
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.detail || "Failed to register device.");
+      }
+      const created = await res.json().catch(() => null);
+      // The server returns the device token exactly once; show it so it can be copied (it cannot be shown again).
+      if (created?.hardware_token) {
+        setCreatedDeviceToken({ token: created.hardware_token, mac: created.mac_address, source: created.allowed_source });
       }
       setNewDevMac("");
       setShowAddDeviceModal(false);
@@ -2216,6 +2222,41 @@ export default function App() {
       )}
 
       {/* 5. Add Device Modal */}
+      {createdDeviceToken && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-label="Device token">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full text-left shadow-2xl">
+            <h3 className="font-bold text-headline-sm mb-1 dark:text-white">Copy this device token now</h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Device {createdDeviceToken.mac} · source: {createdDeviceToken.source}. This token is shown <strong>only once</strong>. Store it securely;
+              if it is lost, register the device again.
+            </p>
+            <textarea
+              readOnly
+              rows={3}
+              className="w-full font-mono text-xs border border-slate-200 dark:border-slate-700 rounded p-2 bg-slate-50 dark:bg-slate-800 dark:text-white break-all"
+              value={createdDeviceToken.token}
+              onFocus={(e) => e.target.select()}
+              data-testid="device-token"
+            />
+            <div className="flex justify-end gap-2 pt-4">
+              <button
+                type="button"
+                onClick={() => { try { navigator.clipboard.writeText(createdDeviceToken.token); setToastMessage({ type: "success", text: "Token copied." }); } catch (e) { /* select the text and copy by hand */ } }}
+                className="px-4 py-2 border rounded-full text-xs font-bold uppercase hover:bg-slate-100 dark:text-white dark:border-slate-700"
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatedDeviceToken(null)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-full text-xs font-bold uppercase font-semibold"
+              >
+                I have saved it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showAddDeviceModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl">
