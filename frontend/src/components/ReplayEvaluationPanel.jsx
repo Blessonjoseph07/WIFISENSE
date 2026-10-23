@@ -35,6 +35,65 @@ function Cell({ n, label, good }) {
   );
 }
 
+
+// Each dot is one recorded clip. Anyone can read it without knowing what a confusion matrix is.
+function Dots({ items }) {
+  return (
+    <div className="flex flex-wrap gap-1.5" role="img" aria-label={items.map((g) => `${g.n} ${g.label}`).join(", ")}>
+      {items.flatMap((g) => Array.from({ length: g.n }, (_, i) => (
+        <span key={`${g.label}-${i}`} title={g.label} className="w-4 h-4 rounded-full inline-block" style={{ background: g.color }} />
+      )))}
+    </div>
+  );
+}
+
+function PlainSummary({ tp, fn, fp, tn, falls, nonFalls, person }) {
+  const flaggedShare = falls ? Math.round((tp / falls) * 100) : null;
+  // The wording follows the numbers, so a high false-alarm rate is never described as "some".
+  const falseShare = nonFalls ? fp / nonFalls : 0;
+  const falseWord = falseShare >= 0.5 ? "many" : falseShare >= 0.2 ? "a number of" : "a few";
+  const fallWord = !falls ? "" : tp === falls ? "noticed every fall" : flaggedShare >= 70 ? "noticed most falls" : "missed many falls";
+  return (
+    <div className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/20 p-4 space-y-4" data-testid="plain-summary">
+      <div className="text-sm font-bold text-slate-900 dark:text-white">In plain words</div>
+      <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+        We replayed {falls + nonFalls} short recordings of {person || "a person"} the system had <strong>never seen before</strong>.
+        {" "}{falls} of them are real falls and {nonFalls} are everyday movements (walking, sitting, standing, jumping).
+        The system was not told which was which.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+            When the person really fell: {tp} of {falls} noticed{flaggedShare !== null ? ` (${flaggedShare}%)` : ""}
+          </div>
+          <Dots items={[{ n: tp, label: "fall noticed", color: "#10b981" }, { n: fn, label: "fall missed", color: "#ef4444" }]} />
+          <div className="text-[11px] text-slate-500 mt-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: "#10b981" }} />noticed
+            <span className="inline-block w-2.5 h-2.5 rounded-full align-middle ml-3 mr-1" style={{ background: "#ef4444" }} />missed
+          </div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+            When it was an ordinary movement: {fp} of {nonFalls} wrongly raised an alarm
+          </div>
+          <Dots items={[{ n: tn, label: "correctly ignored", color: "#10b981" }, { n: fp, label: "false alarm", color: "#f59e0b" }]} />
+          <div className="text-[11px] text-slate-500 mt-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: "#10b981" }} />correctly ignored
+            <span className="inline-block w-2.5 h-2.5 rounded-full align-middle ml-3 mr-1" style={{ background: "#f59e0b" }} />false alarm
+          </div>
+        </div>
+      </div>
+
+      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+        <strong>What this means:</strong> in this test the system {fallWord}, but it also raised {falseWord} false alarms ({fp} of {nonFalls}{" "}
+        ordinary movements). That is why an alert only ever says "possible fall" and a person checks it before anyone acts. This is a small test on recorded data from one person,
+        so the exact numbers will move with more recordings. It is not a claim about accuracy in your building.
+      </p>
+    </div>
+  );
+}
+
 export default function ReplayEvaluationPanel({ replay, rows, model }) {
   const tp = replay.possible_fall_flagged_on_recorded_falls;
   const fn = replay.missed_recorded_falls;
@@ -60,6 +119,8 @@ export default function ReplayEvaluationPanel({ replay, rows, model }) {
           unseen person: {model?.held_out_person || "held out"}
         </span>
       </div>
+
+      <PlainSummary tp={tp} fn={fn} fp={fp} tn={tn} falls={falls} nonFalls={nonFalls} person={model?.held_out_person ? `person ${model.held_out_person}` : null} />
 
       <div className={`${sub} p-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed`}>
         <p>

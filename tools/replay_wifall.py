@@ -53,9 +53,9 @@ def call(base, path, method="GET", data=None, jwt=None, device_token=None):
                 return resp.status, (json.loads(body) if body else None)
         except urllib.error.HTTPError as e:
             body = e.read().decode()
-            if e.code in (502, 503, 504) and attempt < 6:
+            if (e.code in (502, 503, 504) or (e.code == 500 and attempt < 3)) and attempt < 6:
                 wait = min(5 * 2 ** attempt, 40)
-                print(f"    server answered {e.code} (restarting or busy); retrying in {wait}s ...", flush=True)
+                print(f"    server answered {e.code} (restarting, busy or a database hiccup); retrying in {wait}s ...", flush=True)
                 time.sleep(wait)
                 continue
             try:
