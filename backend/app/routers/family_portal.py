@@ -519,6 +519,10 @@ def get_linked_resident_status(
             "last_name": target_res.last_name,
             "room_name": room.name if (room and share_room_name) else "Resident Suite"
         },
+        # The facility's real name from the database (never a hard-coded one).
+        "facility_name": (session.get(Organization, building.organization_id).name if building else None),
+        # The facility's real name from the database (never a hard-coded one).
+        "facility_name": (session.get(Organization, building.organization_id).name if building else None),
         # Presence is only reported when the sharing policy allows it AND a sensing event exists.
         "presence_status": ("Restricted" if not share_presence
                             else "No data" if not has_data
