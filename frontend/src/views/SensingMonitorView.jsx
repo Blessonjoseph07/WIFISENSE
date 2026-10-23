@@ -31,8 +31,8 @@ const MODES = [
     id: "live",
     title: "LIVE HARDWARE",
     icon: "sensors",
-    blurb: "Packets from authenticated ESP32-S3 devices. Nothing appears here until a real device sends a packet.",
-    empty: "No packets have been received from authenticated hardware yet. This stays empty until a real device sends one.",
+    blurb: "Packets from authenticated ESP32-S3 devices. Nothing appears here until a real device sends a packet. Shows presence and movement; fall detection is off for live hardware.",
+    empty: "No fall detections are made on live hardware (the model has not been validated in this room). Use the presence and movement indicator above.",
   },
 ];
 
@@ -263,7 +263,6 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
 
         {mode === "live" && (
           <HardwarePlainSummary
-            rows={rows}
             devices={modeDevices}
             deviceId={selectedDevice || [...modeDevices].sort((a, b) => String(b.last_seen_at || "").localeCompare(String(a.last_seen_at || "")))[0]?.id}
             authToken={authToken}

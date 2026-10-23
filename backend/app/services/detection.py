@@ -19,8 +19,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+from sqlalchemy import update
 from sqlmodel import Session, select
 
+from app.core.config import settings
 from app.models.entities import ActivityType, Alert, RawCsiTelemetry, Room, SensingDevice, SensingEvent
 from app.services import fall_model
 from app.services.csi_features import IQ_LEN, MIN_PACKETS, extract_features
@@ -123,6 +125,14 @@ def run_detection(session: Session, device: SensingDevice, flush: bool = False) 
     result: Dict[str, Any] = {"detections": [], "note": None}
     if device.allowed_source not in DETECTABLE_SOURCES:
         result["note"] = "No detection for DEMO devices: demo values are never presented as measurements."
+        return result
+    if device.allowed_source == "live" and not settings.LIVE_FALL_DETECTION:
+        # Not analysed, so mark the packets processed: otherwise they would stay "pending" and never age out of the table.
+        session.exec(update(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device.id, RawCsiTelemetry.event_id.is_(None))
+                     .values(event_id=SKIPPED))
+        session.commit()
+        result["note"] = ("Fall detection is switched off for live hardware: the model was trained on a public dataset and has not "
+                          "been validated in this room. Presence and movement are reported instead.")
         return result
     if fall_model.model_info().get("available") is not True:
         result["note"] = "Detection model unavailable; packets were stored and remain pending."
