@@ -19,6 +19,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # A database that ran the older room-scheduling branch already has a table called room_bookings with a different
+    # layout (title, booking_date, start_datetime, ...). Keep its rows under another name instead of failing.
+    insp = sa.inspect(op.get_bind())
+    if 'room_bookings' in insp.get_table_names():
+        existing = {c['name'] for c in insp.get_columns('room_bookings')}
+        if 'start_at' in existing:
+            return  # already the current layout
+        op.rename_table('room_bookings', 'room_bookings_legacy')
     op.create_table(
         'room_bookings',
         sa.Column('id', sa.String(), nullable=False),
@@ -50,3 +58,5 @@ def downgrade() -> None:
     op.drop_index('ix_room_bookings_organization_id', table_name='room_bookings')
     op.drop_index('ix_room_bookings_room_id', table_name='room_bookings')
     op.drop_table('room_bookings')
+    if 'room_bookings_legacy' in sa.inspect(op.get_bind()).get_table_names():
+        op.rename_table('room_bookings_legacy', 'room_bookings')

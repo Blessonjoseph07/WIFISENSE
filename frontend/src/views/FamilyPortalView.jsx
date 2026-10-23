@@ -439,6 +439,7 @@ export default function FamilyPortalView({
       "Resident room";
     const resRelationship = approvedConnection?.relationship || "Family member";
     // Only what the API really returned. No data means "no data", never "safe" or "resting".
+    const dataSource = familyStatus?.data_source || null;
     const presenceStatus = familyStatus?.presence_status || "No data";
     const rawActivity = familyStatus?.current_activity || "";
     const activityName = rawActivity ? ACTIVITY_LABEL[rawActivity] || rawActivity.replace(/_/g, " ") : "";

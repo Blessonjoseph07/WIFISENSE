@@ -378,6 +378,7 @@ def run_tests():
             os.environ["ENVIRONMENT"] = "production"
             os.environ["SECRET_KEY"] = "prod-test-secret-at-least-32-chars-long-123456"
             os.environ["DATABASE_URL"] = "postgresql://user:pass@localhost:5432/testdb"
+            os.environ["SEED_DEMO_DATA"] = "0"  # CI sets it to 1; production refuses demo seeding without SEED_PASSWORD
             os.environ.pop("PAYMENTS_SANDBOX_SIMULATOR_ENABLED", None)
             s_prod = Settings()
             assert s_prod.PAYMENTS_SANDBOX_SIMULATOR_ENABLED is False, "Must default to False when ENVIRONMENT=production"

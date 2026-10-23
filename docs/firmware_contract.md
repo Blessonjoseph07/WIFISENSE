@@ -48,6 +48,26 @@ for (int k = -26; k <= 26; k++) {
 Check this against the IDF version you build with (slot order differs if HT-LTF or 40 MHz is enabled). A wrong order
 still uploads but shows garbled phase and waterfall structure in the CSI packet stream panel.
 
+## 3b. Required radio configuration (the detector only understands this layout)
+The model behind the detector was trained on 52 subcarriers, so the firmware must produce that and nothing else:
+- **20 MHz only, legacy long training field only.** `esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20)` on RX and TX, and
+  ```c
+  wifi_csi_config_t cfg = { .lltf_en = true, .htltf_en = false, .stbc_htltf2_en = false,
+                            .ltf_merge_en = false, .channel_filter_en = false, .manu_scale = false, .shift = 0 };
+  ```
+  `htltf_en`, `stbc_htltf2_en`, `ltf_merge_en` or an HT40 channel change the buffer length and slot order. The API does not
+  support those layouts (the buffer is then not 128 bytes). A 114-subcarrier or 40 MHz stream would need a new model.
+- **The TX frames must be OFDM, not 1 Mbps DSSS.** ESP-NOW defaults to 1 Mbps and DSSS frames produce no CSI. Set a legacy
+  OFDM rate (for example 6 Mbps) on the sender. The exact call depends on the IDF version (`esp_now_set_peer_rate_config`
+  in IDF 5.x, `esp_wifi_config_espnow_rate` earlier).
+- **Same channel.** The RX must be connected to the router to POST over HTTP, so the TX must transmit on the router's channel
+  (`esp_wifi_set_channel`). The RX bandwidth setting does not need to match the router.
+- **First check:** log `info->len` in the CSI callback. With the settings above it is **128**. Anything else means the
+  configuration is not the one this contract describes.
+- Cross-check the C extraction against `tools/csi_buffer_to_iq.py` (`--selftest`, then `--buf` with a real 128-value dump):
+  the 104 values must match exactly. The tool also reports non-zero energy in the guard/DC slots, which means the slot
+  order is wrong.
+
 ## 4. What the dashboard derives from this
 Sensing Monitor > pick the LIVE device > **CSI packet stream**: packet rate, loss (sequence gaps), RSSI/noise/SNR, amplitude
 and sanitised phase per subcarrier, an amplitude waterfall, dominant fluctuation frequency, and the radio link
