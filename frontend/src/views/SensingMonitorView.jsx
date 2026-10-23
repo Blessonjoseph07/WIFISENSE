@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import LiveCsiStream from "../components/LiveCsiStream";
 import ReplayEvaluationPanel from "../components/ReplayEvaluationPanel";
+import HardwarePlainSummary from "../components/HardwarePlainSummary";
 import {
   ACTIVITY_LABEL,
   ConfidenceBadge,
@@ -259,6 +260,8 @@ export default function SensingMonitorView({ authToken, API_BASE, devices = [], 
             </div>
           )}
         </div>
+
+        {mode === "live" && <HardwarePlainSummary rows={rows} devices={modeDevices} />}
 
         {selectedDevice && <LiveCsiStream key={selectedDevice} deviceId={selectedDevice} authToken={authToken} API_BASE={API_BASE} />}
 
