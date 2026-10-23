@@ -19,14 +19,18 @@ Safety rules (nothing here invents or labels data)
 Needs pyserial for --port (pip install pyserial). --file needs nothing extra.
 """
 import argparse
+import base64
+import collections
+import http.client
 import json
 import os
 import re
 import sys
+import threading
 import time
-import urllib.error
-import urllib.request
-from typing import Dict, List, Optional
+import urllib.parse
+from datetime import datetime, timezone
+from typing import Deque, Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from csi_buffer_to_iq import convert as reference_convert  # noqa: E402
@@ -93,33 +97,164 @@ def to_packet(p: Dict, provenance: str) -> Dict:
     }
 
 
-class Poster:
-    def __init__(self, api: str, token: str, dry_run: bool):
-        self.url, self.token, self.dry = api.rstrip("/") + "/sensing/ingest", token, dry_run
-        self.sent = self.http_errors = 0
-        self.last_status: Optional[int] = None
+def compact(packet: Dict) -> Dict:
+    """Wire form with the I/Q values base64-encoded (about half the bytes of the integer list); the API expands it again."""
+    csi = dict(packet["csi_data"])
+    csi["iq_b64"] = base64.b64encode(bytes(v & 0xFF for v in csi.pop("iq"))).decode()
+    return {**packet, "csi_data": csi}
 
-    def post(self, packets: List[Dict]) -> None:
-        if self.dry or not packets:
-            self.sent += len(packets)
+
+class _HttpError(Exception):
+    def __init__(self, code: int, body: str):
+        super().__init__(f"HTTP {code}")
+        self.code, self.body = code, body
+
+
+class Poster:
+    """Store-and-forward sender. The serial reader only calls submit(); a background thread batches packets and posts them
+    over ONE persistent connection, so a slow or briefly unreachable network never stalls the serial port.
+
+      * batches go out when `batch_max` packets are waiting or `max_wait` seconds have passed since the first one
+      * a failed batch (network error, 5xx, 429) is retried in order with exponential backoff, never skipped
+      * the queue is bounded: when it is full the OLDEST packets are dropped and counted (reported, never silent)
+      * a 401/403 stops everything; other 4xx batches are dropped and counted, since retrying cannot fix them
+      * each request tells the server the previous round trip time and the current queue depth (X-Client-* headers)
+    """
+
+    def __init__(self, api: str, token: str, dry_run: bool, wire: str = "b64", batch_max: int = 50,
+                 max_wait: float = 0.25, max_queue: int = 20000):
+        self.api, self.token, self.dry, self.wire = api.rstrip("/"), token, dry_run, wire
+        self.batch_max, self.max_wait, self.max_queue = batch_max, max_wait, max_queue
+        u = urllib.parse.urlparse(self.api)
+        self._https, self._host, self._prefix = u.scheme == "https", u.netloc, u.path.rstrip("/")
+        self.sent = self.http_errors = self.retries = self.dropped_overflow = self.dropped_rejected = 0
+        self.last_status: Optional[int] = None
+        self.fatal: Optional[str] = None
+        self.rtts: Deque[float] = collections.deque(maxlen=200)
+        self.server_ms: Deque[float] = collections.deque(maxlen=200)
+        self._q: Deque[Dict] = collections.deque()
+        self._cv = threading.Condition()
+        self._closing = False
+        self._conn = None
+        self._thread: Optional[threading.Thread] = None
+
+    # -- producer side ------------------------------------------------------------------------------------------
+    def submit(self, packet: Dict) -> None:
+        if self.dry:
+            self.sent += 1
             return
-        req = urllib.request.Request(self.url, data=json.dumps({"packets": packets}).encode(), method="POST",
-                                     headers={"Content-Type": "application/json", "X-Device-Token": self.token})
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._run, name="csi-sender", daemon=True)
+            self._thread.start()
+        with self._cv:
+            if len(self._q) >= self.max_queue:
+                self._q.popleft()
+                self.dropped_overflow += 1
+            self._q.append(packet)
+            self._cv.notify()
+
+    @property
+    def queued(self) -> int:
+        return len(self._q)
+
+    def close(self, timeout: float = 15.0) -> None:
+        """Send what is still queued (up to `timeout` seconds), then stop."""
+        if self._thread is None:
+            return
+        with self._cv:
+            self._closing = True
+            self._cv.notify_all()
+        self._thread.join(timeout)
+
+    # -- sender thread --------------------------------------------------------------------------------------------
+    def _next_batch(self) -> List[Dict]:
+        with self._cv:
+            while not self._q and not self._closing and not self.fatal:
+                self._cv.wait(0.5)
+            if not self._q:
+                return []
+            first = time.time()
+            while len(self._q) < self.batch_max and not self._closing:
+                left = self.max_wait - (time.time() - first)
+                if left <= 0:
+                    break
+                self._cv.wait(left)
+            n = min(self.batch_max, len(self._q))
+            return [self._q.popleft() for _ in range(n)]
+
+    def _connection(self):
+        if self._conn is None:
+            cls = http.client.HTTPSConnection if self._https else http.client.HTTPConnection
+            self._conn = cls(self._host, timeout=10)
+        return self._conn
+
+    def _post_once(self, packets: List[Dict]) -> int:
+        wire = [compact(p) for p in packets] if self.wire == "b64" else packets
+        body = json.dumps({"packets": wire}).encode()
+        headers = {"Content-Type": "application/json", "X-Device-Token": self.token,
+                   "X-Client-Queue": str(self.queued), "X-Client-Dropped": str(self.dropped_overflow)}
+        if self.rtts:
+            headers["X-Client-Rtt-Ms"] = "%.1f" % self.rtts[-1]
+        t0 = time.perf_counter()
+        conn = self._connection()
+        conn.request("POST", self._prefix + "/sensing/ingest", body, headers)
+        resp = conn.getresponse()
+        data = resp.read()
+        self.rtts.append((time.perf_counter() - t0) * 1000)
         try:
-            with urllib.request.urlopen(req, timeout=10) as r:
-                self.last_status = r.status
-                self.sent += len(packets)
-        except urllib.error.HTTPError as e:
-            self.last_status = e.code
-            self.http_errors += 1
-            body = e.read().decode(errors="replace")[:300]
-            if e.code in (401, 403):
-                sys.exit(f"\nSTOPPED: the API rejected the device token ({e.code}): {body}")
-            print(f"\nHTTP {e.code} from the API: {body}", flush=True)
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
-            self.http_errors += 1
-            self.last_status = None
-            print(f"\ncannot reach the API ({e}); batch dropped", flush=True)
+            self.server_ms.append(float(resp.getheader("X-Process-Ms") or 0))
+        except ValueError:
+            pass
+        self.last_status = resp.status
+        if resp.status >= 400:
+            raise _HttpError(resp.status, data.decode(errors="replace")[:300])
+        return resp.status
+
+    def _run(self) -> None:
+        while True:
+            batch = self._next_batch()
+            if not batch:
+                if self._closing or self.fatal:
+                    return
+                continue
+            delay = 0.5
+            while True:
+                try:
+                    self._post_once(batch)
+                    self.sent += len(batch)
+                    break
+                except _HttpError as e:
+                    self.http_errors += 1
+                    if e.code in (401, 403):
+                        self.fatal = f"the API rejected the device token ({e.code}): {e.body}"
+                        return
+                    if not (e.code == 429 or e.code >= 500):
+                        self.dropped_rejected += len(batch)
+                        print(f"\nHTTP {e.code} from the API, batch of {len(batch)} dropped: {e.body}", flush=True)
+                        break
+                except (OSError, http.client.HTTPException):
+                    self.http_errors += 1
+                if self._conn is not None:
+                    try:
+                        self._conn.close()
+                    except OSError:
+                        pass
+                    self._conn = None
+                self.retries += 1
+                if self._closing and delay >= 4:   # shutting down and the network is still down: stop waiting
+                    self.dropped_rejected += len(batch)
+                    break
+                time.sleep(delay)
+                delay = min(delay * 2, 8)
+
+    # -- reporting ------------------------------------------------------------------------------------------------
+    def latency(self) -> str:
+        if not self.rtts:
+            return "rtt=-"
+        r = sorted(self.rtts)
+        s = sorted(self.server_ms) if self.server_ms else [0.0]
+        return (f"rtt p50={r[len(r) // 2]:.0f} p95={r[min(len(r) - 1, int(len(r) * 0.95))]:.0f}ms "
+                f"server p50={s[len(s) // 2]:.0f}ms")
 
 
 def lines_from(args):
@@ -154,7 +289,10 @@ def main() -> None:
     ap.add_argument("--api", default="http://127.0.0.1:8000")
     ap.add_argument("--token", default=os.getenv("WIFISENSE_DEVICE_TOKEN", ""))
     ap.add_argument("--tx-mac", default="1a:00:00:00:00:00", help="only packets from this transmitter are used")
-    ap.add_argument("--batch", type=int, default=10)
+    ap.add_argument("--batch", type=int, default=50, help="send when this many packets are waiting (the API accepts up to 100)")
+    ap.add_argument("--max-wait-ms", type=int, default=250, help="...or when the oldest waiting packet is this old")
+    ap.add_argument("--wire", choices=["b64", "list"], default="b64",
+                    help="I/Q encoding on the wire: b64 (compact, needs this repo's API) or list (plain integers)")
     ap.add_argument("--provenance", default="live", choices=["live", "simulated", "dataset"],
                     help="must match the registered device; 'live' for real hardware")
     ap.add_argument("--dry-run", action="store_true", help="parse and verify, send nothing")
@@ -162,12 +300,11 @@ def main() -> None:
     if not a.dry_run and not a.token:
         ap.error("--token (or WIFISENSE_DEVICE_TOKEN) is required unless --dry-run")
 
-    poster = Poster(a.api, a.token, a.dry_run)
-    batch: List[Dict] = []
+    poster = Poster(a.api, a.token, a.dry_run, wire=a.wire, batch_max=max(1, min(a.batch, 100)), max_wait=a.max_wait_ms / 1000)
     last_iq: Dict[int, List[int]] = {}
     read = dropped = raw_ok = 0
     mismatch = False
-    t_start = t_flush = t_report = time.time()
+    t_start = t_report = time.time()
     try:
         for line in lines_from(a):
             now = time.time()
@@ -178,7 +315,10 @@ def main() -> None:
                 else:
                     read += 1
                     last_iq = {p["seq"]: p["iq"]}
-                    batch.append(to_packet(p, a.provenance))
+                    pkt = to_packet(p, a.provenance)
+                    # when the bridge read it: lets the API measure how long delivery took (ingest delay)
+                    pkt["timestamp"] = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+                    poster.submit(pkt)
             elif line.startswith("CSI_RAW,"):
                 raw = parse_raw_line(line)
                 try:
@@ -191,20 +331,21 @@ def main() -> None:
                         sys.exit("STOPPED: the firmware's I/Q conversion DISAGREES with the reference conversion for the same packet. "
                                  "The byte order or slot order in firmware/csi_recv is wrong. Nothing more was sent.")
                     raw_ok += 1
-            if len(batch) >= a.batch or (batch and now - t_flush > 0.5):
-                poster.post(batch)
-                batch, t_flush = [], now
+            if poster.fatal:
+                sys.exit(f"\nSTOPPED: {poster.fatal}")
             if now - t_report >= 2:
                 span = max(now - t_start, 1e-6)
-                print(f"\rread={read} ({read / span:.0f}/s) sent={poster.sent} dropped_format={dropped} "
-                      f"raw_checks_ok={raw_ok} http_errors={poster.http_errors} last_http={poster.last_status}", end="", flush=True)
+                print(f"\rread={read} ({read / span:.0f}/s) sent={poster.sent} queued={poster.queued} dropped_format={dropped} "
+                      f"raw_checks_ok={raw_ok} http_errors={poster.http_errors} retries={poster.retries} "
+                      f"overflow_dropped={poster.dropped_overflow} last_http={poster.last_status} {poster.latency()}   ", end="", flush=True)
                 t_report = now
     except KeyboardInterrupt:
         pass
-    if batch and not mismatch:
-        poster.post(batch)
-    print(f"\nfinished: read={read} sent={poster.sent} dropped_format={dropped} raw_checks_ok={raw_ok} http_errors={poster.http_errors}"
-          + (" (dry run: nothing sent)" if a.dry_run else ""))
+    if not mismatch:
+        poster.close()
+    print(f"\nfinished: read={read} sent={poster.sent} dropped_format={dropped} raw_checks_ok={raw_ok} http_errors={poster.http_errors} "
+          f"retries={poster.retries} overflow_dropped={poster.dropped_overflow} rejected_dropped={poster.dropped_rejected}"
+          + (" (dry run: nothing sent)" if a.dry_run else f" | {poster.latency()}"))
 
 
 if __name__ == "__main__":

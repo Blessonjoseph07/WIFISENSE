@@ -1,18 +1,24 @@
 # Render blueprint for the API. Set the values marked "sync: false" in the Render dashboard (never in this file).
+#
+# Put the API and the database in the SAME region. Every upload makes several database round trips, so a database in
+# another region multiplies the per-request latency. The region below matches a Neon project in AWS ap-southeast-1
+# (Singapore); pick the Render region closest to your database and to where the receiver boards are.
 services:
   - type: web
     name: wifisense-api
     runtime: python
+    region: singapore
+    plan: free                    # free services sleep when idle; use "starter" (always on) for continuous device uploads
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /
+    healthCheckPath: /health      # needs the /health endpoint (on the demo/all-features branch)
     envVars:
       - key: PYTHON_VERSION
         value: "3.10.13"
       - key: ENVIRONMENT
         value: production
-      - key: DATABASE_URL            # Neon connection string: postgresql://USER:PASS@HOST/DB?sslmode=require
+      - key: DATABASE_URL            # Neon or Render Postgres connection string: postgresql://USER:PASS@HOST/DB?sslmode=require
         sync: false
       - key: SECRET_KEY
         generateValue: true
@@ -26,3 +32,11 @@ services:
         value: minimal
       - key: SEED_PASSWORD           # 12+ characters, chosen by you; becomes the password of every demo account
         sync: false
+      # Raw CSI is a rolling window: analysed packets older than RETENTION_HOURS are deleted, and the oldest analysed packets
+      # go first once the table passes MAX_ROWS. Detections and alerts are kept. One board at ~90 packets/s writes ~320k rows
+      # an hour (~160 MB of table data, before indexes), so on a small database the row cap, not the hours, sets the window:
+      # 150000 rows is about 28 minutes of one board. See docs/hosting_and_iot.md.
+      - key: RAW_CSI_RETENTION_HOURS
+        value: "6"
+      - key: RAW_CSI_MAX_ROWS
+        value: "150000"

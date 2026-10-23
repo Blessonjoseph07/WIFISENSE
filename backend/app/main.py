@@ -3,10 +3,11 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from app.core.config import settings
-from app.core.database import init_db, engine
+from app.core.database import init_db, engine, sync_postgres_sequences
 from app.core.seed import seed_database
 from app.core.bootstrap import bootstrap_system_admin
 from app.core.demo_profile import apply_demo_profile
+from app.services.retention import start_background_pruner
 from app.models.entities import Organization
 from app.routers import auth, crud, sensing, alerts, analytics, family_portal, users, care_records, doctor_portal, replay, payments, bookings
 
@@ -50,6 +51,8 @@ def on_startup():
             if first_run:
                 apply_demo_profile(session)
         bootstrap_system_admin(session)
+    sync_postgres_sequences()
+    start_background_pruner(engine)
 
 @app.get("/health", tags=["Health"])
 def health():
