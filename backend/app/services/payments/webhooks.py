@@ -57,7 +57,7 @@ def _summary(event: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _record(session: Session, event: Dict[str, Any], sub: Optional[FamilySubscription], outcome: str) -> None:
-    session.add(PaymentEvent(provider=PROVIDER, event_id=str(event["id"])[:100], event_type=str(event["type"])[:60],
+    session.add(PaymentEvent(provider=str(event.get("provider") or PROVIDER)[:30], event_id=str(event["id"])[:100], event_type=str(event["type"])[:60],
                              subscription_id=sub.id if sub else None, outcome=outcome, summary=_summary(event)))
 
 
@@ -85,7 +85,7 @@ def process_event(session: Session, event: Dict[str, Any], now: Optional[datetim
             return {"outcome": "DUPLICATE", "event_id": event["id"]}
         if audit_action:
             record_audit_event(session, what_action=audit_action, resource_type="SUBSCRIPTION",
-                               resource_id=sub.id if sub else None, who_email=f"payment-provider:{PROVIDER}",
+                               resource_id=sub.id if sub else None, who_email=f"payment-provider:{event.get('provider') or PROVIDER}",
                                organization_id=org_id, details={"event_id": event["id"], "type": event["type"], "outcome": outcome})
         return {"outcome": outcome, "event_id": event["id"], "subscription_id": sub.id if sub else None,
                 "status": sub.status if sub else None}
