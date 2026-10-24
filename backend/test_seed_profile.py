@@ -22,7 +22,7 @@ from app.main import app  # noqa: E402
 from app.models.entities import User, UserRole  # noqa: E402
 
 EXPECTED = {"blesson@wifisense.com", "elizabeth@wifisense.com", "abhinand@wifisense.com", "mary@wifisense.com",
-            "tomy@wifisense.com", "mathew.varghese@wifisense.com", "john@wifisense.com"}
+            "tomy@wifisense.com", "mathew.varghese@wifisense.com", "john@wifisense.com", "payer@wifisense.com"}
 
 
 def run():
@@ -31,12 +31,16 @@ def run():
             emails = {u.email for u in s.exec(select(User)).all()}
             assert emails == EXPECTED, emails ^ EXPECTED
             roles = s.exec(select(UserRole)).all()
-            assert len(roles) == 7, len(roles)
+            assert len(roles) == 8, len(roles)
             orphans = s.execute(text("select count(*) from user_roles where user_id not in (select id from users)")).scalar()
             assert orphans == 0
             assert s.execute(text("select count(*) from family_connections where family_user_id not in (select id from users)")).scalar() == 0
             assert s.execute(text("select count(*) from residents")).scalar() > 0, "residents and rooms must be kept"
-        print("[PASS] exactly the 7 demo users remain, no dangling role or family rows, residents untouched")
+            from app.models.entities import FamilySubscription, Organization
+            payer = s.exec(select(User).where(User.email == "payer@wifisense.com")).first()
+            assert s.exec(select(FamilySubscription).where(FamilySubscription.family_user_id == payer.id)).first() is None, "the payment test account must have no plan"
+            assert s.exec(select(Organization).where(Organization.type == "ELDER_CARE")).first().contact_phone, "the care home needs a helpline to show"
+        print("[PASS] exactly the 7 role users plus the payment test account remain, no dangling rows, residents untouched, helpline present")
 
         for email in sorted(EXPECTED):
             r = client.post("/auth/login", json={"email": email, "password": SECRET})

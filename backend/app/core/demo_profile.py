@@ -71,3 +71,39 @@ def apply_demo_profile(session: Session) -> None:
             user.password_hash = hashed
             session.add(user)
         session.commit()
+
+
+PAYER_EMAIL = "payer@wifisense.com"
+PLACEHOLDER_HELPLINE = "+91 00000 00000"      # obviously not a real number: the facility sets its own (PATCH /organizations/{id}/contact)
+
+
+def ensure_demo_extras(session: Session) -> None:
+    """Idempotent, runs on every start when demo data is on. Creates, once, a family member whose Care Plan is NOT active, so the payment
+    flow can be tried (the seeded family members all have a plan already), and gives the elder-care home a placeholder helpline if it has
+    none. If the account is deleted or the helpline cleared later, nothing here puts them back unless the account is missing."""
+    from datetime import datetime, timezone
+
+    from app.core.seed import ROLE_MAPPING
+    from app.models.entities import FamilyConnection, Organization, Resident, UserRole
+
+    if session.exec(select(User).where(User.email == PAYER_EMAIL)).first():
+        return
+    mary = next((r for r in session.exec(select(Resident)).all() if r.first_name == "Mary" and r.last_name == "Joseph"), None)
+    john = session.exec(select(User).where(User.email == "john@wifisense.com")).first()
+    john_role = session.exec(select(UserRole).where(UserRole.user_id == john.id)).first() if john else None
+    if not mary or not john_role:
+        return                                               # the demo dataset is not there (for example a database without the seed)
+    approver = session.exec(select(User).where(User.email == "elizabeth@wifisense.com")).first()
+    user = User(email=PAYER_EMAIL, password_hash=hash_password(settings.SEED_PASSWORD or "payerpassword"),
+                first_name="Meera", last_name="Joseph", resident_id=mary.id, is_active=True)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    session.add(UserRole(user_id=user.id, role_id=ROLE_MAPPING["family_member"], organization_id=john_role.organization_id))
+    session.add(FamilyConnection(resident_id=mary.id, family_user_id=user.id, relationship="Daughter", status="approved",
+                                 approved_at=datetime.now(timezone.utc), approved_by=approver.id if approver else None))
+    org = session.get(Organization, john_role.organization_id)
+    if org and org.contact_phone is None:
+        org.contact_phone = PLACEHOLDER_HELPLINE
+        session.add(org)
+    session.commit()

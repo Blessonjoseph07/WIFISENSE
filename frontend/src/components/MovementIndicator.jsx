@@ -3,9 +3,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 const sub = "bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl";
 
 const STATES = {
-  QUIET: { label: "Quiet", tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", icon: "sensors_off" },
-  PRESENT: { label: "Presence likely", tone: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200", icon: "groups" },
-  MOVEMENT: { label: "Movement", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200", icon: "directions_walk" },
+  QUIET: { label: "No presence", tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", icon: "sensors_off" },
+  PRESENT: { label: "Presence detected", tone: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200", icon: "groups" },
+  MOVEMENT: { label: "Presence detected, moving", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200", icon: "directions_walk" },
   NO_BASELINE: { label: "Not calibrated", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "tune" },
   STALE: { label: "Board not sending", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "signal_disconnected" },
   NO_DATA: { label: "No readings yet", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "hourglass_empty" },
@@ -100,7 +100,13 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
 
       {error && <div className="text-xs text-rose-600">{error}</div>}
       {data && <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{data.headline}. {data.detail}</p>}
-      {data?.activity_ratio != null && data.activity_ratio < 0.75 && data.state !== "STALE" && (
+      {data?.reference === "default" && data.state !== "STALE" && (
+        <p className="text-[11px] text-slate-500" data-testid="default-reference-note">
+          Using the default reference, from a quiet-room recording with these boards. For the best accuracy in this room, record an empty-room
+          baseline below.
+        </p>
+      )}
+      {data?.reference === "room" && data?.activity_ratio != null && data.activity_ratio < 0.75 && data.state !== "STALE" && (
         <div className="text-xs rounded-lg px-3 py-2 bg-amber-50 text-amber-900 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-900" data-testid="baseline-suspect">
           The signal is well <strong>below</strong> the empty-room reference ({data.activity_ratio}×). A real empty room cannot be quieter than itself,
           so the baseline was most likely recorded while people were in the room, and every reading is being judged against the wrong reference.
@@ -109,7 +115,7 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
       )}
       {data?.activity_ratio != null && data.state !== "STALE" && (
         <p className="text-[11px] text-slate-500" data-testid="activity-level">
-          Signal activity is <strong>{data.activity_ratio}×</strong> the empty-room level (1× = the room as it was when the baseline was recorded).
+          Signal activity is <strong>{data.activity_ratio}×</strong> the empty-room level (1× = the empty room).
         </p>
       )}
 
