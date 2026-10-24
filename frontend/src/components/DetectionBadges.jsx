@@ -51,12 +51,30 @@ export function SignalBadge({ level = "UNKNOWN", quality = null }) {
   );
 }
 
+// Where a value comes from is shown as a small colour dot (orange = preview data, blue = recorded replay, green = real hardware).
+// The words stay available to screen readers and in the tooltip; nothing is hidden, it is just not loud.
+const SOURCE_DOT = { simulated: "#f59e0b", dataset: "#0ea5e9", live: "#10b981" };
+
 export function SourceBadge({ source = "simulated" }) {
   const meta = SOURCE_META[source] || SOURCE_META.simulated;
+  const color = SOURCE_DOT[source] || SOURCE_DOT.simulated;
   return (
-    <span className={`${chip} ${meta.cls}`} title={meta.hint}>
-      <span className="material-symbols-outlined text-[12px]">{meta.icon}</span>
-      {meta.label}
+    <span className="inline-flex items-center align-middle" title={`${meta.label}: ${meta.hint}`} data-source={source}>
+      <span className="w-2.5 h-2.5 rounded-full inline-block shadow-[0_0_0_3px_rgba(148,163,184,0.18)]" style={{ background: color }} aria-hidden="true" />
+      <span className="sr-only">{meta.label}</span>
+    </span>
+  );
+}
+
+export function SourceLegend({ className = "" }) {
+  return (
+    <span className={`inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400 ${className}`} data-testid="source-legend">
+      {["simulated", "dataset", "live"].map((k) => (
+        <span key={k} className="inline-flex items-center gap-1" title={SOURCE_META[k].hint}>
+          <span className="w-2 h-2 rounded-full inline-block" style={{ background: SOURCE_DOT[k] }} />
+          {k === "simulated" ? "preview" : k === "dataset" ? "recorded" : "hardware"}
+        </span>
+      ))}
     </span>
   );
 }

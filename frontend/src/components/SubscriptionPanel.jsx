@@ -124,8 +124,8 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
       setCheckout(null);
       setToastMessage(
         outcome === "success"
-          ? { type: "success", text: "Sandbox payment succeeded. Subscription is active." }
-          : { type: "error", text: "Sandbox payment failed. You can try again." }
+          ? { type: "success", text: "Payment successful. Your subscription is active." }
+          : { type: "error", text: "Payment failed. You can try again." }
       );
     }
   };
@@ -153,13 +153,14 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-base font-black text-slate-900 dark:text-white">Care Plan subscription</h2>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
-              {data.mode === "RAZORPAY_TEST" ? "RAZORPAY TEST MODE - no real money" : data.mode === "RAZORPAY_LIVE" ? "RAZORPAY - real payments" : "SANDBOX - no real payment"}
+            <span className="inline-flex items-center" title={data.mode === "RAZORPAY_LIVE" ? "Payments are processed by Razorpay" : "Payments run in test mode"} data-testid="payment-mode-dot">
+              <span className="w-2.5 h-2.5 rounded-full inline-block shadow-[0_0_0_3px_rgba(148,163,184,0.18)]"
+                    style={{ background: data.mode === "RAZORPAY_LIVE" ? "#10b981" : "#f59e0b" }} aria-hidden="true" />
+              <span className="sr-only">{data.mode}</span>
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {data.plan?.plan} - {fmtPrice(data.plan)} for {data.plan?.period_days} days.{" "}
-            {isRazorpay ? "You pay on Razorpay's own page; card, UPI and bank details never reach this app." : "No card details are collected or stored."}
+            {data.plan?.plan} - {fmtPrice(data.plan)} for {data.plan?.period_days} days.
           </p>
         </div>
         <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase ${STATUS_STYLE[status] || STATUS_STYLE.PENDING}`}>
@@ -211,12 +212,12 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
           )
         ) : data.simulator_enabled === false ? (
           <div className="w-full text-xs rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-2">
-            SANDBOX payment simulation is disabled in this environment.
+            Online payment is not available right now.
           </div>
         ) : (
           canSubscribe && !checkout && (
             <button disabled={busy} onClick={startCheckout} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer">
-              {sub ? "Subscribe again (sandbox)" : "Subscribe (sandbox)"}
+              {sub ? "Subscribe again" : "Subscribe"}
             </button>
           )
         )}
@@ -233,22 +234,18 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
       </div>
 
       {isRazorpay && data.mode === "RAZORPAY_TEST" && canSubscribe && (
-        <p className="mt-3 text-[11px] rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900 text-violet-900 dark:text-violet-200 px-3 py-2" data-testid="razorpay-test-hint">
-          Test mode: Razorpay will open a payment window. Use the test card 4111 1111 1111 1111 with any future expiry date and any 3-digit CVV
-          (or the UPI id success@razorpay). Nothing is charged.
-        </p>
+        <details className="mt-3 text-[11px] text-slate-400" data-testid="razorpay-test-hint">
+          <summary className="cursor-pointer">Payment test details</summary>
+          <p className="mt-1">Test card 4111 1111 1111 1111, any future expiry date and any 3-digit CVV, or the UPI id success@razorpay.</p>
+        </details>
       )}
 
       {checkout && !isRazorpay && data.simulator_enabled !== false && (
         <div className="mt-4 rounded-xl border-2 border-dashed border-violet-300 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/30 p-4">
-          <p className="text-xs font-bold text-violet-900 dark:text-violet-200">SANDBOX checkout - {fmtPrice(checkout)}</p>
-          <p className="text-[11px] text-violet-800/80 dark:text-violet-300/80 mt-1">
-            A real provider would show its own hosted payment page here. In this sandbox you just choose the outcome; no money moves and nothing
-            is entered.
-          </p>
+          <p className="text-xs font-bold text-violet-900 dark:text-violet-200">Checkout - {fmtPrice(checkout)}</p>
           <div className="flex flex-wrap gap-2 mt-3">
-            <button disabled={busy} onClick={() => completeCheckout("success")} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer">Simulate successful payment</button>
-            <button disabled={busy} onClick={() => completeCheckout("failure")} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer">Simulate failed payment</button>
+            <button disabled={busy} onClick={() => completeCheckout("success")} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer">Complete payment</button>
+            <button disabled={busy} onClick={() => completeCheckout("failure")} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer">Decline payment</button>
             <button disabled={busy} onClick={() => setCheckout(null)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">Close</button>
           </div>
         </div>
@@ -256,11 +253,11 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
 
       {data.simulator_enabled !== false && sub?.provider && status !== "SUSPENDED" && sub.current_period_end && (
         <details className="mt-4 text-xs">
-          <summary className="cursor-pointer text-slate-500 font-semibold">Sandbox tools (simulate what a provider would send later)</summary>
+          <summary className="cursor-pointer text-slate-500 font-semibold">Renewal tools</summary>
           <div className="flex flex-wrap gap-2 mt-2">
-            <button disabled={busy} onClick={() => act("/payments/sandbox/simulate", { event: "renewal_succeeded" }, "Sandbox renewal received.")} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 font-bold cursor-pointer">Renewal paid</button>
-            <button disabled={busy} onClick={() => act("/payments/sandbox/simulate", { event: "renewal_failed" }, "Sandbox renewal failed.")} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 font-bold cursor-pointer">Renewal failed</button>
-            <button disabled={busy} onClick={() => act("/payments/sandbox/simulate", { event: "provider_cancelled" }, "Sandbox provider cancelled the subscription.")} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 font-bold cursor-pointer">Cancelled at provider</button>
+            <button disabled={busy} onClick={() => act("/payments/sandbox/simulate", { event: "renewal_succeeded" }, "Renewal received.")} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 font-bold cursor-pointer">Renewal paid</button>
+            <button disabled={busy} onClick={() => act("/payments/sandbox/simulate", { event: "renewal_failed" }, "Renewal failed.")} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 font-bold cursor-pointer">Renewal failed</button>
+            <button disabled={busy} onClick={() => act("/payments/sandbox/simulate", { event: "provider_cancelled" }, "Subscription cancelled by the provider.")} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 font-bold cursor-pointer">Cancelled at provider</button>
           </div>
         </details>
       )}

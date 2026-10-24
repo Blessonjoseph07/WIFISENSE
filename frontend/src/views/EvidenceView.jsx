@@ -100,7 +100,9 @@ export default function EvidenceView({ authToken, API_BASE }) {
     { claim: "Position or coordinates of a person", grade: "NO",
       evidence: "One transmitter-receiver pair measures the channel between two radios. Coordinates would need several receivers and calibration." },
     { claim: "Vital signs (breathing, heart rate)", grade: "NO", evidence: "Not implemented." },
-    { claim: "Real payments", grade: "NO", evidence: `Not implemented. Payments are simulated (mode: ${health?.payments_mode || "sandbox"}).` },
+    { claim: "Real payments", grade: "NO", evidence: health?.payments_mode === "razorpay"
+        ? "Razorpay test mode is connected. Real payments stay off until a live key is added on purpose (RAZORPAY_ALLOW_LIVE)."
+        : `Payments are simulated (mode: ${health?.payments_mode || "sandbox"}).` },
   ];
 
   return (

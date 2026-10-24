@@ -16,7 +16,7 @@ from app.models.entities import (
     RoomSchedule, SensingEvent, ActivityType, Alert
 )
 from app.schemas.schemas import (
-    OrganizationCreate, OrganizationOut,
+    OrganizationCreate, OrganizationOut, OrganizationContact,
     BuildingCreate, BuildingOut,
     FloorCreate, FloorOut,
     RoomCreate, RoomOut,
@@ -65,6 +65,26 @@ def create_organization(
     session.commit()
     session.refresh(db_org)
     return db_org
+
+@router.patch("/organizations/{org_id}/contact", response_model=OrganizationOut, dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
+def set_organization_contact(
+    org_id: str,
+    body: OrganizationContact,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """Set (or clear) the facility's helpline that approved family members see. A manager can change only their own organization."""
+    org = session.get(Organization, org_id)
+    scopes = get_user_scopes(current_user)
+    if not org or (not scopes["is_system_admin"] and org.id not in scopes["organization_ids"]):
+        raise HTTPException(status_code=404, detail="Organization not found.")
+    org.contact_phone = body.contact_phone
+    org.updated_at = datetime.now(timezone.utc)
+    session.add(org)
+    session.commit()
+    session.refresh(org)
+    return org
+
 
 @router.get("/organizations", response_model=List[OrganizationOut], dependencies=[Depends(require_roles(STAFF_ROLES))])
 def list_organizations(

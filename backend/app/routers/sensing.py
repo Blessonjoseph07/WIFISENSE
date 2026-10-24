@@ -569,7 +569,7 @@ def get_device_csi_telemetry(
 MOVEMENT_CAVEATS = [
     "This shows movement on the Wi-Fi link between the two boards. It does not count, locate or identify people.",
     "A person standing or lying completely still barely changes the signal, so 'quiet' does not mean 'nobody is there'.",
-    "Presence is judged against an empty-room baseline recorded at this exact board placement; with no baseline it makes no claim.",
+    "Presence is judged against an empty-room reference. Until you record one in this room it uses a default reference from a quiet-room recording with these boards, so treat the first readings as approximate.",
     "A fan, a door, a pet or someone in the next room can also raise it. Recalibrate when the room changes.",
 ]
 MOVEMENT_BLOCKS_SHOWN = 24
@@ -630,14 +630,20 @@ def get_device_movement(
         cal = _calibration(session, device_id)
         baseline = ((cal.subcarrier_profile or {}).get("movement_baseline") if cal else None)
         verdict = movement.classify(blocks, baseline)
+        if baseline is None and blocks:
+            baseline_view = dict(movement.DEFAULT_REFERENCE)
+        else:
+            baseline_view = baseline
         idle = _seconds_since(records[-1].created_at) if records else None
         if records and idle is not None and idle > STALE_SECONDS:
             verdict = {"state": "STALE", "headline": "Board is not sending",
                        "detail": f"The last packet arrived {_human_duration(idle)} ago, so there is no current reading."}
         return {"state": verdict["state"], "headline": verdict["headline"], "detail": verdict["detail"],
                 "activity_ratio": verdict.get("activity_ratio"), "presence": verdict["state"] in ("PRESENT", "MOVEMENT"),
+                "reference": verdict.get("reference"),
                 "blocks": [round(b, 4) for b in blocks], "baseline": baseline,
-                "threshold": baseline["threshold"] if baseline else None,
+                "threshold": baseline_view["threshold"] if baseline_view else None,
+                "reference_mean": baseline_view["mean"] if baseline_view else None,
                 "seconds_since_last_packet": round(idle, 1) if idle is not None else None,
                 "block_packets": movement.BLOCK}
     out = dict(movement.cached(f"{device_id}", build))

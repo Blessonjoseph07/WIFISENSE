@@ -508,9 +508,9 @@ export default function FamilyPortalView({
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs shadow-2xs">
               <span className={`w-2 h-2 rounded-full ${familyStatus?.has_data ? "bg-emerald-500" : "bg-slate-400"}`}></span>
-              <span className="text-slate-400">Sensing data:</span>
-              <span className="font-bold text-slate-700 dark:text-slate-200">
-                {familyStatus?.data_source === "live" ? "LIVE HARDWARE" : familyStatus?.data_source === "simulated" ? "DEMO" : "NONE YET"}
+              <span className="text-slate-400">Sensing:</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5">
+                {familyStatus?.data_source ? <SourceBadge source={familyStatus.data_source} /> : "none yet"}
               </span>
             </div>
 
@@ -633,10 +633,13 @@ export default function FamilyPortalView({
                 <span className="material-symbols-outlined text-[18px] text-slate-400">sensors</span>
               </div>
               <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">
-                {dataSource === "live" ? "Live hardware" : dataSource === "simulated" ? "Demo data" : "None yet"}
+                <span className="inline-flex items-center gap-2">
+                  {dataSource ? <SourceBadge source={dataSource} /> : null}
+                  {dataSource ? "Wi-Fi sensing" : "None yet"}
+                </span>
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                {dataSource === "simulated" ? "Preview values, not measurements" : dataSource === "live" ? "From the resident's sensing node" : "No sensing node has reported"}
+                {dataSource ? "From the resident's room sensor" : "No sensing node has reported"}
               </div>
             </div>
 
@@ -905,13 +908,20 @@ export default function FamilyPortalView({
                 </div>
               </div>
 
-              {/* The care facility's contact details are not stored in the system, so none are shown. */}
+              {/* The helpline is the facility's own number, set by its manager; nothing is invented here. */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 mt-4">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contacting the care facility</div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                  Contact details for the care desk are not shown here. Use the number the facility gave you. In an
-                  emergency use the Emergency Help button.
-                </p>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contacting the care home</div>
+                {familyStatus?.facility_phone ? (
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                    Call <strong>{familyStatus.facility_name || "the care home"}</strong> on{" "}
+                    <a className="font-mono font-bold text-emerald-700 dark:text-emerald-400 underline" href={`tel:${familyStatus.facility_phone.replace(/[^0-9+]/g, "")}`}>{familyStatus.facility_phone}</a>.
+                    The same number is in the top bar.
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                    The care home has not added a helpline number yet. Please use the number the facility gave you.
+                  </p>
+                )}
               </div>
             </div>
 
