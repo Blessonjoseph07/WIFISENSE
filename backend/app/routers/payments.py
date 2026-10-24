@@ -14,6 +14,8 @@ and POST /payments/sandbox/simulate) are controlled by PAYMENTS_SANDBOX_SIMULATO
 to true. Under production (ENVIRONMENT=production), it defaults to false, causing these endpoints to return 404 unless
 explicitly enabled. Signed webhook verification on POST /payments/webhooks/sandbox is independent and never disabled.
 """
+import json
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
@@ -28,9 +30,10 @@ from app.core.limiter import rate_limit
 from app.core.timeutil import utcnow
 from app.models.entities import FamilyConnection, FamilySubscription, PaymentEvent, User
 from app.routers.auth import get_current_user, get_user_scopes, require_roles
-from app.services.payments import lifecycle, sandbox
+from app.services.payments import lifecycle, razorpay, sandbox
+from app.services.payments.razorpay import RazorpayError
 from app.services.payments.signing import WebhookError
-from app.services.payments.webhooks import handle_webhook, subscription_org_id
+from app.services.payments.webhooks import handle_webhook, process_event, subscription_org_id
 
 router = APIRouter(prefix="/payments", tags=["Family Subscription (SANDBOX payments)"])
 
@@ -69,11 +72,22 @@ def _approved_connection(session: Session, user: User) -> Optional[FamilyConnect
     ).first()
 
 
+RAZORPAY_TEST_NOTICE = ("TEST MODE: payments go to Razorpay's test environment, so no real money moves. Use Razorpay's test cards or UPI. "
+                        "Card details are typed on Razorpay's own page and never reach this server.")
+RAZORPAY_LIVE_NOTICE = "Payments are real. Card details are typed on Razorpay's own page and never reach this server."
+
+
+def _mode_fields() -> Dict[str, Any]:
+    if settings.PAYMENTS_MODE == "razorpay":
+        return {"mode": razorpay.mode_label(), "sandbox_notice": RAZORPAY_TEST_NOTICE if razorpay.is_test_mode() else RAZORPAY_LIVE_NOTICE,
+                "simulator_enabled": False, "provider": razorpay.PROVIDER}
+    return {"mode": sandbox.MODE_LABEL, "sandbox_notice": SANDBOX_NOTICE,
+            "simulator_enabled": settings.PAYMENTS_SANDBOX_SIMULATOR_ENABLED, "provider": sandbox.PROVIDER}
+
+
 def _response(sub: Optional[FamilySubscription], extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     out: Dict[str, Any] = {
-        "mode": sandbox.MODE_LABEL,
-        "sandbox_notice": SANDBOX_NOTICE,
-        "simulator_enabled": settings.PAYMENTS_SANDBOX_SIMULATOR_ENABLED,
+        **_mode_fields(),
         "plan": lifecycle.plan_price(),
         "subscription": lifecycle.view(sub) if sub else None,
     }
@@ -100,7 +114,8 @@ def my_subscription(session: Session = Depends(get_session), current_user: User 
 
 @router.post("/checkout", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(FAMILY))])
 def start_checkout(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    _sandbox_only()
+    if settings.PAYMENTS_MODE != "razorpay":
+        _sandbox_only()
     conn = _approved_connection(session, current_user)
     if not conn:
         raise HTTPException(status_code=403, detail="A subscription needs an approved connection to a resident. The facility approves connections.")
@@ -117,18 +132,30 @@ def start_checkout(session: Session = Depends(get_session), current_user: User =
             " It is set to end at the period end: use Resume instead." if sub.cancel_at_period_end else ""))
 
     price = lifecycle.plan_price()
-    sub.provider = sandbox.PROVIDER
-    sub.provider_checkout_id = sandbox.new_checkout_id()
+    if settings.PAYMENTS_MODE == "razorpay":
+        try:
+            order = razorpay.create_order(price["amount_minor"], price["currency"], f"care-{sub.id}", {"subscription_ref": sub.id, "plan": "CARE_MONTHLY"})
+        except RazorpayError as exc:
+            raise HTTPException(status_code=exc.status, detail=exc.detail)
+        sub.provider = razorpay.PROVIDER
+        sub.provider_checkout_id = order["id"]
+    else:
+        sub.provider = sandbox.PROVIDER
+        sub.provider_checkout_id = sandbox.new_checkout_id()
     sub.price_minor, sub.currency = price["amount_minor"], price["currency"]
     sub.updated_at = utcnow()
     session.add(sub)
     session.commit()
     session.refresh(sub)
-    _audit(session, current_user, sub, "SUBSCRIPTION_CHECKOUT_STARTED", {"provider": sandbox.PROVIDER})
-    return _response(sub, {
-        "checkout": {"id": sub.provider_checkout_id, "provider": sandbox.PROVIDER, "amount_minor": sub.price_minor,
-                     "currency": sub.currency, "mode": sandbox.MODE_LABEL},
-    })
+    _audit(session, current_user, sub, "SUBSCRIPTION_CHECKOUT_STARTED", {"provider": sub.provider})
+    checkout = {"id": sub.provider_checkout_id, "provider": sub.provider, "amount_minor": sub.price_minor,
+                "currency": sub.currency, "mode": _mode_fields()["mode"]}
+    if sub.provider == razorpay.PROVIDER:
+        name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip()
+        checkout.update({"order_id": sub.provider_checkout_id, "key_id": settings.RAZORPAY_KEY_ID,   # the key id is public by design
+                         "name": "Wi-Fi Sense Care Plan", "description": f"CARE_MONTHLY, {price['period_days']} days",
+                         "prefill": {"name": name, "email": current_user.email}})
+    return _response(sub, {"checkout": checkout})
 
 
 @router.post("/cancel", dependencies=[Depends(require_roles(FAMILY))])
@@ -169,6 +196,86 @@ def resume_subscription(session: Session = Depends(get_session), current_user: U
     session.refresh(sub)
     _audit(session, current_user, sub, "SUBSCRIPTION_RESUMED")
     return _response(sub)
+
+
+# ----------------------------------------------------------------------------- Razorpay
+class RazorpayVerify(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
+def _razorpay_only() -> None:
+    if settings.PAYMENTS_MODE != "razorpay":
+        raise HTTPException(status_code=404, detail="Razorpay payments are not enabled in this environment.")
+
+
+def _succeeded_event(sub_id: str, order_id: str, payment_id: str, amount: Any, currency: Any, created: Optional[int] = None) -> Dict[str, Any]:
+    return {"id": f"rzp_{payment_id}", "type": "payment.succeeded", "provider": razorpay.PROVIDER,
+            "created": int(created if created is not None else time.time()),
+            "data": {"subscription_ref": sub_id, "checkout_id": order_id, "provider_subscription_id": payment_id,
+                     "amount_minor": amount, "currency": currency}}
+
+
+@router.post("/razorpay/verify", dependencies=[Depends(require_roles(FAMILY)), Depends(rate_limit(max_requests=20, window_seconds=60, bucket="razorpay_verify"))])
+def razorpay_verify(body: RazorpayVerify, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    """Called by the browser after Razorpay Checkout succeeds. Nothing the browser says is trusted: the signature is checked, and the
+    payment is fetched from Razorpay and must match the order, amount and currency before the subscription is activated."""
+    _razorpay_only()
+    sub = _own_subscription(session, current_user)
+    if sub and sub.provider_subscription_id == body.razorpay_payment_id and sub.status == "ACTIVE":
+        return _response(sub, {"webhook_outcome": "DUPLICATE"})           # the same payment confirmed twice: nothing changes
+    if not sub or sub.provider != razorpay.PROVIDER or sub.provider_checkout_id != body.razorpay_order_id:
+        raise HTTPException(status_code=404, detail="Checkout not found.")   # same answer for 'missing' and 'not yours'
+    if not razorpay.verify_checkout_signature(body.razorpay_order_id, body.razorpay_payment_id, body.razorpay_signature):
+        _audit(session, current_user, sub, "PAYMENT_SIGNATURE_REJECTED", {"order_id": body.razorpay_order_id})
+        raise HTTPException(status_code=400, detail="The payment signature did not match, so it was not accepted.")
+    try:
+        pay = razorpay.fetch_payment(body.razorpay_payment_id)
+        if pay.get("status") == "authorized":
+            pay = razorpay.capture_payment(body.razorpay_payment_id, sub.price_minor, sub.currency)
+    except RazorpayError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.detail)
+    if pay.get("order_id") != body.razorpay_order_id:
+        raise HTTPException(status_code=400, detail="That payment belongs to a different order.")
+    if pay.get("status") != "captured":
+        raise HTTPException(status_code=402, detail=f"The payment is not completed (status: {pay.get('status')}). Nothing was activated.")
+    outcome = process_event(session, _succeeded_event(sub.id, body.razorpay_order_id, body.razorpay_payment_id, pay.get("amount"), pay.get("currency")))
+    session.refresh(sub)
+    return _response(sub, {"webhook_outcome": outcome["outcome"]})
+
+
+@router.post("/webhooks/razorpay", dependencies=[Depends(rate_limit(max_requests=120, window_seconds=60, bucket="payment_webhook"))])
+async def razorpay_webhook(request: Request, session: Session = Depends(get_session)):
+    """Razorpay's own signed events (payment.captured / payment.failed): a backup for the browser confirmation. The signature is the proof."""
+    _razorpay_only()
+    if not settings.RAZORPAY_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="The Razorpay webhook secret is not configured.")
+    raw = await request.body()
+    if len(raw) > 64 * 1024:
+        raise HTTPException(status_code=413, detail="Payload too large.")
+    if not razorpay.verify_webhook_signature(raw, request.headers.get("X-Razorpay-Signature")):
+        record_audit_event(session, what_action="PAYMENT_WEBHOOK_REJECTED", resource_type="PAYMENT_WEBHOOK", result="DENIED",
+                           who_email="payment-provider:razorpay", details={"reason": "signature mismatch"},
+                           ip_address=request.client.host if request.client else None)
+        raise HTTPException(status_code=400, detail="Webhook rejected: signature mismatch.")
+    try:
+        payload = json.loads(raw)
+        entity = payload["payload"]["payment"]["entity"]
+        name, payment_id, order_id = payload["event"], entity["id"], entity.get("order_id")
+        sub_ref = (entity.get("notes") or {}).get("subscription_ref")
+        created = int(payload.get("created_at") or time.time())
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(status_code=400, detail="Webhook rejected: malformed event.")
+    if name == "payment.captured":
+        event = _succeeded_event(sub_ref or "", order_id or "", payment_id, entity.get("amount"), entity.get("currency"), created)
+    elif name == "payment.failed":
+        event = {"id": f"rzp_fail_{payment_id}", "type": "payment.failed", "provider": razorpay.PROVIDER, "created": created,
+                 "data": {"subscription_ref": sub_ref or "", "checkout_id": order_id}}
+    else:
+        return {"received": True, "outcome": "IGNORED_UNKNOWN_TYPE"}
+    return {"received": True, "outcome": process_event(session, event)["outcome"]}
 
 
 # ----------------------------------------------------------------------------- sandbox controls (the "provider")

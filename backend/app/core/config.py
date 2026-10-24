@@ -49,7 +49,15 @@ class Settings:
 
     # Payments. Only the SANDBOX provider exists: it simulates a payment provider, no real money moves and no card or
     # payment details are ever collected or stored. The price below is a placeholder for the sandbox, not a business decision.
-    PAYMENTS_MODE: str = os.getenv("PAYMENTS_MODE", "sandbox").lower()
+    # PAYMENTS_MODE: "sandbox" (simulated, the default) or "razorpay" (Razorpay Orders + Checkout; card/UPI details are entered on
+    # Razorpay's own page and never reach this server). Razorpay keys come ONLY from the environment; live keys are refused unless
+    # RAZORPAY_ALLOW_LIVE=1, so test mode is the default and the only thing you can switch on by accident.
+    PAYMENTS_MODE: str = (os.getenv("PAYMENTS_MODE") or "sandbox").lower()
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+    RAZORPAY_API_BASE: str = "https://api.razorpay.com/v1"
+    RAZORPAY_ALLOW_LIVE: bool = False
     PAYMENT_WEBHOOK_SECRET: str = os.getenv("PAYMENT_WEBHOOK_SECRET", "")
     CARE_MONTHLY_PRICE_MINOR: int = int(os.getenv("CARE_MONTHLY_PRICE_MINOR", "49900"))   # 499.00
     CARE_MONTHLY_CURRENCY: str = os.getenv("CARE_MONTHLY_CURRENCY", "INR")
@@ -70,9 +78,23 @@ class Settings:
                 "SECRET_KEY environment variable is required. "
                 "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
             )
-        self.PAYMENTS_MODE = os.getenv("PAYMENTS_MODE", self.PAYMENTS_MODE).lower()
-        if self.PAYMENTS_MODE != "sandbox":
-            raise RuntimeError("PAYMENTS_MODE must be 'sandbox': no real payment provider is implemented.")
+        self.PAYMENTS_MODE = (os.getenv("PAYMENTS_MODE") or "sandbox").strip().lower()
+        if self.PAYMENTS_MODE not in ("sandbox", "razorpay"):
+            raise RuntimeError("PAYMENTS_MODE must be 'sandbox' or 'razorpay'.")
+        self.RAZORPAY_KEY_ID = (os.getenv("RAZORPAY_KEY_ID") or "").strip()
+        self.RAZORPAY_KEY_SECRET = (os.getenv("RAZORPAY_KEY_SECRET") or "").strip()
+        self.RAZORPAY_WEBHOOK_SECRET = (os.getenv("RAZORPAY_WEBHOOK_SECRET") or "").strip()
+        self.RAZORPAY_ALLOW_LIVE = os.getenv("RAZORPAY_ALLOW_LIVE", "0").strip().lower() in ("1", "true", "yes", "on")
+        self.RAZORPAY_API_BASE = (os.getenv("RAZORPAY_API_BASE") or "https://api.razorpay.com/v1").strip().rstrip("/")
+        if self.PAYMENTS_MODE == "razorpay":
+            if not self.RAZORPAY_KEY_ID or not self.RAZORPAY_KEY_SECRET:
+                raise RuntimeError("PAYMENTS_MODE=razorpay needs RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in the environment.")
+            if not self.RAZORPAY_KEY_ID.startswith(("rzp_test_", "rzp_live_")):
+                raise RuntimeError("RAZORPAY_KEY_ID must start with rzp_test_ or rzp_live_.")
+            if self.RAZORPAY_KEY_ID.startswith("rzp_live_") and not self.RAZORPAY_ALLOW_LIVE:
+                raise RuntimeError("A live Razorpay key was given. Live payments are off until RAZORPAY_ALLOW_LIVE=1 is set on purpose.")
+            if self.ENVIRONMENT.lower() == "production" and self.RAZORPAY_API_BASE != "https://api.razorpay.com/v1":
+                raise RuntimeError("RAZORPAY_API_BASE cannot be changed in production.")
         sim_env = os.getenv("PAYMENTS_SANDBOX_SIMULATOR_ENABLED")
         if sim_env is not None:
             self.PAYMENTS_SANDBOX_SIMULATOR_ENABLED = sim_env.strip().lower() in ("1", "true", "yes", "on")

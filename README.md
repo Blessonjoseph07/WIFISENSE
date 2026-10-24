@@ -59,6 +59,7 @@ Backend settings come from the environment (see `backend/.env.example`):
 | :--- | :--- | :--- | :--- |
 | `SECRET_KEY` | yes | – | JWT signing key. Startup fails if unset. |
 | `DATABASE_URL` | no (yes in production) | `sqlite:///./wifisense.db` | Database connection string. Production uses PostgreSQL (`postgresql://...`); SQLite is for local development. |
+| `PAYMENTS_MODE` / `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | no | `sandbox` | `razorpay` turns on Razorpay Checkout (test keys by default; live keys are refused unless `RAZORPAY_ALLOW_LIVE=1`). See `docs/razorpay_payments.md`. |
 | `RAW_CSI_RETENTION_HOURS` / `RAW_CSI_MAX_ROWS` | no | `24` / `300000` | Rolling window for raw CSI packets (analysed packets only; detections are kept). See `docs/hosting_and_iot.md`. |
 | `ALLOWED_ORIGINS` | no | `http://localhost:5173` | Comma-separated CORS origins. |
 | `SEED_DEMO_DATA` | no | `0` | Set to `1` to seed demo data on startup. |
