@@ -58,13 +58,27 @@ export default function FamilyPortalShell({
 
           {/* Right Actions: Emergency Button, Theme, Profile */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={triggerEmergencyProtocol}
-              className="bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold uppercase transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">emergency</span>
-              <span className="hidden sm:inline">Emergency Help</span>
-            </button>
+            {familyStatus?.facility_phone ? (
+              <a
+                href={`tel:${familyStatus.facility_phone.replace(/[^0-9+]/g, "")}`}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+                title={`Call ${familyStatus.facility_name || "the care home"}`}
+                data-testid="care-home-helpline"
+              >
+                <span className="material-symbols-outlined text-[16px]">call</span>
+                <span className="hidden sm:inline">Care home helpline</span>
+                <span className="font-mono">{familyStatus.facility_phone}</span>
+              </a>
+            ) : (
+              <span
+                className="px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700"
+                title="The care home has not added a helpline number yet"
+                data-testid="care-home-helpline"
+              >
+                <span className="material-symbols-outlined text-[16px]">call</span>
+                <span className="hidden sm:inline">Helpline not set</span>
+              </span>
+            )}
 
             <button
               onClick={() => setDarkMode(!darkMode)}

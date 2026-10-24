@@ -1727,6 +1727,9 @@ export default function App() {
               userRole={role}
               isSystemAdmin={isSystemAdmin || role === "system_admin"}
               initialTab={isSystemAdmin || role === "system_admin" ? "organizations" : "policies"}
+              authToken={token}
+              API_BASE={API_BASE}
+              onOrganizationsChanged={fetchAllData}
             />
           )}
 

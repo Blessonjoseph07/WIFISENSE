@@ -1,5 +1,5 @@
 // Guards the Family Subscription (SANDBOX) frontend integration:
-// 1. Prominent SANDBOX label
+// 1. A quiet payment-mode dot (no loud banners)
 // 2. Staff control sending only SUSPENDED and ACTIVE (never PENDING)
 // 3. Emergency alerts visible regardless of subscription status
 // 4. SubscriptionPanel import & mount in FamilyPortalView
@@ -19,20 +19,16 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PANEL_SRC = join(ROOT, "src", "components", "SubscriptionPanel.jsx");
 const PORTAL_SRC = join(ROOT, "src", "views", "FamilyPortalView.jsx");
 
-test("[Source Scan] SubscriptionPanel displays prominent SANDBOX label and notices", () => {
+test("[Source Scan] SubscriptionPanel marks the payment mode with a quiet dot, not loud wording", () => {
   const code = readFileSync(PANEL_SRC, "utf8");
-  assert.ok(
-    code.includes("SANDBOX - no real payment"),
-    "SubscriptionPanel must render the badge 'SANDBOX - no real payment'"
-  );
-  assert.ok(
-    code.includes("No card details are collected or stored"),
-    "SubscriptionPanel must state that no card details are collected or stored"
-  );
-  assert.ok(
-    code.includes("SANDBOX checkout"),
-    "Checkout modal must clearly state SANDBOX checkout"
-  );
+  // The mode is still identified: a coloured dot with a tooltip and screen-reader text carrying the mode name.
+  assert.ok(code.includes('data-testid="payment-mode-dot"'), "SubscriptionPanel must render the payment-mode dot");
+  assert.ok(code.includes("{data.mode}"), "the mode name must stay available as screen-reader text");
+  // ... and the loud banners are gone (the owner asked for a calm UI), while no false claim replaces them.
+  for (const loud of ["SANDBOX - no real payment", "no real money", "SANDBOX checkout", "No card details are collected or stored"]) {
+    assert.ok(!code.includes(loud), `the panel must not shout: ${loud}`);
+  }
+  assert.ok(!/real payments? (are|is) (on|enabled)/i.test(code), "must not claim real payments");
 });
 
 test("[Source Scan] Staff subscription controls send ONLY SUSPENDED and ACTIVE, never PENDING", () => {
