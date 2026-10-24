@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import SharingPolicyManager from "../components/SharingPolicyManager";
+import HelplineSettings from "../components/HelplineSettings";
 
 export default function OrgAdminView({
   setShowAddOrgModal = () => {},
@@ -13,7 +14,10 @@ export default function OrgAdminView({
   userRole = "",
   isSystemAdmin = false,
   initialTab = "organizations",
-  isLoading = false
+  isLoading = false,
+  authToken = "",
+  API_BASE = "",
+  onOrganizationsChanged = () => {}
 }) {
   const isSysAdmin = Boolean(isSystemAdmin || userRole === "system_admin");
   const effectiveInitialTab = !isSysAdmin && initialTab === "organizations" ? "policies" : (initialTab || "policies");
@@ -29,6 +33,7 @@ export default function OrgAdminView({
 
   return (
     <div className="space-y-6 text-left">
+      {(canEditPolicies && authToken) && <HelplineSettings organizations={organizations} authToken={authToken} API_BASE={API_BASE} onSaved={onOrganizationsChanged} />}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -71,9 +71,10 @@ def run():
     send(tok, 0, 400, 1.5)                                  # quiet readings
     time.sleep(1.7)                                         # the result is cached for ~1.5 s
     st, m = call(f"/sensing/devices/{did}/movement", token=fm)
-    assert m["state"] == "NO_BASELINE" and m["threshold"] is None and m["blocks"], m
+    assert m["reference"] == "default" and m["baseline"] is None and m["blocks"] and m["threshold"] == 0.072, m
+    assert m["state"] == "QUIET" and m["headline"] == "No presence detected", m
     assert any("does not count" in c for c in m["caveats"]) and any("standing" in c for c in m["caveats"])
-    print("[PASS] without a baseline the state is NO_BASELINE (no judgement), and the limits are stated")
+    print("[PASS] with no baseline the labelled DEFAULT reference is used (quiet signal reads QUIET), and the limits are stated")
 
     print("--- access rules")
     st, _ = call(f"/sensing/devices/{did}/movement/baseline", "POST", {}, care)
@@ -89,7 +90,7 @@ def run():
     st, m = call(f"/sensing/devices/{did}/movement", token=fm)
     time.sleep(1.7)  # the result is cached for ~1.5 s
     st, m = call(f"/sensing/devices/{did}/movement", token=fm)
-    assert m["state"] == "QUIET", m
+    assert m["state"] == "QUIET" and m["reference"] == "room", m
     print(f"[PASS] with an empty-room baseline (threshold {b['baseline']['threshold']}) the same kind of signal reads QUIET")
 
     print("--- presence (held above the empty-room level, without strong movement)")
@@ -103,7 +104,7 @@ def run():
     send(tok, 1300, 200, 14)                                 # strongly fluctuating readings
     time.sleep(1.7)
     st, m = call(f"/sensing/devices/{did}/movement", token=fm)
-    assert m["state"] == "MOVEMENT" and max(m["blocks"][-3:]) > m["threshold"], m
+    assert m["state"] == "MOVEMENT" and m["headline"] == "Presence detected" and max(m["blocks"][-3:]) > m["threshold"], m
     print("[PASS] a strongly fluctuating signal reads MOVEMENT")
 
     print("--- live hardware: fall detection is off by default")

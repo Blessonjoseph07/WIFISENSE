@@ -210,3 +210,32 @@ def run_detection(session: Session, device: SensingDevice, flush: bool = False) 
             "alert_id": alert.id if alert else None,
         })
     return result
+
+
+def close_stale_live_fall_alerts(session: Session) -> int:
+    """Live hardware does not run fall detection unless LIVE_FALL_DETECTION=1. Alerts that an earlier version raised from the
+    fall model on a live device are therefore not evidence of anything: close them once, with a note, so they do not keep showing
+    as open emergencies. Returns how many were closed."""
+    if settings.LIVE_FALL_DETECTION:
+        return 0
+    from app.models.entities import AlertAcknowledgement
+    now = datetime.now(timezone.utc)
+    rows = session.exec(select(Alert).where(Alert.source == "live", Alert.event_type == "Fall_Detected",
+                                            Alert.status.in_(["new", "acknowledged", "responding"]),
+                                            Alert.message.like("Possible fall%"))).all()
+    for alert in rows:
+        alert.status = "resolved"
+        alert.verification_status = "DISMISSED"
+        alert.verification_note = "Closed automatically: fall detection is off for live hardware."
+        alert.verified_at, alert.updated_at = now, now
+        session.add(alert)
+        ack = session.exec(select(AlertAcknowledgement).where(AlertAcknowledgement.alert_id == alert.id)).first()
+        if ack is None:
+            ack = AlertAcknowledgement(alert_id=alert.id, user_id=None, acknowledged_at=now)
+        ack.resolved_at = now
+        ack.resolution_notes = ("Closed automatically: the fall model was never validated for live hardware, so this possible-fall "
+                                "flag is not evidence. Presence and movement are reported instead.")
+        session.add(ack)
+    if rows:
+        session.commit()
+    return len(rows)

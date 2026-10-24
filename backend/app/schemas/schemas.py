@@ -97,10 +97,27 @@ class OrganizationCreate(BaseModel):
     name: str
     type: str = Field(..., description="Must be either ELDER_CARE or CORPORATE")
 
+class OrganizationContact(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    contact_phone: Optional[str] = Field(default=None, max_length=24)
+
+    @field_validator("contact_phone")
+    @classmethod
+    def phone_shape(cls, v):
+        v = (v or "").strip()
+        if not v:
+            return None
+        import re as _re
+        if not _re.fullmatch(r"\+?[0-9][0-9 ()\-]{5,22}", v):
+            raise ValueError("Enter a phone number using digits, spaces, + ( ) and - only.")
+        return v
+
+
 class OrganizationOut(BaseModel):
     id: str
     name: str
     type: str
+    contact_phone: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

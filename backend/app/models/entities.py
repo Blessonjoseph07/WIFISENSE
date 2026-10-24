@@ -12,6 +12,7 @@ class Organization(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     name: str = Field(index=True, unique=True, nullable=False)
     type: str = Field(nullable=False) # 'ELDER_CARE' or 'CORPORATE'
+    contact_phone: Optional[str] = Field(default=None)   # the facility's own helpline (set by its manager); never invented
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

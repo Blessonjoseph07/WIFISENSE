@@ -106,6 +106,16 @@ def submit_family_connection(
         updated_at=db_conn.updated_at
     )
 
+def _building_of(session, room):
+    floor = session.get(Floor, room.floor_id) if room else None
+    return session.get(Building, floor.building_id) if floor else None
+
+
+def _facility_fields(session, building):
+    org = session.get(Organization, building.organization_id) if building else None
+    return {"facility_name": org.name if org else None, "facility_phone": org.contact_phone if org else None}
+
+
 @router.get("/connections", response_model=List[FamilyConnectionOut])
 def list_family_connections(
     session: Session = Depends(get_session),
@@ -434,6 +444,7 @@ def get_linked_resident_status(
                 "room_name": room.name if room else "Resident Room"
             },
             "has_active_subscription": False,
+            **_facility_fields(session, _building_of(session, room)),
             "emergency": emergency,
             "reason": f"Optional portal features need an active subscription (current status: '{sub_status}'). Emergency alerts are not affected."
         }
@@ -519,10 +530,8 @@ def get_linked_resident_status(
             "last_name": target_res.last_name,
             "room_name": room.name if (room and share_room_name) else "Resident Suite"
         },
-        # The facility's real name from the database (never a hard-coded one).
-        "facility_name": (session.get(Organization, building.organization_id).name if building else None),
-        # The facility's real name from the database (never a hard-coded one).
-        "facility_name": (session.get(Organization, building.organization_id).name if building else None),
+        # The facility's real name and helpline from the database (never hard-coded; the helpline is null until the facility sets one).
+        **_facility_fields(session, building),
         # Presence is only reported when the sharing policy allows it AND a sensing event exists.
         "presence_status": ("Restricted" if not share_presence
                             else "No data" if not has_data
