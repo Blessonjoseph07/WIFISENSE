@@ -69,9 +69,53 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
     }
   };
 
+  const loadRazorpayScript = () =>
+    new Promise((resolve, reject) => {
+      if (window.Razorpay) return resolve();
+      const el = document.createElement("script");
+      el.src = "https://checkout.razorpay.com/v1/checkout.js";
+      el.onload = resolve;
+      el.onerror = () => reject(new Error("Could not load Razorpay Checkout. Check the internet connection."));
+      document.body.appendChild(el);
+    });
+
+  // Razorpay Checkout is Razorpay's own page: card, UPI and bank details are typed there and never reach this app. When it finishes, the
+  // browser sends only the order id, payment id and signature; the server checks the signature AND asks Razorpay about the payment.
+  const openRazorpay = async (c) => {
+    try {
+      await loadRazorpayScript();
+    } catch (e) {
+      setToastMessage({ type: "error", text: e.message });
+      return;
+    }
+    const rzp = new window.Razorpay({
+      key: c.key_id,
+      amount: c.amount_minor,
+      currency: c.currency,
+      order_id: c.order_id,
+      name: c.name,
+      description: c.description,
+      prefill: c.prefill,
+      theme: { color: "#0d9488" },
+      handler: async (resp) => {
+        const json = await act("/payments/razorpay/verify", {
+          razorpay_order_id: resp.razorpay_order_id,
+          razorpay_payment_id: resp.razorpay_payment_id,
+          razorpay_signature: resp.razorpay_signature,
+        }, null);
+        if (json) setToastMessage({ type: "success", text: "Payment confirmed. Your Care Plan is active." });
+      },
+      modal: { ondismiss: () => setToastMessage({ type: "info", text: "Checkout closed. You have not been charged." }) },
+    });
+    rzp.on("payment.failed", (r) => setToastMessage({ type: "error", text: `Payment failed: ${r?.error?.description || "the bank declined it"}. You can try again.` }));
+    rzp.open();
+  };
+
   const startCheckout = async () => {
     const json = await act("/payments/checkout", null, null);
-    if (json?.checkout) setCheckout(json.checkout);
+    if (!json?.checkout) return;
+    if (json.checkout.provider === "razorpay") openRazorpay(json.checkout);
+    else setCheckout(json.checkout);
   };
 
   const completeCheckout = async (outcome) => {
@@ -101,6 +145,7 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
   const status = sub?.status || "NONE";
   const actions = sub?.actions;
   const canSubscribe = data.connection_approved && (!sub || actions?.can_subscribe);
+  const isRazorpay = data.provider === "razorpay";
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs" data-testid="subscription-panel">
@@ -109,11 +154,12 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-base font-black text-slate-900 dark:text-white">Care Plan subscription</h2>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
-              SANDBOX - no real payment
+              {data.mode === "RAZORPAY_TEST" ? "RAZORPAY TEST MODE - no real money" : data.mode === "RAZORPAY_LIVE" ? "RAZORPAY - real payments" : "SANDBOX - no real payment"}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {data.plan?.plan} - {fmtPrice(data.plan)} every {data.plan?.period_days} days. No card details are collected or stored.
+            {data.plan?.plan} - {fmtPrice(data.plan)} for {data.plan?.period_days} days.{" "}
+            {isRazorpay ? "You pay on Razorpay's own page; card, UPI and bank details never reach this app." : "No card details are collected or stored."}
           </p>
         </div>
         <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase ${STATUS_STYLE[status] || STATUS_STYLE.PENDING}`}>
@@ -157,7 +203,13 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
       )}
 
       <div className="flex flex-wrap gap-2 mt-4">
-        {data.simulator_enabled === false ? (
+        {isRazorpay ? (
+          canSubscribe && (
+            <button disabled={busy} onClick={startCheckout} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer" data-testid="pay-with-razorpay">
+              {`Pay ${fmtPrice(data.plan)} with Razorpay`}
+            </button>
+          )
+        ) : data.simulator_enabled === false ? (
           <div className="w-full text-xs rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-2">
             SANDBOX payment simulation is disabled in this environment.
           </div>
@@ -180,7 +232,14 @@ export default function SubscriptionPanel({ token, setToastMessage = () => {}, o
         )}
       </div>
 
-      {checkout && data.simulator_enabled !== false && (
+      {isRazorpay && data.mode === "RAZORPAY_TEST" && canSubscribe && (
+        <p className="mt-3 text-[11px] rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900 text-violet-900 dark:text-violet-200 px-3 py-2" data-testid="razorpay-test-hint">
+          Test mode: Razorpay will open a payment window. Use the test card 4111 1111 1111 1111 with any future expiry date and any 3-digit CVV
+          (or the UPI id success@razorpay). Nothing is charged.
+        </p>
+      )}
+
+      {checkout && !isRazorpay && data.simulator_enabled !== false && (
         <div className="mt-4 rounded-xl border-2 border-dashed border-violet-300 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/30 p-4">
           <p className="text-xs font-bold text-violet-900 dark:text-violet-200">SANDBOX checkout - {fmtPrice(checkout)}</p>
           <p className="text-[11px] text-violet-800/80 dark:text-violet-300/80 mt-1">

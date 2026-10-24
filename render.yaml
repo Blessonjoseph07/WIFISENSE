@@ -40,3 +40,13 @@ services:
         value: "6"
       - key: RAW_CSI_MAX_ROWS
         value: "150000"
+      # Payments. Leave PAYMENTS_MODE as sandbox (simulated, no keys needed) or set it to razorpay in the dashboard AFTER adding the three
+      # keys below. Razorpay keys are secrets: they live only in the Render dashboard, never in this file or the repository.
+      - key: PAYMENTS_MODE
+        sync: false
+      - key: RAZORPAY_KEY_ID          # rzp_test_... for test mode (live keys are refused unless RAZORPAY_ALLOW_LIVE=1)
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET  # the secret you type when creating the webhook in the Razorpay dashboard (optional backup path)
+        sync: false
