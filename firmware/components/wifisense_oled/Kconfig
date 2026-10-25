@@ -1,0 +1,22 @@
+menu "Wi-Fi Sense OLED display"
+
+    config WIFISENSE_OLED_ENABLE
+        bool "Drive a 0.96-inch SSD1306 I2C OLED"
+        default y
+        help
+            When no display answers at boot the board simply runs without one.
+
+    config WIFISENSE_OLED_SDA
+        int "OLED SDA GPIO"
+        depends on WIFISENSE_OLED_ENABLE
+        default 8
+        help
+            GPIO 8 and 9 are free on the ESP32-S3-WROOM-1U-N16R8. Do not use GPIO 26-37 (flash and octal PSRAM),
+            19/20 (USB) or 0/3/45/46 (strapping pins).
+
+    config WIFISENSE_OLED_SCL
+        int "OLED SCL GPIO"
+        depends on WIFISENSE_OLED_ENABLE
+        default 9
+
+endmenu

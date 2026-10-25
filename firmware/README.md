@@ -1,6 +1,8 @@
 # ESP32-S3 CSI firmware (transmitter + receiver)
 
-Two small ESP-IDF projects (built and tested for compilation with ESP-IDF v6.1, target `esp32s3`):
+Two small ESP-IDF projects (built and tested for compilation with ESP-IDF v6.1, target `esp32s3`). Both drive an optional
+0.96-inch SSD1306 OLED on GPIO 8 (SDA) / 9 (SCL) from `components/wifisense_oled`. Wiring, power notes and the full build:
+[docs/hardware_build_guide.md](../docs/hardware_build_guide.md).
 
 | Project | Role | What it does |
 |---|---|---|
