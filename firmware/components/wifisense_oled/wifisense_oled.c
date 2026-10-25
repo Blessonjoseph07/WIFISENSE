@@ -56,7 +56,8 @@ static bool cmds(const uint8_t *c, size_t n)
     return i2c_master_transmit(s_dev, buf, n + 1, TIMEOUT_MS) == ESP_OK;
 }
 
-bool oled_init(int sda_gpio, int scl_gpio)
+/* Opens an I2C bus on the two pins and looks for an SSD1306 (0x3C, then 0x3D). On success the bus stays open. */
+static int try_pins(int sda_gpio, int scl_gpio, i2c_master_bus_handle_t *out)
 {
     i2c_master_bus_handle_t bus;
     i2c_master_bus_config_t bus_cfg = {
@@ -68,19 +69,53 @@ bool oled_init(int sda_gpio, int scl_gpio)
         .flags.enable_internal_pullup = true,   /* the module has its own pull-ups; these only help */
     };
     if (i2c_new_master_bus(&bus_cfg, &bus) != ESP_OK) {
-        ESP_LOGW(TAG, "I2C bus init failed on SDA=%d SCL=%d", sda_gpio, scl_gpio);
-        return false;
+        return -1;
     }
     int addr = -1;
-    if (i2c_master_probe(bus, 0x3C, TIMEOUT_MS) == ESP_OK) {
+    if (i2c_master_probe(bus, 0x3C, 5) == ESP_OK) {
         addr = 0x3C;
-    } else if (i2c_master_probe(bus, 0x3D, TIMEOUT_MS) == ESP_OK) {
+    } else if (i2c_master_probe(bus, 0x3D, 5) == ESP_OK) {
         addr = 0x3D;
     }
     if (addr < 0) {
-        ESP_LOGW(TAG, "no SSD1306 at 0x3C/0x3D on SDA=%d SCL=%d: running without a display (check VCC=3V3, GND, SDA, SCL)",
-                 sda_gpio, scl_gpio);
         i2c_del_master_bus(bus);
+    } else {
+        *out = bus;
+    }
+    return addr;
+}
+
+/* GPIOs that are safe to probe on the ESP32-S3-WROOM-1U-N16R8: not strapping (0/3/45/46), USB (19/20), flash/PSRAM
+ * (26-37) or the console UART (43/44). */
+static const int SAFE_GPIO[] = {1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 38, 39, 40, 41, 42, 47, 48};
+
+bool oled_init(int sda_gpio, int scl_gpio)
+{
+    i2c_master_bus_handle_t bus;
+    int addr = try_pins(sda_gpio, scl_gpio, &bus);
+    if (addr < 0 && (addr = try_pins(scl_gpio, sda_gpio, &bus)) >= 0) {
+        ESP_LOGW(TAG, "display found with SDA and SCL SWAPPED (SDA=%d SCL=%d); using it, but swap the two wires to match the guide",
+                 scl_gpio, sda_gpio);
+        int t = sda_gpio;
+        sda_gpio = scl_gpio;
+        scl_gpio = t;
+    }
+    if (addr < 0) {
+        /* Not where it should be: look on every safe pin pair, so a wire on the wrong pin is reported instead of guessed. */
+        const int n = sizeof(SAFE_GPIO) / sizeof(SAFE_GPIO[0]);
+        for (int i = 0; i < n && addr < 0; i++) {
+            for (int j = 0; j < n && addr < 0; j++) {
+                if (i != j && (addr = try_pins(SAFE_GPIO[i], SAFE_GPIO[j], &bus)) >= 0) {
+                    sda_gpio = SAFE_GPIO[i];
+                    scl_gpio = SAFE_GPIO[j];
+                    ESP_LOGW(TAG, "display found on SDA=GPIO%d SCL=GPIO%d instead of the configured pins; using it", sda_gpio, scl_gpio);
+                }
+            }
+        }
+    }
+    if (addr < 0) {
+        ESP_LOGW(TAG, "no SSD1306 answered on ANY safe pin pair: the display has no power or no contact (check VDD on 3V3, GND, "
+                      "that the OLED's header pins are soldered and every wire shares a breadboard row with its pin)");
         return false;
     }
     i2c_device_config_t dev_cfg = {
