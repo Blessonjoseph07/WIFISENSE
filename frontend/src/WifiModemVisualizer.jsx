@@ -9,7 +9,7 @@ import * as THREE from "three";
 export default function WifiModemVisualizer() {
   const mountRef = useRef(null);
   const [pulseRate, setPulseRate] = useState(1.0);
-  const [activeFmt, setActiveFmt] = useState("5GHz");
+  const [activeFmt, setActiveFmt] = useState("2.4GHz");
   const [telemetry, setTelemetry] = useState({
     rssi: -52,
     packets: 1420,
