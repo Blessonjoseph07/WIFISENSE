@@ -78,13 +78,8 @@ def room_state_snapshot(session: Session, device_id: str, model: Dict[str, Any])
     return movement.cached(f"occ:{device_id}", build)
 
 
-def movement_overrides(pred: Optional[Dict[str, Any]], mv: Dict[str, Any]) -> bool:
-    """True when the movement check clearly sees movement but the model answers with a motionless situation. That happens when
-    'walking' was not recorded (a model can only answer with what it was taught), so the board shows the movement instead
-    of a confident 'still' or 'empty'."""
-    return bool(pred) and mv.get("state") == "MOVEMENT" and pred.get("label") in ("empty", "still")
-
-
+MOTIONLESS = ("empty", "still")
+MOVING = ("walking", "few", "busy")
 PRESENCE_WINDOW_BLOCKS = 10    # about the last 10 seconds
 
 
@@ -95,6 +90,34 @@ def presence_from_movement(mv: Dict[str, Any]) -> Dict[str, Any]:
     share = (sum(1 for b in blocks if thr is not None and b > thr) / len(blocks)) if blocks else 0.0
     return {"label": "presence", "text": "Presence detected", "confidence": round(share, 2), "reliable": True,
             "source": "movement", "detail": f"{sum(1 for b in blocks if thr is not None and b > thr)} of the last {len(blocks)} seconds above the empty-room level"}
+
+
+def reconcile(pred: Optional[Dict[str, Any]], mv: Dict[str, Any], reliable: bool):
+    """What the board shows, given the model's answer and the movement check, and why (None when they agree).
+
+    The movement check measures fluctuation directly against this room's empty level, so it has the last word on MOVING
+    versus NOT MOVING; the model only chooses within that:
+      * clear movement but a motionless answer (usually: walking never recorded) -> 'Presence detected' with the measured share;
+      * a moving answer without movement (the model can also latch onto signal strength: a person standing in the radio
+        path lowers it much like walking did) -> the model's best motionless answer, renormalised over those situations."""
+    if not pred:
+        return None, None
+    shown = {"label": pred["label"], "text": pred["text"], "confidence": pred["confidence"], "reliable": reliable}
+    moving_now = mv.get("state") == "MOVEMENT"
+    if moving_now and pred["label"] in MOTIONLESS:
+        return presence_from_movement(mv), (f"The movement check sees clear movement, so the board shows Presence detected "
+                                            f"instead of \"{pred['text']}\".")
+    if not moving_now and pred["label"] in MOVING:
+        probs = {l: p for l, p in (pred.get("probabilities") or {}).items() if l in MOTIONLESS}
+        if probs and sum(probs.values()) > 0:
+            best = max(probs, key=probs.get)
+            shown = {"label": best, "text": occupancy.LABEL_TEXT[best], "confidence": round(probs[best] / sum(probs.values()), 3),
+                     "reliable": reliable}
+        else:
+            shown = presence_from_movement(mv)
+        return shown, (f"No movement above the empty-room level, so the board does not show \"{pred['text']}\" "
+                       f"and shows \"{shown['text']}\" instead.")
+    return shown, None
 
 
 @router.get("/device/state")
@@ -110,9 +133,7 @@ def get_own_state(device: SensingDevice = Depends(get_authenticated_device), ses
         pred = res.get("prediction")
         if pred:
             ev = _state(session, device.id).get("evaluation") or {}
-            room = {"label": pred["label"], "text": pred["text"], "confidence": pred["confidence"], "reliable": bool(ev.get("reliable"))}
-            if movement_overrides(pred, mv):
-                room = presence_from_movement(mv)
+            room, _ = reconcile(pred, mv, bool(ev.get("reliable")))
     return {"presence": mv["presence"], "movement_state": mv["state"], "headline": mv["headline"],
             "seconds_since_last_packet": mv["seconds_since_last_packet"], "room_state": room}
 
@@ -142,7 +163,8 @@ def get_occupancy(device_id: str, session: Session = Depends(get_session), curre
     if model:
         res = room_state_snapshot(session, device_id, model)
         out["prediction"], out["prediction_state"], out["prediction_detail"] = res["prediction"], res["state"], res["detail"]
-        out["movement_override"] = movement_overrides(res["prediction"], movement_snapshot(session, device_id))
+        _, out["override_reason"] = reconcile(res["prediction"], movement_snapshot(session, device_id),
+                                              bool((occ.get("evaluation") or {}).get("reliable")))
     return out
 
 
