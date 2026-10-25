@@ -21,6 +21,10 @@
  *
  * The receiver keeps its own hardware MAC (that is the identity registered in the API). The transmitter's fixed source MAC
  * is only used as a filter.
+ *
+ * Optional SSD1306 OLED (components/wifisense_oled): shows the CSI rate, RSSI and drops measured here, plus one line the
+ * bridge writes back every ~2 s on either USB port (UART or native USB):  WS_STATE,<presence text>,<room state text>
+ * (the API's answer for this device; the board itself never classifies anything).
  * Derived from Espressif's esp-csi csi_recv example (Apache-2.0 / CC0).
  */
 #include <stdio.h>
@@ -38,6 +42,10 @@
 #include "esp_event.h"
 #include "esp_now.h"
 #include "esp_idf_version.h"
+#include "esp_timer.h"
+#include "driver/uart.h"
+#include "hal/usb_serial_jtag_ll.h"
+#include "wifisense_oled.h"
 
 /* IDF 6 renamed WIFI_BW_HT20 to WIFI_BW20. */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
@@ -60,6 +68,14 @@ static const char HEXD[] = "0123456789abcdef";
 
 static StreamBufferHandle_t s_out;
 static volatile uint32_t s_out_drops;
+static volatile uint32_t s_accepted, s_dropped;
+static volatile int s_last_rssi;
+
+/* Latest WS_STATE line from the bridge (written by state_rx_task, read by display_task). */
+static portMUX_TYPE s_state_lock = portMUX_INITIALIZER_UNLOCKED;
+static char s_presence[17] = "WAITING FOR PC";
+static char s_room[17] = "";
+static int64_t s_state_at_us;
 
 /* ---- tiny formatters (no printf in the Wi-Fi task) ---- */
 static char *put_str(char *p, const char *s)
@@ -169,6 +185,7 @@ static void csi_rx_cb(void *ctx, wifi_csi_info_t *info)
 
     /* Only 20 MHz non-HT frames with the layout the API understands. */
     if (rc->sig_mode != 0 || rc->cwb != 0) {
+        s_dropped++;
         if ((dropped_fmt++ % 500) == 0) {
             ESP_LOGW(TAG, "dropped frame: sig_mode=%d cwb=%d (need non-HT 20 MHz; check the transmitter's rate/bandwidth) [%u so far]",
                      (int)rc->sig_mode, (int)rc->cwb, (unsigned)dropped_fmt);
@@ -176,6 +193,7 @@ static void csi_rx_cb(void *ctx, wifi_csi_info_t *info)
         return;
     }
     if (info->len != CSI_BUF_LEN) {
+        s_dropped++;
         if ((dropped_len++ % 500) == 0) {
             ESP_LOGW(TAG, "dropped CSI: len=%d, expected %d (check lltf-only CSI config) [%u so far]",
                      (int)info->len, CSI_BUF_LEN, (unsigned)dropped_len);
@@ -227,6 +245,113 @@ static void csi_rx_cb(void *ctx, wifi_csi_info_t *info)
         out_line(line, (size_t)(p - line));
     }
     accepted++;
+    s_accepted = accepted;
+    s_last_rssi = rc->rssi;
+}
+
+/* One reader per port: collects bytes into a line and stores a complete WS_STATE line for the display. */
+typedef struct {
+    char line[64];
+    size_t n;
+} state_reader_t;
+
+static void state_feed(state_reader_t *r, uint8_t c)
+{
+    if (c != '\n') {
+        if (r->n < sizeof(r->line) - 1) {
+            r->line[r->n++] = (char)c;
+        }
+        return;
+    }
+    char *line = r->line;
+    line[r->n] = 0;
+    r->n = 0;
+    if (strncmp(line, "WS_STATE,", 9) != 0) {
+        return;
+    }
+    char *top = line + 9, *bottom = strchr(top, ',');
+    if (!bottom) {
+        return;
+    }
+    *bottom++ = 0;
+    char *cr = strchr(bottom, '\r');
+    if (cr) {
+        *cr = 0;
+    }
+    taskENTER_CRITICAL(&s_state_lock);
+    strlcpy(s_presence, top, sizeof(s_presence));
+    strlcpy(s_room, bottom, sizeof(s_room));
+    s_state_at_us = esp_timer_get_time();
+    taskEXIT_CRITICAL(&s_state_lock);
+}
+
+#if CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG || CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+/* The board's native "USB" port. The console already writes the CSI lines out of it; this only empties its receive FIFO
+ * every 20 ms with the low-level read, so no driver is installed and the output path is untouched. */
+static void state_usb_task(void *arg)
+{
+    static state_reader_t r;
+    uint8_t buf[64];
+    for (;;) {
+        while (usb_serial_jtag_ll_rxfifo_data_available()) {
+            uint32_t n = usb_serial_jtag_ll_read_rxfifo(buf, sizeof(buf));
+            for (uint32_t i = 0; i < n; i++) {
+                state_feed(&r, buf[i]);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+#endif
+
+#if CONFIG_ESP_CONSOLE_UART
+/* The board's "COM"/"UART" port. Output keeps using the normal console path; only receiving goes through the driver. */
+static void state_rx_task(void *arg)
+{
+    static state_reader_t r;
+    uint8_t c;
+    for (;;) {
+        if (uart_read_bytes(CONFIG_ESP_CONSOLE_UART_NUM, &c, 1, portMAX_DELAY) == 1) {
+            state_feed(&r, c);
+        }
+    }
+}
+#endif
+
+static void display_task(void *arg)
+{
+    char line[24], presence[17], room[17];
+    uint32_t last = 0;
+    for (;;) {
+        uint32_t acc = s_accepted;
+        taskENTER_CRITICAL(&s_state_lock);
+        memcpy(presence, s_presence, sizeof(presence));
+        memcpy(room, s_room, sizeof(room));
+        int64_t at = s_state_at_us;
+        taskEXIT_CRITICAL(&s_state_lock);
+        bool pc_ok = at && (esp_timer_get_time() - at) < 10 * 1000000LL;
+
+        oled_clear();
+        snprintf(line, sizeof(line), "WIFI SENSE  RX  CH%d", WIFISENSE_CHANNEL);
+        oled_text(0, 0, line);
+        snprintf(line, sizeof(line), "CSI %lu/s  RSSI %d", (unsigned long)((acc - last) * 2), acc ? s_last_rssi : 0);
+        oled_text(1, 0, line);
+        snprintf(line, sizeof(line), "dropped %lu", (unsigned long)s_dropped);
+        oled_text(2, 0, line);
+        oled_hline(3);
+        oled_text(4, 0, pc_ok ? presence : (at ? "PC LINK LOST" : presence));
+        if (pc_ok && room[0]) {
+            if (strlen(room) <= 10) {
+                oled_text_big(5, 0, room);
+            } else {
+                oled_text(5, 0, room);
+            }
+        }
+        oled_text(7, 0, acc == last ? "no frames from TX" : (pc_ok ? "bridge connected" : "start the bridge"));
+        oled_flush();
+        last = acc;
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
 }
 
 static void csi_init(void)
@@ -262,6 +387,20 @@ void app_main(void)
     wifi_init();
     esp_now_setup();
     csi_init();
+
+#if CONFIG_WIFISENSE_OLED_ENABLE
+    if (oled_init(CONFIG_WIFISENSE_OLED_SDA, CONFIG_WIFISENSE_OLED_SCL)) {
+#if CONFIG_ESP_CONSOLE_UART
+        if (uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM, 1024, 0, 0, NULL, 0) == ESP_OK) {
+            xTaskCreate(state_rx_task, "ws_state", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
+        }
+#endif
+#if CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG || CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+        xTaskCreate(state_usb_task, "ws_state_usb", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
+#endif
+        xTaskCreate(display_task, "oled", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
+    }
+#endif
 
     uint8_t mac[6];
     ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));

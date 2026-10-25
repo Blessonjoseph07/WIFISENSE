@@ -614,16 +614,8 @@ def _seconds_since(dt) -> Optional[float]:
     return max(0.0, (datetime.now(timezone.utc) - dt).total_seconds())
 
 
-@router.get("/devices/{device_id}/movement", dependencies=[Depends(require_roles(STAFF_ROLES))])
-def get_device_movement(
-    device_id: str,
-    session: Session = Depends(get_session),
-    current_user = Depends(get_current_user)
-):
-    """Is the signal between the boards fluctuating more than it does in an empty, still room? Computed from the device's own
-    stored packets, nothing is generated. See app/services/movement.py for exactly what this can and cannot say."""
-    device = _movement_device(device_id, session, current_user)
-
+def movement_snapshot(session: Session, device_id: str) -> Dict[str, Any]:
+    """Movement verdict from the device's latest stored packets (cached ~1.5 s). Shared by the staff view and the device itself."""
     def build():
         records = _recent_records(session, device_id, MOVEMENT_BLOCKS_SHOWN * movement.BLOCK)
         blocks = movement.block_variations(records)[-MOVEMENT_BLOCKS_SHOWN:]
@@ -646,7 +638,19 @@ def get_device_movement(
                 "reference_mean": baseline_view["mean"] if baseline_view else None,
                 "seconds_since_last_packet": round(idle, 1) if idle is not None else None,
                 "block_packets": movement.BLOCK}
-    out = dict(movement.cached(f"{device_id}", build))
+    return movement.cached(f"{device_id}", build)
+
+
+@router.get("/devices/{device_id}/movement", dependencies=[Depends(require_roles(STAFF_ROLES))])
+def get_device_movement(
+    device_id: str,
+    session: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """Is the signal between the boards fluctuating more than it does in an empty, still room? Computed from the device's own
+    stored packets, nothing is generated. See app/services/movement.py for exactly what this can and cannot say."""
+    device = _movement_device(device_id, session, current_user)
+    out = dict(movement_snapshot(session, device_id))
     source = device.allowed_source or "live"
     out.update({
         "device_id": device.id, "mode": {"simulated": "DEMO", "dataset": "DATASET REPLAY", "live": "LIVE HARDWARE"}.get(source, source.upper()),
