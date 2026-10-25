@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-FM-001 ===
+Test Name: FM Dashboard Overview
+Module: Facility Management | Role: Facility Manager | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Facility Manager accesses room grid with active CSI sensing status indicators.
+Actual: Dashboard rendered=True, Badge='CARE APP'
+Screenshot: TC_FM_001_fm_dashboard_overview.png
+Duration: 25.40s
+
+--- Terminal / API Trace ---
+GET /api/v1/rooms/occupancy HTTP/1.1
+Role: facility_manager
+Org: St. Peter's Elder Care Home
+Dashboard Status: 200 OK

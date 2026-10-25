@@ -1,0 +1,12 @@
+I have added my project screenshots / field photos to 01_Inputs/images_and_evidence/. Please:
+
+1. Update Images & Evidence:
+   - Embed my screenshots into UI Design sections replacing placeholder frames.
+   - Embed my geotagged field photos into Requirement Analysis with captions.
+
+2. Custom Test Cases & Feasibility:
+   - Customize the test cases (Test_1 to Test_6) in Chapter 5 with my actual system test steps and outcomes.
+   - Adjust Table 3.1 (Cloud Infrastructure Expenses) to match my specific hosting setup.
+
+3. Re-build & Convert:
+   - Re-run python generate_all.py to regenerate both .docx and .pdf files in 04_Outputs/.

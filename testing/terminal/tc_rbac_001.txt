@@ -1,0 +1,12 @@
+=== TEST EXECUTION LOG: TC-RBAC-001 ===
+Test Name: Caregiver Blocked from SysAdmin
+Module: RBAC | Role: Caregiver | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Caregiver cannot access System Admin Console. View remains blocked.
+Actual: sysadmin_rendered=False, nav_button_present=False
+Screenshot: TC_RBAC_001_caregiver_blocked_from_sysadmi.png
+Duration: 29.85s
+
+--- Terminal / API Trace ---
+[RouteGuard] Blocked unauthorized view 'sysadmin' for role 'caregiver' in context 'ELDER_CARE'.
+Safe default maintained: dashboard

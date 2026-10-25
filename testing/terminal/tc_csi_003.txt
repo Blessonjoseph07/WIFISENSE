@@ -1,0 +1,13 @@
+=== TEST EXECUTION LOG: TC-CSI-003 ===
+Test Name: Evidence & Limits Documentation
+Module: CSI & Sensing | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: Displays scientific measuring boundaries, non-wearable privacy rules, and research limits.
+Actual: Evidence view rendered=True
+Screenshot: TC_CSI_003_evidence_&_limits_documentatio.png
+Duration: 25.21s
+
+--- Terminal / API Trace ---
+View: Evidence & Limits
+Scientific Standards: IEEE 802.11n/ax CSI Amplitude Features
+Status: 200 OK

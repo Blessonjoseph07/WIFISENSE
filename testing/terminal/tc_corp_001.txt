@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-CORP-001 ===
+Test Name: Workplace Occupancy Matrix
+Module: Corporate Workplace | Role: Corporate Staff | Context: CORPORATE
+Status: PASS | Severity: INFO
+Expected: Corporate staff accesses real-time desk occupancy matrix with Wi-Fi CSI presence indicators.
+Actual: Workplace view rendered=True, Badge='SPACE APP'
+Screenshot: TC_CORP_001_workplace_occupancy_matrix.png
+Duration: 26.43s
+
+--- Terminal / API Trace ---
+GET /api/v1/workplace/occupancy HTTP/1.1
+Org: Amal Jyothi College of Engineering
+Status: 200 OK
+Active Workstations: 12

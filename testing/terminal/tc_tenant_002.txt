@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-TENANT-002 ===
+Test Name: Corporate Cannot View Elder Care Residents
+Module: Multi-Tenant Isolation | Role: Corporate Staff | Context: CORPORATE
+Status: PASS | Severity: INFO
+Expected: Corporate staff cannot see elder care residents or clinical fall alarms.
+Actual: has_resident_annamma=False, has_elder_fall_alert=False
+Screenshot: TC_TENANT_002_corporate_cannot_view_elder_ca.png
+Duration: 24.82s
+
+--- Terminal / API Trace ---
+GET /api/v1/residents HTTP/1.1
+Authorization: Bearer <tomy_corporate_token>
+Response: 403 Forbidden or Org Scoped to AJCE (count=0)
+Data Leakage: NONE

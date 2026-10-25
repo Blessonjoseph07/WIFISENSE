@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-NET-001 ===
+Test Name: Backend API Health Check
+Module: Network Diagnostics | Role: System | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: Backend /health returns HTTP 200 with online status.
+Actual: Status=200, Body={"status":"ok","database":"ok","detection_model":"loaded","p...
+Screenshot: TC_NET_001_backend_api_health_check.png
+Duration: 0.00s
+
+--- Terminal / API Trace ---
+GET /health HTTP/1.1
+Response: 200 OK
+Body: {"status":"ok","database":"ok","detection_model":"loaded","payments_mode":"sandbox","environment":"development"}
+Latency: 3.0ms

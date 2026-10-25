@@ -1,0 +1,219 @@
+================================================================================
+WI-FI SENSE AUTOMATED TEST SUITE - COMPLETE TERMINAL EXECUTION LOG
+Timestamp: 2026-10-25T14:05:43.146783
+Python: Python 3.8.8 | Selenium: 4.27.1 | Chrome: Headless 1920x1080
+================================================================================
+
+
+--- EXECUTION: testing/selenium/tests/test_01_authentication.py (205.5s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 7 items
+
+testing/selenium/tests/test_01_authentication.py::TestAuthentication::test_tc_auth_001_system_admin_login PASSED
+testing/selenium/tests/test_01_authentication.py::TestAuthentication::test_tc_auth_002_caregiver_login PASSED
+testing/selenium/tests/test_01_authentication.py::TestAuthentication::test_tc_auth_003_corporate_staff_login PASSED
+testing/selenium/tests/test_01_authentication.py::TestAuthentication::test_tc_auth_004_family_member_login PASSED
+testing/selenium/tests/test_01_authentication.py::TestAuthentication::test_tc_auth_005_negative_invalid_password PASSED
+testing/selenium/tests/test_01_authentication.py::TestAuthentication::test_tc_auth_006_negative_unknown_user PASSED
+testing/selenium/tests/test_01_authentication.py::TestAuthentication::test_tc_auth_007_user_logout_and_session_cleared PASSED
+[Selenium Test Run Complete] 7 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 7 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 7 passed in 188.04s (0:03:08) ========================
+
+
+--- EXECUTION: testing/selenium/tests/test_02_rbac_authorization.py (190.2s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 5 items
+
+testing/selenium/tests/test_02_rbac_authorization.py::TestRBACAuthorization::test_tc_rbac_001_caregiver_blocked_from_sysadmin PASSED
+testing/selenium/tests/test_02_rbac_authorization.py::TestRBACAuthorization::test_tc_rbac_002_caregiver_blocked_from_corporate_workplace PASSED
+testing/selenium/tests/test_02_rbac_authorization.py::TestRBACAuthorization::test_tc_rbac_003_corporate_staff_blocked_from_caregiver_view PASSED
+testing/selenium/tests/test_02_rbac_authorization.py::TestRBACAuthorization::test_tc_rbac_004_corporate_staff_blocked_from_residents_directory PASSED
+testing/selenium/tests/test_02_rbac_authorization.py::TestRBACAuthorization::test_tc_rbac_005_family_member_restricted_views PASSED
+[Selenium Test Run Complete] 12 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 12 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 5 passed in 189.40s (0:03:09) ========================
+
+
+--- EXECUTION: testing/selenium/tests/test_03_multi_tenant_isolation.py (75.8s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 3 items
+
+testing/selenium/tests/test_03_multi_tenant_isolation.py::TestMultiTenantIsolation::test_tc_tenant_001_eldercare_cannot_view_corporate_data PASSED
+testing/selenium/tests/test_03_multi_tenant_isolation.py::TestMultiTenantIsolation::test_tc_tenant_002_corporate_cannot_view_eldercare_residents PASSED
+testing/selenium/tests/test_03_multi_tenant_isolation.py::TestMultiTenantIsolation::test_tc_tenant_003_backend_api_tenant_boundary_enforcement PASSED
+[Selenium Test Run Complete] 15 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 15 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 3 passed in 62.62s (0:01:02) =========================
+
+
+--- EXECUTION: testing/selenium/tests/test_04_caregiver_fall_alert.py (107.5s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 3 items
+
+testing/selenium/tests/test_04_caregiver_fall_alert.py::TestCaregiverFallAlert::test_tc_alert_001_alerts_queue_inspection PASSED
+testing/selenium/tests/test_04_caregiver_fall_alert.py::TestCaregiverFallAlert::test_tc_alert_002_acknowledge_fall_alarm PASSED
+testing/selenium/tests/test_04_caregiver_fall_alert.py::TestCaregiverFallAlert::test_tc_alert_003_resolve_fall_alarm_with_clinical_notes PASSED
+[Selenium Test Run Complete] 18 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 18 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 3 passed in 94.34s (0:01:34) =========================
+
+
+--- EXECUTION: testing/selenium/tests/test_05_facility_manager_eldercare.py (101.8s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 3 items
+
+testing/selenium/tests/test_05_facility_manager_eldercare.py::TestFacilityManagerElderCare::test_tc_fm_001_dashboard_kpis_and_node_telemetry PASSED
+testing/selenium/tests/test_05_facility_manager_eldercare.py::TestFacilityManagerElderCare::test_tc_fm_002_sharing_policy_manager PASSED
+testing/selenium/tests/test_05_facility_manager_eldercare.py::TestFacilityManagerElderCare::test_tc_fm_003_resident_directory_inspection PASSED
+[Selenium Test Run Complete] 21 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 21 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 3 passed in 88.69s (0:01:28) =========================
+
+
+--- EXECUTION: testing/selenium/tests/test_06_corporate_workplace_occupancy.py (74.9s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 2 items
+
+testing/selenium/tests/test_06_corporate_workplace_occupancy.py::TestCorporateWorkplaceOccupancy::test_tc_corp_001_workplace_dashboard_occupancy PASSED
+testing/selenium/tests/test_06_corporate_workplace_occupancy.py::TestCorporateWorkplaceOccupancy::test_tc_corp_002_room_scheduling_and_booking PASSED
+[Selenium Test Run Complete] 23 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 23 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 2 passed in 70.01s (0:01:10) =========================
+
+
+--- EXECUTION: testing/selenium/tests/test_07_family_portal_safety.py (77.8s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 2 items
+
+testing/selenium/tests/test_07_family_portal_safety.py::TestFamilyPortalSafety::test_tc_fam_001_resident_presence_badge PASSED
+testing/selenium/tests/test_07_family_portal_safety.py::TestFamilyPortalSafety::test_tc_fam_002_subscription_tier_status PASSED
+[Selenium Test Run Complete] 25 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 25 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 2 passed in 68.76s (0:01:08) =========================
+
+
+--- EXECUTION: testing/selenium/tests/test_08_device_service_desk.py (114.2s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 3 items
+
+testing/selenium/tests/test_08_device_service_desk.py::TestDeviceServiceDesk::test_tc_dev_001_sensing_node_fleet_view PASSED
+testing/selenium/tests/test_08_device_service_desk.py::TestDeviceServiceDesk::test_tc_dev_002_provision_new_sensing_node PASSED
+testing/selenium/tests/test_08_device_service_desk.py::TestDeviceServiceDesk::test_tc_dev_003_report_node_fault_ticket PASSED
+[Selenium Test Run Complete] 28 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 28 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 3 passed in 101.04s (0:01:41) ========================
+
+
+--- EXECUTION: testing/selenium/tests/test_09_csi_sensing_provenance.py (102.7s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 3 items
+
+testing/selenium/tests/test_09_csi_sensing_provenance.py::TestCSISensingProvenance::test_tc_csi_001_sensing_monitor_and_subcarriers PASSED
+testing/selenium/tests/test_09_csi_sensing_provenance.py::TestCSISensingProvenance::test_tc_csi_002_data_provenance_labels PASSED
+testing/selenium/tests/test_09_csi_sensing_provenance.py::TestCSISensingProvenance::test_tc_csi_003_evidence_and_limits_view PASSED
+[Selenium Test Run Complete] 31 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 31 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 3 passed in 89.63s (0:01:29) =========================
+
+
+--- EXECUTION: testing/selenium/tests/test_10_responsive_layouts.py (110.3s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 5 items
+
+testing/selenium/tests/test_10_responsive_layouts.py::TestResponsiveLayouts::test_tc_resp_001_desktop_viewport PASSED
+testing/selenium/tests/test_10_responsive_layouts.py::TestResponsiveLayouts::test_tc_resp_002_laptop_viewport PASSED
+testing/selenium/tests/test_10_responsive_layouts.py::TestResponsiveLayouts::test_tc_resp_003_small_desktop_viewport PASSED
+testing/selenium/tests/test_10_responsive_layouts.py::TestResponsiveLayouts::test_tc_resp_004_tablet_portrait_viewport PASSED
+testing/selenium/tests/test_10_responsive_layouts.py::TestResponsiveLayouts::test_tc_resp_005_mobile_viewport PASSED
+[Selenium Test Run Complete] 36 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 36 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+======================== 5 passed in 88.96s (0:01:28) =========================
+
+
+--- EXECUTION: testing/selenium/tests/test_11_console_network_errors.py (61.9s) ---
+============================= test session starts =============================
+platform win32 -- Python 3.8.8, pytest-8.3.5, pluggy-1.5.0 -- D:\Wifisense\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Wifisense
+plugins: anyio-4.5.2
+collecting ... collected 2 items
+
+testing/selenium/tests/test_11_console_network_errors.py::TestConsoleNetworkErrors::test_tc_cons_001_browser_console_inspection PASSED
+testing/selenium/tests/test_11_console_network_errors.py::TestConsoleNetworkErrors::test_tc_net_001_backend_api_health_check PASSED
+[Selenium Test Run Complete] 38 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+[Selenium Test Run Complete] 38 cumulative tests recorded in D:\Wifisense\testing\reports\selenium_results.json
+
+
+============================= 2 passed in 56.98s ==============================
