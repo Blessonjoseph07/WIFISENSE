@@ -4,7 +4,12 @@
 #include <string.h>
 
 #include "driver/i2c_master.h"
+#include "driver/gpio.h"
+#include "esp_rom_sys.h"
+#include <stdio.h>
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "wifisense_oled.h"
 
 #define W 128
@@ -57,7 +62,7 @@ static bool cmds(const uint8_t *c, size_t n)
 }
 
 /* Opens an I2C bus on the two pins and looks for an SSD1306 (0x3C, then 0x3D). On success the bus stays open. */
-static int try_pins(int sda_gpio, int scl_gpio, i2c_master_bus_handle_t *out)
+static int try_pins(int sda_gpio, int scl_gpio, int timeout_ms, i2c_master_bus_handle_t *out)
 {
     i2c_master_bus_handle_t bus;
     i2c_master_bus_config_t bus_cfg = {
@@ -72,9 +77,9 @@ static int try_pins(int sda_gpio, int scl_gpio, i2c_master_bus_handle_t *out)
         return -1;
     }
     int addr = -1;
-    if (i2c_master_probe(bus, 0x3C, 5) == ESP_OK) {
+    if (i2c_master_probe(bus, 0x3C, timeout_ms) == ESP_OK) {
         addr = 0x3C;
-    } else if (i2c_master_probe(bus, 0x3D, 5) == ESP_OK) {
+    } else if (i2c_master_probe(bus, 0x3D, timeout_ms) == ESP_OK) {
         addr = 0x3D;
     }
     if (addr < 0) {
@@ -92,8 +97,14 @@ static const int SAFE_GPIO[] = {1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
 bool oled_init(int sda_gpio, int scl_gpio)
 {
     i2c_master_bus_handle_t bus;
-    int addr = try_pins(sda_gpio, scl_gpio, &bus);
-    if (addr < 0 && (addr = try_pins(scl_gpio, sda_gpio, &bus)) >= 0) {
+    int addr = -1;
+    for (int attempt = 0; attempt < 5 && addr < 0; attempt++) {     /* the display needs a moment after power-up */
+        if (attempt) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+        addr = try_pins(sda_gpio, scl_gpio, TIMEOUT_MS, &bus);
+    }
+    if (addr < 0 && (addr = try_pins(scl_gpio, sda_gpio, TIMEOUT_MS, &bus)) >= 0) {
         ESP_LOGW(TAG, "display found with SDA and SCL SWAPPED (SDA=%d SCL=%d); using it, but swap the two wires to match the guide",
                  scl_gpio, sda_gpio);
         int t = sda_gpio;
@@ -105,7 +116,7 @@ bool oled_init(int sda_gpio, int scl_gpio)
         const int n = sizeof(SAFE_GPIO) / sizeof(SAFE_GPIO[0]);
         for (int i = 0; i < n && addr < 0; i++) {
             for (int j = 0; j < n && addr < 0; j++) {
-                if (i != j && (addr = try_pins(SAFE_GPIO[i], SAFE_GPIO[j], &bus)) >= 0) {
+                if (i != j && (addr = try_pins(SAFE_GPIO[i], SAFE_GPIO[j], TIMEOUT_MS, &bus)) >= 0) {
                     sda_gpio = SAFE_GPIO[i];
                     scl_gpio = SAFE_GPIO[j];
                     ESP_LOGW(TAG, "display found on SDA=GPIO%d SCL=GPIO%d instead of the configured pins; using it", sda_gpio, scl_gpio);
@@ -116,6 +127,50 @@ bool oled_init(int sda_gpio, int scl_gpio)
     if (addr < 0) {
         ESP_LOGW(TAG, "no SSD1306 answered on ANY safe pin pair: the display has no power or no contact (check VDD on 3V3, GND, "
                       "that the OLED's header pins are soldered and every wire shares a breadboard row with its pin)");
+        /* Wiring check: a powered, connected module pulls its SDA and SCK lines up to VDD through its own resistors. With a
+         * weak pull-down on every safe pin, only the pins wired to a powered module read high. */
+        char seen[96] = "";
+        size_t used = 0;
+        for (int i = 0; i < (int)(sizeof(SAFE_GPIO) / sizeof(SAFE_GPIO[0])); i++) {
+            gpio_reset_pin(SAFE_GPIO[i]);
+            gpio_set_direction(SAFE_GPIO[i], GPIO_MODE_INPUT);
+            gpio_set_pull_mode(SAFE_GPIO[i], GPIO_PULLDOWN_ONLY);
+        }
+        esp_rom_delay_us(2000);
+        for (int i = 0; i < (int)(sizeof(SAFE_GPIO) / sizeof(SAFE_GPIO[0])); i++) {
+            if (gpio_get_level(SAFE_GPIO[i]) && used < sizeof(seen) - 6) {
+                used += snprintf(seen + used, sizeof(seen) - used, " %d", SAFE_GPIO[i]);
+            }
+            gpio_reset_pin(SAFE_GPIO[i]);
+        }
+        if (used) {
+            ESP_LOGW(TAG, "wiring check: pins pulled HIGH by the module:%s (expect 8 and 9). The module has power, so check "
+                          "that SDA/SCK really go to those pins", seen);
+            /* Ask every 7-bit address on the configured pins, both ways round, so an unusual address or a dead chip is told apart. */
+            for (int swap = 0; swap < 2; swap++) {
+                int sda = swap ? scl_gpio : sda_gpio, scl = swap ? sda_gpio : scl_gpio;
+                i2c_master_bus_handle_t b;
+                i2c_master_bus_config_t cfg = {.i2c_port = -1, .sda_io_num = sda, .scl_io_num = scl, .clk_source = I2C_CLK_SRC_DEFAULT,
+                                               .glitch_ignore_cnt = 7, .flags.enable_internal_pullup = true};
+                if (i2c_new_master_bus(&cfg, &b) != ESP_OK) {
+                    continue;
+                }
+                char found[64] = "";
+                size_t f = 0;
+                for (int a = 0x08; a <= 0x77; a++) {
+                    if (i2c_master_probe(b, a, 50) == ESP_OK && f < sizeof(found) - 6) {
+                        f += snprintf(found + f, sizeof(found) - f, " 0x%02X", a);
+                    }
+                }
+                esp_err_t e = i2c_master_probe(b, 0x3C, 50);
+                ESP_LOGW(TAG, "address scan SDA=%d SCL=%d: %s (0x3C probe: %s)", sda, scl, f ? found : "no device answered",
+                         esp_err_to_name(e));
+                i2c_del_master_bus(b);
+            }
+        } else {
+            ESP_LOGW(TAG, "wiring check: NO pin is pulled high, so the module is not powered or its SDA/SCK wires reach no "
+                          "safe pin: check VDD->3V3 and GND->GND first (breadboard column, wire fully pushed in)");
+        }
         return false;
     }
     i2c_device_config_t dev_cfg = {
