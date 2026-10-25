@@ -261,7 +261,7 @@ class Poster:
                 f"server p50={s[len(s) // 2]:.0f}ms")
 
 
-ROOM_SHORT = {"empty": "EMPTY", "still": "STILL", "walking": "WALKING", "few": "FEW PEOPLE", "busy": "BUSY"}
+ROOM_SHORT = {"empty": "EMPTY", "still": "STILL", "walking": "WALKING", "few": "FEW PEOPLE", "busy": "BUSY", "moving": "MOVING"}
 PRESENCE_SHORT = {"MOVEMENT": "PRESENCE+MOVE", "PRESENT": "PRESENCE", "QUIET": "NO PRESENCE", "STALE": "NOT SENDING", "NO_DATA": "NO DATA"}
 
 
@@ -270,7 +270,9 @@ def display_lines(state: Dict) -> str:
     API marked not reliable gets a '?' so the display never looks more certain than the model is."""
     top = PRESENCE_SHORT.get(state.get("movement_state"), "NO DATA")
     room = state.get("room_state")
-    if room:
+    if room and room.get("confidence") is None:      # from the movement check, not the model: no percentage to show
+        bottom = ROOM_SHORT.get(room.get("label"), "UNKNOWN")
+    elif room:
         bottom = f"{ROOM_SHORT.get(room.get('label'), 'UNKNOWN')} {round(100 * float(room.get('confidence') or 0))}%"
         if not room.get("reliable"):
             bottom += "?"
