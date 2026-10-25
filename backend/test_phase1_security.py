@@ -1,9 +1,10 @@
 import json
+import os
 import urllib.request
 import urllib.error
 import time
 
-API_BASE = "http://127.0.0.1:8000"
+API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 
 def api_call(endpoint, method="GET", data=None, token=None):
     url = f"{API_BASE}{endpoint}"

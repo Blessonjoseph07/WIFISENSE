@@ -21,10 +21,12 @@ class Settings:
     SEED_PASSWORD: str = os.getenv("SEED_PASSWORD", "")
     ALLOWED_ORIGINS: list = [
         origin.strip()
-        for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+        for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
         if origin.strip()
     ]
     MAX_UPLOAD_BYTES: int = int(os.getenv("MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))
+    # Only falls newer than this take over the screen; older open ones stay in the alert banner and list.
+    EMERGENCY_POPUP_MAX_AGE_MINUTES: int = int(os.getenv("EMERGENCY_POPUP_MAX_AGE_MINUTES", "30"))
     BOOTSTRAP_ADMIN_EMAIL: str = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "")
     BOOTSTRAP_ADMIN_PASSWORD: str = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
 

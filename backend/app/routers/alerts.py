@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, or_
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from app.core.database import get_session
+from app.core.config import settings
 from app.routers.auth import get_current_user, require_roles, get_user_scopes
 from app.models.entities import Alert, AlertAcknowledgement, Room, Floor, Building, Resident, EmergencyContact, SensingEvent, ActivityType, Organization, User, SensingDevice
 from app.schemas.schemas import AlertOut, AlertResolve, AlertDetailOut, AlertAcknowledgementOut, AlertVerify
@@ -116,9 +117,11 @@ def get_active_fall_emergency(
     current_user = Depends(get_current_user)
 ):
     scopes = get_user_scopes(current_user)
+    since = datetime.now(timezone.utc) - timedelta(minutes=settings.EMERGENCY_POPUP_MAX_AGE_MINUTES)
     stmt = get_scoped_alert_query(scopes).where(
         Alert.status.in_(["new", "acknowledged", "responding"]),
-        Alert.event_type == "Fall_Detected"
+        Alert.event_type == "Fall_Detected",
+        Alert.created_at >= since
     ).order_by(Alert.created_at.desc())
     alert = session.exec(stmt).first()
 
