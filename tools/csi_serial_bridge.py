@@ -7,6 +7,10 @@ POST /sensing/ingest with the device token, exactly in the format docs/firmware_
   python tools/csi_serial_bridge.py --port COM4 --token TK-ESP32-... --api http://127.0.0.1:8000
   python tools/csi_serial_bridge.py --file capture.txt --dry-run          # parse and verify only, nothing is sent
 
+Board display: with --port (and not --dry-run) the bridge also asks the API every 2 s what this device may show
+(GET /sensing/device/state, same device token) and writes one line back to the receiver, which shows it on its OLED:
+  WS_STATE,<presence text>,<room state text>
+
 Safety rules (nothing here invents or labels data)
   * Only lines the firmware itself printed are used. Anything that is not exactly 104 integers in int8 range, or whose
     radio format is not non-HT 20 MHz, is counted and dropped, never repaired.
@@ -257,7 +261,59 @@ class Poster:
                 f"server p50={s[len(s) // 2]:.0f}ms")
 
 
-def lines_from(args):
+ROOM_SHORT = {"empty": "EMPTY", "still": "STILL", "walking": "WALKING", "few": "FEW PEOPLE", "busy": "BUSY"}
+PRESENCE_SHORT = {"MOVEMENT": "PRESENCE+MOVE", "PRESENT": "PRESENCE", "QUIET": "NO PRESENCE", "STALE": "NOT SENDING", "NO_DATA": "NO DATA"}
+
+
+def display_lines(state: Dict) -> str:
+    """The WS_STATE line for the receiver's OLED (ASCII, no commas, each part at most 16 characters). A learned room state the
+    API marked not reliable gets a '?' so the display never looks more certain than the model is."""
+    top = PRESENCE_SHORT.get(state.get("movement_state"), "NO DATA")
+    room = state.get("room_state")
+    if room:
+        bottom = f"{ROOM_SHORT.get(room.get('label'), 'UNKNOWN')} {round(100 * float(room.get('confidence') or 0))}%"
+        if not room.get("reliable"):
+            bottom += "?"
+    else:
+        bottom = "NOT TRAINED"
+    clean = lambda t: re.sub(r"[^ -~]", "", t).replace(",", " ")[:16]
+    return f"WS_STATE,{clean(top)},{clean(bottom)}\n"
+
+
+class StateRelay:
+    """Every `period` seconds: GET /sensing/device/state with the device token and write display_lines() to the serial port.
+    Best effort: a failed request just skips that update (the board keeps showing its own radio statistics)."""
+
+    def __init__(self, api: str, token: str, period: float = 2.0):
+        u = urllib.parse.urlparse(api)
+        self._https, self._host, self._prefix = u.scheme == "https", u.netloc, u.path.rstrip("/")
+        self.token, self.period, self.ser, self.updates, self.errors = token, period, None, 0, 0
+        threading.Thread(target=self._run, name="state-relay", daemon=True).start()
+
+    def _run(self) -> None:
+        conn = None
+        while True:
+            time.sleep(self.period)
+            if self.ser is None:
+                continue
+            try:
+                if conn is None:
+                    conn = (http.client.HTTPSConnection if self._https else http.client.HTTPConnection)(self._host, timeout=10)
+                conn.request("GET", self._prefix + "/sensing/device/state", headers={"X-Device-Token": self.token})
+                resp = conn.getresponse()
+                data = resp.read()
+                if resp.status != 200:
+                    raise OSError(f"HTTP {resp.status}")
+                self.ser.write(display_lines(json.loads(data)).encode("ascii"))
+                self.updates += 1
+            except Exception:
+                self.errors += 1
+                if conn is not None:
+                    conn.close()
+                    conn = None
+
+
+def lines_from(args, relay=None):
     if args.file:
         with open(args.file, encoding="utf-8", errors="replace") as fh:
             for ln in fh:
@@ -268,6 +324,8 @@ def lines_from(args):
     except ImportError:
         sys.exit("pyserial is not installed: pip install pyserial")
     with serial.Serial(args.port, args.baud, timeout=1) as ser:
+        if relay is not None:
+            relay.ser = ser
         buf = b""
         while True:
             chunk = ser.read(4096)
@@ -301,12 +359,13 @@ def main() -> None:
         ap.error("--token (or WIFISENSE_DEVICE_TOKEN) is required unless --dry-run")
 
     poster = Poster(a.api, a.token, a.dry_run, wire=a.wire, batch_max=max(1, min(a.batch, 100)), max_wait=a.max_wait_ms / 1000)
+    relay = StateRelay(a.api, a.token) if (a.port and not a.dry_run) else None
     last_iq: Dict[int, List[int]] = {}
     read = dropped = raw_ok = 0
     mismatch = False
     t_start = t_report = time.time()
     try:
-        for line in lines_from(a):
+        for line in lines_from(a, relay):
             now = time.time()
             p = parse_iq_line(line) if line else None
             if line.startswith("CSI_IQ,"):
