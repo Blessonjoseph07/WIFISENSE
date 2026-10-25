@@ -1,0 +1,12 @@
+=== TEST EXECUTION LOG: TC-CSI-002 ===
+Test Name: Telemetry Data Provenance Labels
+Module: CSI & Sensing | Role: Caregiver | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: UI labels values transparently as Demo, Dataset Replay, or Live Hardware.
+Actual: Provenance labels present=True
+Screenshot: TC_CSI_002_telemetry_data_provenance_labe.png
+Duration: 25.38s
+
+--- Terminal / API Trace ---
+UI Label Check: 'Every value is labelled demo, dataset replay, or live hardware.'
+Provenance Verified: TRUE

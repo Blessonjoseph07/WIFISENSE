@@ -1,0 +1,12 @@
+=== TEST EXECUTION LOG: TC-RBAC-003 ===
+Test Name: Corporate Staff Blocked from Caregiver View
+Module: RBAC | Role: Corporate Staff | Context: CORPORATE
+Status: PASS | Severity: INFO
+Expected: Corporate staff cannot access Elder Care safety view or resident records.
+Actual: caregiver_rendered=False, nav_present=False
+Screenshot: TC_RBAC_003_corporate_staff_blocked_from_c.png
+Duration: 29.60s
+
+--- Terminal / API Trace ---
+[RouteGuard] Access Denied: 'caregiver' is not available in WIFISENSE SPACE.
+Role: corporate_staff

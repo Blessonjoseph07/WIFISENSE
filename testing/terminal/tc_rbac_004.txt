@@ -1,0 +1,12 @@
+=== TEST EXECUTION LOG: TC-RBAC-004 ===
+Test Name: Corporate Staff Blocked from Resident Directory
+Module: RBAC | Role: Corporate Staff | Context: CORPORATE
+Status: PASS | Severity: INFO
+Expected: Corporate staff cannot access elderly resident directory or health records.
+Actual: residents_rendered=False, nav_present=False
+Screenshot: TC_RBAC_004_corporate_staff_blocked_from_r.png
+Duration: 29.64s
+
+--- Terminal / API Trace ---
+[RouteGuard] Access Denied: 'residents' is not available in WIFISENSE SPACE.
+Policy Check: REJECTED

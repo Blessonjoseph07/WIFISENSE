@@ -1,0 +1,15 @@
+=== TEST EXECUTION LOG: TC-AUTH-005 ===
+Test Name: Negative Invalid Password
+Module: Authentication | Role: Unauthenticated Visitor | Context: SECURITY
+Status: PASS | Severity: INFO
+Expected: Authentication rejected with HTTP 401 and error banner displayed
+Actual: is_logged_in=False, Error='Incorrect email or password.'
+Screenshot: TC_AUTH_005_negative_invalid_password.png
+Duration: 32.51s
+
+--- Terminal / API Trace ---
+POST /auth/login HTTP/1.1
+Email: mary@wifisense.com
+Password: WrongPassword!999
+Response: 401 Unauthorized
+Detail: Invalid email or password

@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-CORP-002 ===
+Test Name: Room Scheduling & Reservation
+Module: Corporate Workplace | Role: Corporate Staff | Context: CORPORATE
+Status: PASS | Severity: INFO
+Expected: Corporate staff views schedule and can book corporate meeting rooms.
+Actual: Bookings view rendered=True, Book attempt triggered=False
+Screenshot: TC_CORP_002_room_scheduling_&_reservation.png
+Duration: 31.37s
+
+--- Terminal / API Trace ---
+POST /api/v1/room-bookings HTTP/1.1
+Title: 'Research Team Sync'
+Room: Conference Room A
+Status: CONFIRMED

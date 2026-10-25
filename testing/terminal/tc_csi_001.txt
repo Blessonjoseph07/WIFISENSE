@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-CSI-001 ===
+Test Name: Sensing Monitor & Waveforms
+Module: CSI & Sensing | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: Sensing Monitor displays real-time 64-subcarrier CSI stream and amplitude spectrum.
+Actual: Sensing Monitor rendered=True
+Screenshot: TC_CSI_001_sensing_monitor_&_waveforms.png
+Duration: 25.19s
+
+--- Terminal / API Trace ---
+WS /ws/csi-stream HTTP/1.1
+64 Subcarriers Ingested: 2.4GHz OFDM
+Provenance: Dataset Replay & Simulated Events
+Status: STREAMING

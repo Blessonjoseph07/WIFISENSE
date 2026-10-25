@@ -1,0 +1,12 @@
+Please run the automated report builder generate_all.py in MCA_Academic_Report_Toolkit:
+
+1. Execute: python generate_all.py (or python MCA_Academic_Report_Toolkit/generate_all.py) to compile:
+   - Comprehensive Master Project Report in 04_Outputs/Project_Report/ (both .docx and .pdf).
+
+2. Verify that:
+   - Autonomous college formatting (A4: left 1.18", top/bottom/right 1.0", Times New Roman 1.5 line spacing) is preserved.
+   - Chapter headings appear centered on dedicated pages in the report.
+   - All 9 publication-quality monochrome UML architecture diagrams are included at 300 DPI.
+   - Official college emblem is intact on cover and certificate pages.
+   - Interactive clickable Table of Contents redirects to target pages.
+   - Check file sizes and confirm 0 errors.

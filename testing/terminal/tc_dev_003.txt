@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-DEV-003 ===
+Test Name: Report Node Fault Ticket
+Module: Device Management | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: Fault ticketing logs incident in Service Desk queue with HIGH priority.
+Actual: Fault report triggered=False
+Screenshot: TC_DEV_003_report_node_fault_ticket.png
+Duration: 31.73s
+
+--- Terminal / API Trace ---
+POST /api/v1/devices/{id}/fault-report HTTP/1.1
+Issue: FAULTY_CSI_VALUES
+Severity: HIGH
+Status: TICKET_OPEN

@@ -1,0 +1,13 @@
+=== TEST EXECUTION LOG: TC-AUTH-007 ===
+Test Name: Logout & Session Destruction
+Module: Authentication | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: Logout removes token and user from localStorage, returning to unauthenticated state
+Actual: is_logged_in=False, stored_token=None
+Screenshot: TC_AUTH_007_logout_&_session_destruction.png
+Duration: 20.69s
+
+--- Terminal / API Trace ---
+POST /auth/logout HTTP/1.1
+Tokens cleared from localStorage
+Session State: UNINVOKED
