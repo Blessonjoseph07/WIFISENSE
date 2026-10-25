@@ -23,7 +23,7 @@
  * is only used as a filter.
  *
  * Optional SSD1306 OLED (components/wifisense_oled): shows the CSI rate, RSSI and drops measured here, plus one line the
- * bridge writes back on the UART port every ~2 s:  WS_STATE,<presence text>,<room state text>
+ * bridge writes back every ~2 s on either USB port (UART or native USB):  WS_STATE,<presence text>,<room state text>
  * (the API's answer for this device; the board itself never classifies anything).
  * Derived from Espressif's esp-csi csi_recv example (Apache-2.0 / CC0).
  */
@@ -44,6 +44,7 @@
 #include "esp_idf_version.h"
 #include "esp_timer.h"
 #include "driver/uart.h"
+#include "hal/usb_serial_jtag_ll.h"
 #include "wifisense_oled.h"
 
 /* IDF 6 renamed WIFI_BW_HT20 to WIFI_BW20. */
@@ -248,43 +249,71 @@ static void csi_rx_cb(void *ctx, wifi_csi_info_t *info)
     s_last_rssi = rc->rssi;
 }
 
+/* One reader per port: collects bytes into a line and stores a complete WS_STATE line for the display. */
+typedef struct {
+    char line[64];
+    size_t n;
+} state_reader_t;
+
+static void state_feed(state_reader_t *r, uint8_t c)
+{
+    if (c != '\n') {
+        if (r->n < sizeof(r->line) - 1) {
+            r->line[r->n++] = (char)c;
+        }
+        return;
+    }
+    char *line = r->line;
+    line[r->n] = 0;
+    r->n = 0;
+    if (strncmp(line, "WS_STATE,", 9) != 0) {
+        return;
+    }
+    char *top = line + 9, *bottom = strchr(top, ',');
+    if (!bottom) {
+        return;
+    }
+    *bottom++ = 0;
+    char *cr = strchr(bottom, '\r');
+    if (cr) {
+        *cr = 0;
+    }
+    taskENTER_CRITICAL(&s_state_lock);
+    strlcpy(s_presence, top, sizeof(s_presence));
+    strlcpy(s_room, bottom, sizeof(s_room));
+    s_state_at_us = esp_timer_get_time();
+    taskEXIT_CRITICAL(&s_state_lock);
+}
+
+#if CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG || CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+/* The board's native "USB" port. The console already writes the CSI lines out of it; this only empties its receive FIFO
+ * every 20 ms with the low-level read, so no driver is installed and the output path is untouched. */
+static void state_usb_task(void *arg)
+{
+    static state_reader_t r;
+    uint8_t buf[64];
+    for (;;) {
+        while (usb_serial_jtag_ll_rxfifo_data_available()) {
+            uint32_t n = usb_serial_jtag_ll_read_rxfifo(buf, sizeof(buf));
+            for (uint32_t i = 0; i < n; i++) {
+                state_feed(&r, buf[i]);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+#endif
+
 #if CONFIG_ESP_CONSOLE_UART
-/* Reads the bridge's WS_STATE lines from the console UART (the board's "COM"/"UART" USB port). Output keeps using the
- * normal console path; only receiving goes through the driver. */
+/* The board's "COM"/"UART" port. Output keeps using the normal console path; only receiving goes through the driver. */
 static void state_rx_task(void *arg)
 {
-    char line[64];
-    size_t n = 0;
+    static state_reader_t r;
     uint8_t c;
     for (;;) {
-        if (uart_read_bytes(CONFIG_ESP_CONSOLE_UART_NUM, &c, 1, portMAX_DELAY) != 1) {
-            continue;
+        if (uart_read_bytes(CONFIG_ESP_CONSOLE_UART_NUM, &c, 1, portMAX_DELAY) == 1) {
+            state_feed(&r, c);
         }
-        if (c != '\n') {
-            if (n < sizeof(line) - 1) {
-                line[n++] = (char)c;
-            }
-            continue;
-        }
-        line[n] = 0;
-        n = 0;
-        if (strncmp(line, "WS_STATE,", 9) != 0) {
-            continue;
-        }
-        char *top = line + 9, *bottom = strchr(top, ',');
-        if (!bottom) {
-            continue;
-        }
-        *bottom++ = 0;
-        char *cr = strchr(bottom, '\r');
-        if (cr) {
-            *cr = 0;
-        }
-        taskENTER_CRITICAL(&s_state_lock);
-        strlcpy(s_presence, top, sizeof(s_presence));
-        strlcpy(s_room, bottom, sizeof(s_room));
-        s_state_at_us = esp_timer_get_time();
-        taskEXIT_CRITICAL(&s_state_lock);
     }
 }
 #endif
@@ -365,6 +394,9 @@ void app_main(void)
         if (uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM, 1024, 0, 0, NULL, 0) == ESP_OK) {
             xTaskCreate(state_rx_task, "ws_state", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
         }
+#endif
+#if CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG || CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+        xTaskCreate(state_usb_task, "ws_state_usb", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
 #endif
         xTaskCreate(display_task, "oled", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
     }
