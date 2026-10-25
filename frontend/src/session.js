@@ -99,9 +99,11 @@ export function createSessionGuard({ apiBase, storage, fetchImpl, onExpired = ()
 
     // A slow request sent with an OLD token can come back 401 after a refresh or a new sign-in already replaced it.
     // That is not an expired session: just retry once with the token that is current now.
-    const sentToken = String(sentAuth).replace(/^Bearer\s+/i, "");
+    const sentToken = String(sentAuth).replace(/^Bearer\s+/i, "").trim();
     const currentToken = storage.getItem("token");
-    if (currentToken && currentToken !== sentToken) {
+    // No stored login (the user just signed out) or no real token sent: a late poll, not an expired session.
+    if (!currentToken || !sentToken) return response;
+    if (currentToken !== sentToken) {
       const again = await fetchImpl(url, withAuthorization(init, currentToken));
       if (again.status === 401) expire();
       return again;
