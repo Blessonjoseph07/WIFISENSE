@@ -292,6 +292,11 @@ export default function App() {
     return false;
   };
 
+  // Wake the API as soon as the page opens: a sleeping free-tier host starts up while the visitor reads or signs in.
+  useEffect(() => {
+    fetch(`${API_BASE}/health`).catch(() => {});
+  }, []);
+
   // Push browser history state when registration form opens
   useEffect(() => {
     if (isRegistering) {
@@ -459,8 +464,11 @@ export default function App() {
   // ============================================================================
   // LOAD DATA & AUTO FILTERING
   // ============================================================================
+  // One poll at a time: on a slow host a cycle can outlast the 3 s interval, and overlapping polls pile up on the server.
+  const fetchInFlightRef = useRef(false);
   const fetchAllData = async () => {
-    if (!token) return;
+    if (!token || fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
     try {
       const headers = getHeaders();
 
@@ -480,12 +488,20 @@ export default function App() {
         return;
       }
 
+      // Every list is independent, so they load in parallel; one failing request never blocks the others.
+      const load = async (path, apply) => {
+        try {
+          const res = await fetch(`${API_BASE}${path}`, { headers });
+          if (res.ok) await apply(await res.json());
+        } catch (e) {
+          console.error(`Error fetching ${path}:`, e);
+        }
+      };
+      const tasks = [];
+
       // If elder-care admin or system admin, fetch pending access requests
       if ((isSystemAdmin || appContext === "ELDER_CARE") && (role === "system_admin" || role === "facility_manager")) {
-        const reqRes = await fetch(`${API_BASE}/family/requests`, { headers });
-        if (reqRes.ok) {
-          setAccessRequests(await reqRes.json());
-        }
+        tasks.push(load("/family/requests", setAccessRequests));
       }
 
       // Fetch sharing policies for elder-care facility_manager or system_admin
@@ -493,20 +509,11 @@ export default function App() {
         (isSystemAdmin || role === "system_admin" || role === "facility_manager") &&
         appContext !== "CORPORATE"
       ) {
-        try {
-          const spRes = await fetch(`${API_BASE}/sharing-policies`, { headers });
-          if (spRes.ok) {
-            setSharingPolicies(await spRes.json());
-          }
-        } catch (e) {
-          console.error("Error fetching sharing policies:", e);
-        }
+        tasks.push(load("/sharing-policies", setSharingPolicies));
       }
 
-      // 1. Fetch Analytics Summary
-      const occRes = await fetch(`${API_BASE}/analytics/occupancy-summary`, { headers });
-      if (occRes.ok) {
-        const data = await occRes.json();
+      // 1. Analytics Summary
+      tasks.push(load("/analytics/occupancy-summary", (data) => {
         const details = data.occupied_room_details || [];
         setOccupancySummary({
           total_rooms: data.total_rooms,
@@ -518,7 +525,7 @@ export default function App() {
 
         const criticalRoom = details.find(rm => rm.current_activity === "Fall_Detected");
         const activeRoom = details.find(rm => rm.is_occupied && rm.current_activity !== "Empty");
-        
+
         if (criticalRoom) {
           setActiveTelemetryActivity("Fall_Detected");
         } else if (activeRoom) {
@@ -526,71 +533,46 @@ export default function App() {
         } else {
           setActiveTelemetryActivity("Empty");
         }
-      }
+      }));
 
-      // 2. Fetch Alerts List
-      const alertRes = await fetch(`${API_BASE}/alerts`, { headers });
-      if (alertRes.ok) {
-        const alertData = await alertRes.json();
+      // 2. Alerts List
+      tasks.push(load("/alerts", (alertData) => {
         setAlerts(alertData);
         const activeFall = alertData.find(a => a.event_type === "Fall_Detected" && a.status !== "resolved");
         setActiveFallAlert(activeFall || null);
-      }
+      }));
 
-      // 3. Fetch Asset Lists
-      const orgRes = await fetch(`${API_BASE}/organizations`, { headers });
-      if (orgRes.ok) {
-        setOrganizations(await orgRes.json());
-      }
-
-      const bldRes = await fetch(`${API_BASE}/buildings`, { headers });
-      if (bldRes.ok) {
-        setBuildings(await bldRes.json());
-      }
-
-      const flrRes = await fetch(`${API_BASE}/floors`, { headers });
-      if (flrRes.ok) setFloors(await flrRes.json());
-
-      const rmRes = await fetch(`${API_BASE}/rooms`, { headers });
-      if (rmRes.ok) setRooms(await rmRes.json());
-
-      const devRes = await fetch(`${API_BASE}/devices`, { headers });
-      if (devRes.ok) setDevices(await devRes.json());
-
-      const faultRes = await fetch(`${API_BASE}/devices/fault-tracer`, { headers });
-      if (faultRes.ok) setFaultReports(await faultRes.json());
+      // 3. Asset Lists
+      tasks.push(load("/organizations", setOrganizations));
+      tasks.push(load("/buildings", setBuildings));
+      tasks.push(load("/floors", setFloors));
+      tasks.push(load("/rooms", setRooms));
+      tasks.push(load("/devices", setDevices));
+      tasks.push(load("/devices/fault-tracer", setFaultReports));
 
       if (isSystemAdmin || appContext === "SYSTEM" || role === "system_admin") {
-        const persRes = await fetch(`${API_BASE}/users/personnel`, { headers });
-        if (persRes.ok) {
-          setActivePersonnel(await persRes.json());
-        }
+        tasks.push(load("/users/personnel", setActivePersonnel));
       }
-
 
       // Only fetch residents for elder care or system admin (zero leak to corporate)
       if (appContext !== "CORPORATE" && role !== "corporate_staff") {
-        const resRes = await fetch(`${API_BASE}/residents`, { headers });
-        if (resRes.ok) {
-          const fetchedResidents = await resRes.json();
+        tasks.push(load("/residents", async (fetchedResidents) => {
           setResidents(fetchedResidents);
-          
-          // Fetch health records
+
+          // Health records, also in parallel
           const records = {};
-          for (const res of fetchedResidents) {
-            try {
-              const hRes = await fetch(`${API_BASE}/residents/${res.id}/health`, { headers });
-              if (hRes.ok) {
-                records[res.id] = await hRes.json();
-              }
-            } catch(e) {}
-          }
+          await Promise.all(fetchedResidents.map((res) =>
+            load(`/residents/${res.id}/health`, (h) => { records[res.id] = h; })
+          ));
           setHealthRecords(records);
-        }
+        }));
       }
 
+      await Promise.all(tasks);
     } catch (err) {
       console.error("Sync telemetry error: ", err);
+    } finally {
+      fetchInFlightRef.current = false;
     }
   };
 
