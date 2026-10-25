@@ -257,6 +257,13 @@ void oled_hline(int row)
     }
 }
 
+void oled_pixel(int x, int y)
+{
+    if (x >= 0 && x < W && y >= 0 && y < H) {
+        s_fb[(y / 8) * W + x] |= (uint8_t)(1 << (y % 8));
+    }
+}
+
 void oled_flush(void)
 {
     if (!s_ok) {

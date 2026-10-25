@@ -17,4 +17,5 @@ void oled_clear(void);
 void oled_text(int row, int col, const char *s);       /* row 0..7, col 0..20 */
 void oled_text_big(int row, int col, const char *s);   /* row 0..6 (uses row and row+1), col 0..9 */
 void oled_hline(int row);                              /* thin line through the middle of a text row */
+void oled_pixel(int x, int y);                         /* one pixel on, x 0..127, y 0..63 (off-screen is ignored) */
 void oled_flush(void);
