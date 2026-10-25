@@ -66,7 +66,24 @@ def new_device(fm, room):
     return dev["id"], dev["hardware_token"]
 
 
+def check_reconcile():
+    """The movement check decides moving vs not moving; the model only chooses within that."""
+    from app.routers.occupancy import reconcile
+    quiet = {"state": "QUIET", "blocks": [0.05] * 10, "threshold": 0.07}
+    moving = {"state": "MOVEMENT", "blocks": [0.09] * 9 + [0.05], "threshold": 0.07}
+    walk = {"label": "walking", "text": "Someone walking", "confidence": 0.67, "probabilities": {"empty": 0.1, "still": 0.23, "walking": 0.67}}
+    shown, why = reconcile(walk, quiet, False)
+    assert shown["label"] == "still" and abs(shown["confidence"] - 0.23 / 0.33) < 0.01 and "does not show" in why, (shown, why)
+    still = {"label": "still", "text": "Someone sitting or lying still", "confidence": 0.8, "probabilities": {"still": 0.8, "empty": 0.2}}
+    shown, why = reconcile(still, moving, False)
+    assert shown["label"] == "presence" and shown["confidence"] == 0.9 and "clear movement" in why, (shown, why)
+    shown, why = reconcile(walk, moving, True)
+    assert shown["label"] == "walking" and why is None
+    print("[PASS] walking is never shown without movement, and still/empty never during clear movement")
+
+
 def run():
+    check_reconcile()
     fm = login("elizabeth@wifisense.com", "elizabethpassword")
     care = login("mary@wifisense.com", "marypassword")
     corp = login("abhinand@wifisense.com", "abhinandpassword")
