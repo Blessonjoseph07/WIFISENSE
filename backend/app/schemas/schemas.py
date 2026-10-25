@@ -107,10 +107,43 @@ class OrganizationContact(BaseModel):
         v = (v or "").strip()
         if not v:
             return None
-        import re as _re
-        if not _re.fullmatch(r"\+?[0-9][0-9 ()\-]{5,22}", v):
-            raise ValueError("Enter a phone number using digits, spaces, + ( ) and - only.")
+        problem = phone_problem(v)
+        if problem:
+            raise ValueError(problem)
         return v
+
+
+def phone_problem(v: str) -> Optional[str]:
+    """None when `v` is a plausible helpline number, otherwise a plain reason. Kept in step with frontend/src/phone.js.
+
+      +91 ...           exactly 10 digits after the country code, not starting with 0 (Indian numbers)
+      +<other> ...      8 to 15 digits in total (the international E.164 maximum is 15)
+      no +              10 digits (mobile, or STD code + number), 11 starting with 0 (trunk prefix), or toll-free 1800/1860
+      any               only digits, spaces, ( ) - and a leading +; not one digit repeated (00000 00000 is not a number)"""
+    import re as _re
+    if not _re.fullmatch(r"\+?[0-9 ()\-]+", v):
+        return "Use digits, spaces, ( ) and - only, with + only at the start."
+    digits = _re.sub(r"\D", "", v)
+    if v.startswith("+"):
+        if digits.startswith("91"):
+            national = digits[2:]
+            if len(national) != 10:
+                return f"An Indian number has 10 digits after +91; this one has {len(national)}."
+            if national[0] == "0":
+                return "Leave out the 0 after +91 (for example +91 481 2000 123)."
+        elif not 8 <= len(digits) <= 15:
+            return f"An international number has 8 to 15 digits; this one has {len(digits)}."
+        else:
+            national = digits
+    else:
+        national = digits
+        tollfree = digits.startswith(("1800", "1860")) and len(digits) in (10, 11)
+        if not (tollfree or (len(digits) == 10 and digits[0] != "0") or (len(digits) == 11 and digits[0] == "0")):
+            return (f"This number has {len(digits)} digits. Use 10 digits (for example 98470 12345 or 481 2000123), "
+                    "0 + 10 digits, a 1800 toll-free number, or +91 and 10 digits.")
+    if len(set(national.lstrip("0") or "0")) == 1:
+        return "That does not look like a real number (the same digit repeated)."
+    return None
 
 
 class OrganizationOut(BaseModel):
