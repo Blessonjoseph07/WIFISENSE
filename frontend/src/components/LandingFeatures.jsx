@@ -57,8 +57,11 @@ export default function LandingFeatures({ onGetStarted }) {
 
   const demoAccounts = [
     { role: "Admin", email: "blesson@wifisense.com", pill: "bg-amber-400/10 text-amber-400 border-amber-400/30" },
-    { role: "Caregiver", email: "abhinanth@wifisense.com", pill: "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" },
-    { role: "Manager", email: "abhinand@wifisense.com", pill: "bg-sky-400/10 text-sky-400 border-sky-400/30" },
+    { role: "Caregiver", email: "mary@wifisense.com", pill: "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" },
+    { role: "Care Manager", email: "elizabeth@wifisense.com", pill: "bg-sky-400/10 text-sky-400 border-sky-400/30" },
+    { role: "Corporate Manager", email: "abhinand@wifisense.com", pill: "bg-sky-400/10 text-sky-400 border-sky-400/30" },
+    { role: "Corporate Staff", email: "tomy@wifisense.com", pill: "bg-cyan-400/10 text-cyan-400 border-cyan-400/30" },
+    { role: "Doctor", email: "mathew.varghese@wifisense.com", pill: "bg-rose-400/10 text-rose-400 border-rose-400/30" },
     { role: "Family", email: "john@wifisense.com", pill: "bg-indigo-400/10 text-indigo-400 border-indigo-400/30" }
   ];
 
@@ -199,7 +202,7 @@ export default function LandingFeatures({ onGetStarted }) {
           {/* Quick Demo Access Pills */}
           <div className="flex flex-col items-center gap-3">
             <span className="text-xs font-mono uppercase tracking-widest text-slate-500">
-              Pre-Configured Demo Accounts (Password: [name]password)
+              Pre-Configured Demo Accounts (Password: [name]password · doctor: doctorpassword)
             </span>
             <div className="flex flex-wrap justify-center gap-2.5 max-w-2xl">
               {demoAccounts.map((acc) => (
