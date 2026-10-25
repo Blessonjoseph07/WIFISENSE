@@ -14,7 +14,7 @@
 
 #define W 128
 #define H 64
-#define I2C_HZ 400000
+#define I2C_HZ 100000              /* standard mode: reliable over breadboard jumpers (a full frame still takes only ~95 ms) */
 #define TIMEOUT_MS 50
 
 static const char *TAG = "oled";
@@ -186,8 +186,16 @@ bool oled_init(int sda_gpio, int scl_gpio)
     s_ok = cmds(init1, sizeof(init1)) && cmds(init2, sizeof(init2));
     if (s_ok) {
         ESP_LOGI(TAG, "SSD1306 found at 0x%02X (SDA=%d SCL=%d)", addr, sda_gpio, scl_gpio);
+        /* Light test: every pixel on for one second, independent of the frame buffer, so a working panel is obvious. */
+        static const uint8_t all_on[] = {0xA5}, from_ram[] = {0xA4};
+        bool lit = cmds(all_on, 1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        cmds(from_ram, 1);
+        ESP_LOGI(TAG, "light test %s: the whole screen should have lit for 1 s", lit ? "sent" : "FAILED");
         oled_clear();
         oled_flush();
+    } else {
+        ESP_LOGW(TAG, "display answered at 0x%02X but rejected its start-up commands", addr);
     }
     return s_ok;
 }
@@ -254,12 +262,27 @@ void oled_flush(void)
     if (!s_ok) {
         return;
     }
-    static const uint8_t window[] = {0x21, 0x00, 0x7F, 0x22, 0x00, 0x07};
-    if (!cmds(window, sizeof(window))) {
-        return;
+    static uint32_t flushes, failures;
+    /* One page (8 pixel rows, 128 bytes) per transfer: short transactions are the most tolerant of long breadboard wires. */
+    esp_err_t err = ESP_OK;
+    const char *step = "";
+    for (int page = 0; page < H / 8 && err == ESP_OK; page++) {
+        uint8_t win[7] = {0x00, 0x21, 0x00, W - 1, 0x22, (uint8_t)page, (uint8_t)page};
+        err = i2c_master_transmit(s_dev, win, sizeof(win), TIMEOUT_MS);
+        step = "address command";
+        if (err == ESP_OK) {
+            uint8_t out[1 + W];
+            out[0] = 0x40;               /* control byte: display data follows */
+            memcpy(out + 1, s_fb + page * W, W);
+            err = i2c_master_transmit(s_dev, out, sizeof(out), TIMEOUT_MS);
+            step = "pixel data";
+        }
     }
-    static uint8_t out[1 + sizeof(s_fb)];
-    out[0] = 0x40;                       /* control byte: display data follows */
-    memcpy(out + 1, s_fb, sizeof(s_fb));
-    i2c_master_transmit(s_dev, out, sizeof(out), 200);
+    flushes++;
+    if (err != ESP_OK && (failures++ % 20) == 0) {
+        ESP_LOGW(TAG, "sending the picture failed at the %s: %s (%lu of %lu updates failed)", step, esp_err_to_name(err),
+                 (unsigned long)failures, (unsigned long)flushes);
+    } else if (flushes == 10) {
+        ESP_LOGI(TAG, "picture updates: %lu of 10 reached the display", (unsigned long)(flushes - failures));
+    }
 }
