@@ -27,3 +27,10 @@ __pycache__/
 
 # Agent & IDE metadata
 .claude/
+.vercel/
+
+# Runtime and daemon logs
+*.log
+
+# Microsoft Word temporary files
+~$*

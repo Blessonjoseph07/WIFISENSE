@@ -1,0 +1,12 @@
+=== TEST EXECUTION LOG: TC-RBAC-005 ===
+Test Name: Family Member Blocked from Facility Assets
+Module: RBAC | Role: Family Member | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Family member cannot access administrative facility or asset views.
+Actual: assets_rendered=False, nav_present=False
+Screenshot: TC_RBAC_005_family_member_blocked_from_fac.png
+Duration: 29.40s
+
+--- Terminal / API Trace ---
+[RouteGuard] Family member restricted to family portal views.
+Attempted: assets | Result: BLOCKED

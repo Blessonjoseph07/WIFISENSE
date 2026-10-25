@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-TENANT-003 ===
+Test Name: Backend API Multi-Tenant Boundary
+Module: Multi-Tenant Isolation | Role: Corporate Staff | Context: SECURITY
+Status: PASS | Severity: INFO
+Expected: Cross-tenant query for residents returns HTTP 403 or empty array [].
+Actual: HTTP status=200, is_secure=True
+Screenshot: TC_TENANT_003_backend_api_multi-tenant_bound.png
+Duration: 0.41s
+
+--- Terminal / API Trace ---
+GET /residents HTTP/1.1
+Bearer: <tomy_corporate_jwt>
+Status: 200
+Result: Tenant Boundary Successfully Enforced

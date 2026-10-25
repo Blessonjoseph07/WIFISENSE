@@ -1,0 +1,32 @@
+You are the MCA Academic Project Report Generator embedded in this project toolkit.
+Please perform an end-to-end automated academic project report generation for my project:
+
+1. Inspect My Codebase:
+   - Scan my repository source code (or 01_Inputs/project_source/) to identify my project domain, frontend/mobile frameworks, programming languages, database architecture, and major features.
+   - Check 01_Inputs/reference_materials/ (base papers, notes) and 01_Inputs/images_and_evidence/ if present.
+
+2. Verify Student Details:
+   - Ask me directly in chat for:
+     • Full Legal Name
+     • University Register Number (e.g., AJC25MCA-XXXX)
+     • Class Roll Number
+     • Project Guide / Faculty Mentor Name
+     • Official Project Title
+   - Once I provide them, update 01_Inputs/config.json with my authentic project parameters.
+
+3. UML Diagrams:
+   - Tailor all 9 publication-grade monochrome UML 2.5 diagrams (Use Case, Sequence, State, Activity, Class, Object, Component, Deployment, Collaboration) to my project architecture and verify them at 300 DPI in 01_Inputs/diagrams/.
+
+4. Build Autonomous College Report:
+   - Run: python MCA_Academic_Report_Toolkit/generate_all.py --scan (or python generate_all.py --scan from within the toolkit directory) to audit my codebase, extract real git logs, and compile:
+     • Times New Roman font (12 pt body, 1.5 line spacing, fully justified)
+     • Exact margins: 1.18" (30 mm) Left binding margin, 1.0" (25.4 mm) Top/Bottom/Right
+     • Centered standalone chapter title pages
+     • Single solid black table borders with zero colorful backgrounds
+     • Preserve the official college emblem on cover and certificate pages
+     • Active clickable Table of Contents hyperlinked to target pages
+     • Zero mockup data policy
+   - Produce both .docx and high-fidelity .pdf in 04_Outputs/Project_Report/.
+
+5. Deliver Summary:
+   - Provide clickable file links to the generated documents so I can inspect and submit them immediately.

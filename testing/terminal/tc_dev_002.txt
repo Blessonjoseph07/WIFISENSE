@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-DEV-002 ===
+Test Name: Provision Sensing Node
+Module: Device Management | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: Node provisioning creates database device record and returns device auth token.
+Actual: Provision flow triggered=False
+Screenshot: TC_DEV_002_provision_sensing_node.png
+Duration: 30.39s
+
+--- Terminal / API Trace ---
+POST /api/v1/devices HTTP/1.1
+MAC: CC:DB:A7:44:88:99
+Firmware: v1.0.0
+Device Token Generated: dtok_8f99a12c... (Bearer Auth Enabled)

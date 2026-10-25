@@ -1,0 +1,15 @@
+=== TEST EXECUTION LOG: TC-ALERT-001 ===
+Test Name: Alerts Queue Display
+Module: Alerts & Emergency | Role: Caregiver | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Caregiver views list of active and recent elder care alarms with severity indicators.
+Actual: AlertsView rendered=True, Alert cards count=2
+Screenshot: TC_ALERT_001_alerts_queue_display.png
+Duration: 25.15s
+
+--- Terminal / API Trace ---
+GET /api/v1/alerts HTTP/1.1
+Role: caregiver
+Org: St. Peter's Elder Care Home
+Active Alarms Fetched: 5
+Status: 200 OK

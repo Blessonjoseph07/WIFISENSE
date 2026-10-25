@@ -1,0 +1,12 @@
+=== TEST EXECUTION LOG: TC-RBAC-002 ===
+Test Name: Caregiver Blocked from Corporate Workplace
+Module: RBAC | Role: Caregiver | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Caregiver cannot access Corporate Workplace. Nav button absent or view blocked.
+Actual: corporate_rendered=False, nav_present=False
+Screenshot: TC_RBAC_002_caregiver_blocked_from_corpora.png
+Duration: 29.76s
+
+--- Terminal / API Trace ---
+[RouteGuard] Blocked view 'corporate' for caregiver: not in allowedViews list.
+Context: ELDER_CARE

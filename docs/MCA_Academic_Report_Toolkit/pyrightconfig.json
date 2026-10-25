@@ -1,0 +1,12 @@
+{
+  "include": [
+    ".",
+    "03_Engine"
+  ],
+  "exclude": [
+    "**/__pycache__"
+  ],
+  "extraPaths": [
+    "03_Engine"
+  ]
+}

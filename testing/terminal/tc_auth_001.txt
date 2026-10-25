@@ -1,0 +1,15 @@
+=== TEST EXECUTION LOG: TC-AUTH-001 ===
+Test Name: System Admin Valid Login
+Module: Authentication | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: Authentication succeeds, JWT stored in localStorage, redirected to System Admin Console
+Actual: Login status=True, User='Blesson Joseph Byju', Token=eyJhbGciOiJIUzI1NiIsInR5c...
+Screenshot: TC_AUTH_001_system_admin_valid_login.png
+Duration: 18.16s
+
+--- Terminal / API Trace ---
+POST /auth/login HTTP/1.1
+Email: blesson@wifisense.com
+Response: 200 OK
+Role: system_admin
+AppContext: SYSTEM

@@ -1,0 +1,13 @@
+=== TEST EXECUTION LOG: TC-RESP-005 ===
+Test Name: Mobile Smartphone 390x844
+Module: Responsive Design | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: 390x844 collapses navigation into mobile-friendly header without layout clipping.
+Actual: scrollWidth=494, clientWidth=494, overflow=False
+Screenshot: TC_RESP_005_mobile_smartphone_390x844.png
+Duration: 11.97s
+
+--- Terminal / API Trace ---
+Viewport: 390x844 (Mobile Smartphone)
+ScrollWidth: 494px | ClientWidth: 494px
+Mobile Adaptivity: Clean

@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-FM-003 ===
+Test Name: Resident Directory Overview
+Module: Resident Directory | Role: Facility Manager | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Resident Directory displays profiles, room numbers, care plans, and emergency contact links.
+Actual: Resident directory displayed=True
+Screenshot: TC_FM_003_resident_directory_overview.png
+Duration: 25.46s
+
+--- Terminal / API Trace ---
+GET /api/v1/residents HTTP/1.1
+Org: St. Peter's Elder Care Home
+Total Residents: 4
+Status: 200 OK
