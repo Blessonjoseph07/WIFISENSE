@@ -155,6 +155,16 @@ test("no refresh token stored: sign out straight away", async () => {
   assert.equal(storage.getItem("token"), null);
 });
 
+test("a late 401 after the user signed out is not reported as an expired session", async () => {
+  const storage = makeStorage({});
+  const { guard, calls, events } = setup({ routes: { "*": () => json(401, {}) }, storage });
+  const res = await guard.fetch(`${BASE}/alerts`, { headers: { Authorization: "Bearer old" } });
+  await guard.fetch(`${BASE}/rooms`, { headers: { Authorization: "Bearer " } });
+  assert.equal(res.status, 401);
+  assert.equal(events.expired, 0);
+  assert.equal(calls.some((c) => c.url.endsWith("/auth/refresh")), false);
+});
+
 test("still 401 after a successful refresh: sign out (no endless retrying)", async () => {
   const storage = loggedIn();
   const { guard, calls, events } = setup({

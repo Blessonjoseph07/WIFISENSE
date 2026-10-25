@@ -1,0 +1,16 @@
+# Render's free tier sleeps after 15 idle minutes and takes ~50 s to wake. Ping /health during the Indian
+# day (about 08:30 to 00:30 IST) so demos and testing never hit a cold start, and let it sleep overnight to save free hours.
+name: Keep API warm
+
+on:
+  schedule:
+    - cron: "*/10 3-18 * * *"   # UTC; 03:00 to 18:50 UTC is 08:30 to 00:20 IST
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the API health check
+        run: curl -fsS --max-time 120 https://wifisense-api.onrender.com/health
