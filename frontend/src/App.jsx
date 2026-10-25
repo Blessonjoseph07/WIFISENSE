@@ -974,8 +974,8 @@ export default function App() {
   // ============================================================================
   // HARDWARE TOKEN & FAULT TRACER HANDLERS
   // ============================================================================
-  const handleResetDeviceToken = async (deviceId) => {
-    if (!confirm("Are you sure you want to regenerate and reset the hardware pairing token for this ESP node?")) return;
+  const handleResetDeviceToken = async (deviceId, mac = "") => {
+    if (!confirm(`Issue a new token for ${mac || "this board"}? The old token stops working, so the bridge must be restarted with the new one.`)) return;
     try {
       const res = await fetch(`${API_BASE}/devices/${deviceId}/reset-token`, {
         method: "POST",
@@ -988,7 +988,9 @@ export default function App() {
       }
       const data = await res.json();
       fetchAllData();
-      setToastMessage({ type: "success", text: `Token regenerated: ${data.hardware_token}` });
+      // Shown once, in a box the user can copy from (a toast disappears before it can be copied).
+      window.prompt("New device token. Copy it now: it is shown only once.\nUse it with the bridge: --token <this value>", data.hardware_token);
+      setToastMessage({ type: "success", text: "New device token issued. Restart the bridge with it." });
     } catch (err) {
       alert(err.message);
     }
@@ -1865,6 +1867,7 @@ export default function App() {
               setSelectedFaultDevice={setSelectedFaultDevice}
               setShowReportFaultModal={setShowReportFaultModal}
               handleServiceTicket={handleServiceTicket}
+              handleResetDeviceToken={handleResetDeviceToken}
               appContext={appContext}
               isSystemAdmin={isSystemAdmin}
               role={role}
