@@ -12,10 +12,12 @@ export default function DevicesView({
   setSelectedFaultDevice = () => {},
   setShowReportFaultModal = () => {},
   handleServiceTicket = () => {},
+  handleResetDeviceToken = null,
   appContext = "",
   isSystemAdmin = false,
   role = "",
 }) {
+  const canResetToken = Boolean(handleResetDeviceToken) && (isSystemAdmin || role === "system_admin" || role === "facility_manager");
   const isCorporateOnly = !isSystemAdmin && appContext === "CORPORATE";
   const isElderCareOnly = !isSystemAdmin && appContext === "ELDER_CARE";
 
@@ -537,8 +539,18 @@ export default function DevicesView({
                             <div className="font-mono font-bold text-slate-900 dark:text-white">
                               {dev.mac_address}
                             </div>
-                            <div className="text-[11px] font-mono text-teal-600 dark:text-teal-400 mt-0.5">
-                              Token: {dev.hardware_token || "TK-ESP32-GEN01"}
+                            <div className="text-[11px] font-mono text-teal-600 dark:text-teal-400 mt-0.5 flex items-center gap-2">
+                              <span>Token: {dev.hardware_token || "hidden"}</span>
+                              {canResetToken && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetDeviceToken(dev.id, dev.mac_address)}
+                                  className="px-1.5 py-0.5 rounded border border-teal-300 dark:border-teal-800 text-[10px] font-sans font-bold uppercase hover:bg-teal-50 dark:hover:bg-teal-950/40"
+                                  title="Issue a new device token (the old one stops working)"
+                                >
+                                  Reset token
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
