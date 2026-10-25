@@ -5,14 +5,16 @@ const SECONDS = 30;
 
 const INSTRUCTIONS = {
   empty: "Everyone leaves the area between the two boards.",
+  still: "One person sits or lies still between the boards (on a chair or the bed), breathing normally.",
+  walking: "One person walks back and forth between the boards at a normal pace.",
   few: "A few people (about 3 to 8) sit or move around normally.",
   busy: "A normal busy period with many people in the room.",
 };
-const COLORS = { empty: "#10b981", few: "#0ea5e9", busy: "#f59e0b" };
+const COLORS = { empty: "#10b981", still: "#8b5cf6", walking: "#ec4899", few: "#0ea5e9", busy: "#f59e0b" };
 
 /**
- * Phase 2 machine learning: teach the system what THIS room looks like (empty / a few people / busy) by recording short labelled
- * segments, then it estimates the crowd level from the board's signal. It reports how well it did on recordings it had not seen.
+ * Phase 2 machine learning: teach the system what THIS room looks like (empty / someone still / someone walking / a few people /
+ * busy) by recording short labelled segments, then it estimates the room state from the board's signal. It reports how well it did on recordings it had not seen.
  */
 export default function OccupancyLearner({ deviceId, authToken, API_BASE }) {
   const [data, setData] = useState(null);
@@ -167,6 +169,11 @@ export default function OccupancyLearner({ deviceId, authToken, API_BASE }) {
             <button type="button" onClick={reset} className="ml-auto text-[11px] underline text-slate-500">Clear everything</button>
           )}
         </div>
+        {data?.retrain_needed && (
+          <div className="text-xs rounded-lg px-3 py-2 bg-amber-50 text-amber-900 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-900">
+            The learner now also uses the shape of the signal, so recordings made before this update are ignored. Record each situation again, then train.
+          </div>
+        )}
         {message && <div className={`text-xs ${message.ok ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600"}`}>{message.text}</div>}
         {error && <div className="text-xs text-amber-700">{error}</div>}
 
@@ -221,7 +228,13 @@ export default function OccupancyLearner({ deviceId, authToken, API_BASE }) {
                     <span className="w-9 text-right font-mono">{Math.round(p * 100)}%</span>
                   </div>
                 ))}
-                {!ev?.reliable && <div className="text-[11px] text-amber-700">This model did not pass its own test, so treat this as a guess, not a measurement.</div>}
+                {data.override_reason && (
+                  <div className="text-[11px] text-amber-700">
+                    {data.override_reason}
+                    {!(data.evaluation?.recordings || {}).walking && " Record \"Someone walking\" so the model learns movement too."}
+                  </div>
+                )}
+                {!ev?.reliable && <div className="text-[11px] text-amber-700">This model did not pass its own test, so treat this as a guess, not a measurement.{ev?.reason ? ` (${ev.reason})` : ""}</div>}
               </>
             ) : (
               <div className="text-xs text-slate-500">{data.prediction_state === "NOT_SENDING" ? "The board is not sending, so there is no current estimate." : "Waiting for a few seconds of readings."}</div>

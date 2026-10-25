@@ -1,0 +1,295 @@
+/*
+ * SSD1306 128x64 over I2C with the ESP-IDF i2c_master driver. See wifisense_oled.h.
+ */
+#include <string.h>
+
+#include "driver/i2c_master.h"
+#include "driver/gpio.h"
+#include "esp_rom_sys.h"
+#include <stdio.h>
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "wifisense_oled.h"
+
+#define W 128
+#define H 64
+#define I2C_HZ 100000              /* standard mode: reliable over breadboard jumpers (a full frame still takes only ~95 ms) */
+#define TIMEOUT_MS 50
+
+static const char *TAG = "oled";
+static i2c_master_dev_handle_t s_dev;
+static bool s_ok;
+static uint8_t s_fb[W * H / 8];
+
+/* Classic 5x7 font, ASCII 0x20..0x7E, one byte per column, least significant bit at the top. */
+static const uint8_t FONT[95][5] = {
+    {0x00,0x00,0x00,0x00,0x00},{0x00,0x00,0x5F,0x00,0x00},{0x00,0x07,0x00,0x07,0x00},{0x14,0x7F,0x14,0x7F,0x14},
+    {0x24,0x2A,0x7F,0x2A,0x12},{0x23,0x13,0x08,0x64,0x62},{0x36,0x49,0x55,0x22,0x50},{0x00,0x05,0x03,0x00,0x00},
+    {0x00,0x1C,0x22,0x41,0x00},{0x00,0x41,0x22,0x1C,0x00},{0x14,0x08,0x3E,0x08,0x14},{0x08,0x08,0x3E,0x08,0x08},
+    {0x00,0x50,0x30,0x00,0x00},{0x08,0x08,0x08,0x08,0x08},{0x00,0x60,0x60,0x00,0x00},{0x20,0x10,0x08,0x04,0x02},
+    {0x3E,0x51,0x49,0x45,0x3E},{0x00,0x42,0x7F,0x40,0x00},{0x42,0x61,0x51,0x49,0x46},{0x21,0x41,0x45,0x4B,0x31},
+    {0x18,0x14,0x12,0x7F,0x10},{0x27,0x45,0x45,0x45,0x39},{0x3C,0x4A,0x49,0x49,0x30},{0x01,0x71,0x09,0x05,0x03},
+    {0x36,0x49,0x49,0x49,0x36},{0x06,0x49,0x49,0x29,0x1E},{0x00,0x36,0x36,0x00,0x00},{0x00,0x56,0x36,0x00,0x00},
+    {0x08,0x14,0x22,0x41,0x00},{0x14,0x14,0x14,0x14,0x14},{0x00,0x41,0x22,0x14,0x08},{0x02,0x01,0x51,0x09,0x06},
+    {0x32,0x49,0x79,0x41,0x3E},{0x7E,0x11,0x11,0x11,0x7E},{0x7F,0x49,0x49,0x49,0x36},{0x3E,0x41,0x41,0x41,0x22},
+    {0x7F,0x41,0x41,0x22,0x1C},{0x7F,0x49,0x49,0x49,0x41},{0x7F,0x09,0x09,0x09,0x01},{0x3E,0x41,0x49,0x49,0x7A},
+    {0x7F,0x08,0x08,0x08,0x7F},{0x00,0x41,0x7F,0x41,0x00},{0x20,0x40,0x41,0x3F,0x01},{0x7F,0x08,0x14,0x22,0x41},
+    {0x7F,0x40,0x40,0x40,0x40},{0x7F,0x02,0x0C,0x02,0x7F},{0x7F,0x04,0x08,0x10,0x7F},{0x3E,0x41,0x41,0x41,0x3E},
+    {0x7F,0x09,0x09,0x09,0x06},{0x3E,0x41,0x51,0x21,0x5E},{0x7F,0x09,0x19,0x29,0x46},{0x46,0x49,0x49,0x49,0x31},
+    {0x01,0x01,0x7F,0x01,0x01},{0x3F,0x40,0x40,0x40,0x3F},{0x1F,0x20,0x40,0x20,0x1F},{0x3F,0x40,0x38,0x40,0x3F},
+    {0x63,0x14,0x08,0x14,0x63},{0x07,0x08,0x70,0x08,0x07},{0x61,0x51,0x49,0x45,0x43},{0x00,0x7F,0x41,0x41,0x00},
+    {0x02,0x04,0x08,0x10,0x20},{0x00,0x41,0x41,0x7F,0x00},{0x04,0x02,0x01,0x02,0x04},{0x40,0x40,0x40,0x40,0x40},
+    {0x00,0x01,0x02,0x04,0x00},{0x20,0x54,0x54,0x54,0x78},{0x7F,0x48,0x44,0x44,0x38},{0x38,0x44,0x44,0x44,0x20},
+    {0x38,0x44,0x44,0x48,0x7F},{0x38,0x54,0x54,0x54,0x18},{0x08,0x7E,0x09,0x01,0x02},{0x0C,0x52,0x52,0x52,0x3E},
+    {0x7F,0x08,0x04,0x04,0x78},{0x00,0x44,0x7D,0x40,0x00},{0x20,0x40,0x44,0x3D,0x00},{0x7F,0x10,0x28,0x44,0x00},
+    {0x00,0x41,0x7F,0x40,0x00},{0x7C,0x04,0x18,0x04,0x78},{0x7C,0x08,0x04,0x04,0x78},{0x38,0x44,0x44,0x44,0x38},
+    {0x7C,0x14,0x14,0x14,0x08},{0x08,0x14,0x14,0x18,0x7C},{0x7C,0x08,0x04,0x04,0x08},{0x48,0x54,0x54,0x54,0x20},
+    {0x04,0x3F,0x44,0x40,0x20},{0x3C,0x40,0x40,0x20,0x7C},{0x1C,0x20,0x40,0x20,0x1C},{0x3C,0x40,0x30,0x40,0x3C},
+    {0x44,0x28,0x10,0x28,0x44},{0x0C,0x50,0x50,0x50,0x3C},{0x44,0x64,0x54,0x4C,0x44},{0x00,0x08,0x36,0x41,0x00},
+    {0x00,0x00,0x7F,0x00,0x00},{0x00,0x41,0x36,0x08,0x00},{0x10,0x08,0x08,0x10,0x08},
+};
+
+static bool cmds(const uint8_t *c, size_t n)
+{
+    uint8_t buf[32];
+    if (n + 1 > sizeof(buf)) {
+        return false;
+    }
+    buf[0] = 0x00;                       /* control byte: commands follow */
+    memcpy(buf + 1, c, n);
+    return i2c_master_transmit(s_dev, buf, n + 1, TIMEOUT_MS) == ESP_OK;
+}
+
+/* Opens an I2C bus on the two pins and looks for an SSD1306 (0x3C, then 0x3D). On success the bus stays open. */
+static int try_pins(int sda_gpio, int scl_gpio, int timeout_ms, i2c_master_bus_handle_t *out)
+{
+    i2c_master_bus_handle_t bus;
+    i2c_master_bus_config_t bus_cfg = {
+        .i2c_port = -1,
+        .sda_io_num = sda_gpio,
+        .scl_io_num = scl_gpio,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,   /* the module has its own pull-ups; these only help */
+    };
+    if (i2c_new_master_bus(&bus_cfg, &bus) != ESP_OK) {
+        return -1;
+    }
+    int addr = -1;
+    if (i2c_master_probe(bus, 0x3C, timeout_ms) == ESP_OK) {
+        addr = 0x3C;
+    } else if (i2c_master_probe(bus, 0x3D, timeout_ms) == ESP_OK) {
+        addr = 0x3D;
+    }
+    if (addr < 0) {
+        i2c_del_master_bus(bus);
+    } else {
+        *out = bus;
+    }
+    return addr;
+}
+
+/* GPIOs that are safe to probe on the ESP32-S3-WROOM-1U-N16R8: not strapping (0/3/45/46), USB (19/20), flash/PSRAM
+ * (26-37) or the console UART (43/44). */
+static const int SAFE_GPIO[] = {1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 38, 39, 40, 41, 42, 47, 48};
+
+bool oled_init(int sda_gpio, int scl_gpio)
+{
+    i2c_master_bus_handle_t bus;
+    int addr = -1;
+    for (int attempt = 0; attempt < 5 && addr < 0; attempt++) {     /* the display needs a moment after power-up */
+        if (attempt) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+        addr = try_pins(sda_gpio, scl_gpio, TIMEOUT_MS, &bus);
+    }
+    if (addr < 0 && (addr = try_pins(scl_gpio, sda_gpio, TIMEOUT_MS, &bus)) >= 0) {
+        ESP_LOGW(TAG, "display found with SDA and SCL SWAPPED (SDA=%d SCL=%d); using it, but swap the two wires to match the guide",
+                 scl_gpio, sda_gpio);
+        int t = sda_gpio;
+        sda_gpio = scl_gpio;
+        scl_gpio = t;
+    }
+    if (addr < 0) {
+        /* Not where it should be: look on every safe pin pair, so a wire on the wrong pin is reported instead of guessed. */
+        const int n = sizeof(SAFE_GPIO) / sizeof(SAFE_GPIO[0]);
+        for (int i = 0; i < n && addr < 0; i++) {
+            for (int j = 0; j < n && addr < 0; j++) {
+                if (i != j && (addr = try_pins(SAFE_GPIO[i], SAFE_GPIO[j], TIMEOUT_MS, &bus)) >= 0) {
+                    sda_gpio = SAFE_GPIO[i];
+                    scl_gpio = SAFE_GPIO[j];
+                    ESP_LOGW(TAG, "display found on SDA=GPIO%d SCL=GPIO%d instead of the configured pins; using it", sda_gpio, scl_gpio);
+                }
+            }
+        }
+    }
+    if (addr < 0) {
+        ESP_LOGW(TAG, "no SSD1306 answered on ANY safe pin pair: the display has no power or no contact (check VDD on 3V3, GND, "
+                      "that the OLED's header pins are soldered and every wire shares a breadboard row with its pin)");
+        /* Wiring check: a powered, connected module pulls its SDA and SCK lines up to VDD through its own resistors. With a
+         * weak pull-down on every safe pin, only the pins wired to a powered module read high. */
+        char seen[96] = "";
+        size_t used = 0;
+        for (int i = 0; i < (int)(sizeof(SAFE_GPIO) / sizeof(SAFE_GPIO[0])); i++) {
+            gpio_reset_pin(SAFE_GPIO[i]);
+            gpio_set_direction(SAFE_GPIO[i], GPIO_MODE_INPUT);
+            gpio_set_pull_mode(SAFE_GPIO[i], GPIO_PULLDOWN_ONLY);
+        }
+        esp_rom_delay_us(2000);
+        for (int i = 0; i < (int)(sizeof(SAFE_GPIO) / sizeof(SAFE_GPIO[0])); i++) {
+            if (gpio_get_level(SAFE_GPIO[i]) && used < sizeof(seen) - 6) {
+                used += snprintf(seen + used, sizeof(seen) - used, " %d", SAFE_GPIO[i]);
+            }
+            gpio_reset_pin(SAFE_GPIO[i]);
+        }
+        if (used) {
+            ESP_LOGW(TAG, "wiring check: pins pulled HIGH by the module:%s (expect 8 and 9). The module has power, so check "
+                          "that SDA/SCK really go to those pins", seen);
+            /* Ask every 7-bit address on the configured pins, both ways round, so an unusual address or a dead chip is told apart. */
+            for (int swap = 0; swap < 2; swap++) {
+                int sda = swap ? scl_gpio : sda_gpio, scl = swap ? sda_gpio : scl_gpio;
+                i2c_master_bus_handle_t b;
+                i2c_master_bus_config_t cfg = {.i2c_port = -1, .sda_io_num = sda, .scl_io_num = scl, .clk_source = I2C_CLK_SRC_DEFAULT,
+                                               .glitch_ignore_cnt = 7, .flags.enable_internal_pullup = true};
+                if (i2c_new_master_bus(&cfg, &b) != ESP_OK) {
+                    continue;
+                }
+                char found[64] = "";
+                size_t f = 0;
+                for (int a = 0x08; a <= 0x77; a++) {
+                    if (i2c_master_probe(b, a, 50) == ESP_OK && f < sizeof(found) - 6) {
+                        f += snprintf(found + f, sizeof(found) - f, " 0x%02X", a);
+                    }
+                }
+                esp_err_t e = i2c_master_probe(b, 0x3C, 50);
+                ESP_LOGW(TAG, "address scan SDA=%d SCL=%d: %s (0x3C probe: %s)", sda, scl, f ? found : "no device answered",
+                         esp_err_to_name(e));
+                i2c_del_master_bus(b);
+            }
+        } else {
+            ESP_LOGW(TAG, "wiring check: NO pin is pulled high, so the module is not powered or its SDA/SCK wires reach no "
+                          "safe pin: check VDD->3V3 and GND->GND first (breadboard column, wire fully pushed in)");
+        }
+        return false;
+    }
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = (uint16_t)addr,
+        .scl_speed_hz = I2C_HZ,
+    };
+    if (i2c_master_bus_add_device(bus, &dev_cfg, &s_dev) != ESP_OK) {
+        return false;
+    }
+    static const uint8_t init1[] = {0xAE, 0xD5, 0x80, 0xA8, 0x3F, 0xD3, 0x00, 0x40, 0x8D, 0x14, 0x20, 0x00};
+    static const uint8_t init2[] = {0xA1, 0xC8, 0xDA, 0x12, 0x81, 0xCF, 0xD9, 0xF1, 0xDB, 0x40, 0xA4, 0xA6, 0xAF};
+    s_ok = cmds(init1, sizeof(init1)) && cmds(init2, sizeof(init2));
+    if (s_ok) {
+        ESP_LOGI(TAG, "SSD1306 found at 0x%02X (SDA=%d SCL=%d)", addr, sda_gpio, scl_gpio);
+        /* Light test: every pixel on for one second, independent of the frame buffer, so a working panel is obvious. */
+        static const uint8_t all_on[] = {0xA5}, from_ram[] = {0xA4};
+        bool lit = cmds(all_on, 1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        cmds(from_ram, 1);
+        ESP_LOGI(TAG, "light test %s: the whole screen should have lit for 1 s", lit ? "sent" : "FAILED");
+        oled_clear();
+        oled_flush();
+    } else {
+        ESP_LOGW(TAG, "display answered at 0x%02X but rejected its start-up commands", addr);
+    }
+    return s_ok;
+}
+
+bool oled_present(void)
+{
+    return s_ok;
+}
+
+void oled_clear(void)
+{
+    memset(s_fb, 0, sizeof(s_fb));
+}
+
+static void glyph(int x, int page, char ch, int scale)
+{
+    if (ch < 0x20 || ch > 0x7E) {
+        ch = '?';
+    }
+    const uint8_t *g = FONT[ch - 0x20];
+    for (int c = 0; c < 5; c++) {
+        for (int bit = 0; bit < 7; bit++) {
+            if (!(g[c] & (1 << bit))) {
+                continue;
+            }
+            for (int dx = 0; dx < scale; dx++) {
+                for (int dy = 0; dy < scale; dy++) {
+                    int px = x + c * scale + dx, py = page * 8 + bit * scale + dy;
+                    if (px >= 0 && px < W && py >= 0 && py < H) {
+                        s_fb[(py / 8) * W + px] |= (uint8_t)(1 << (py % 8));
+                    }
+                }
+            }
+        }
+    }
+}
+
+void oled_text(int row, int col, const char *s)
+{
+    for (int x = col * 6; s && *s && x <= W - 5; s++, x += 6) {
+        glyph(x, row, *s, 1);
+    }
+}
+
+void oled_text_big(int row, int col, const char *s)
+{
+    for (int x = col * 12; s && *s && x <= W - 10; s++, x += 12) {
+        glyph(x, row, *s, 2);
+    }
+}
+
+void oled_hline(int row)
+{
+    if (row < 0 || row > 7) {
+        return;
+    }
+    for (int x = 0; x < W; x++) {
+        s_fb[row * W + x] |= 0x08;
+    }
+}
+
+void oled_pixel(int x, int y)
+{
+    if (x >= 0 && x < W && y >= 0 && y < H) {
+        s_fb[(y / 8) * W + x] |= (uint8_t)(1 << (y % 8));
+    }
+}
+
+void oled_flush(void)
+{
+    if (!s_ok) {
+        return;
+    }
+    static uint32_t flushes, failures;
+    /* One page (8 pixel rows, 128 bytes) per transfer: short transactions are the most tolerant of long breadboard wires. */
+    esp_err_t err = ESP_OK;
+    const char *step = "";
+    for (int page = 0; page < H / 8 && err == ESP_OK; page++) {
+        uint8_t win[7] = {0x00, 0x21, 0x00, W - 1, 0x22, (uint8_t)page, (uint8_t)page};
+        err = i2c_master_transmit(s_dev, win, sizeof(win), TIMEOUT_MS);
+        step = "address command";
+        if (err == ESP_OK) {
+            uint8_t out[1 + W];
+            out[0] = 0x40;               /* control byte: display data follows */
+            memcpy(out + 1, s_fb + page * W, W);
+            err = i2c_master_transmit(s_dev, out, sizeof(out), TIMEOUT_MS);
+            step = "pixel data";
+        }
+    }
+    flushes++;
+    if (err != ESP_OK && (failures++ % 20) == 0) {
+        ESP_LOGW(TAG, "sending the picture failed at the %s: %s (%lu of %lu updates failed)", step, esp_err_to_name(err),
+                 (unsigned long)failures, (unsigned long)flushes);
+    } else if (flushes == 10) {
+        ESP_LOGI(TAG, "picture updates: %lu of 10 reached the display", (unsigned long)(flushes - failures));
+    }
+}

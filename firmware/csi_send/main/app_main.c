@@ -2,7 +2,7 @@
  * Wi-Fi Sense CSI transmitter (ESP32-S3).
  *
  * It only transmits: ~100 ESP-NOW broadcast frames per second from a fixed source MAC so the receiver can measure the
- * channel. It never talks to the API.
+ * channel. It never talks to the API. An optional SSD1306 OLED (see components/wifisense_oled) shows that it is sending.
  *
  * Radio configuration required by the API's detector (see docs/firmware_contract.md):
  *   - 20 MHz channel (HT20, no secondary channel),
@@ -13,6 +13,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
+#include <stdbool.h>
 
 #include "nvs_flash.h"
 #include "esp_mac.h"
@@ -22,6 +24,10 @@
 #include "esp_event.h"
 #include "esp_now.h"
 #include "esp_idf_version.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "wifisense_oled.h"
 
 /* IDF 6 renamed WIFI_BW_HT20 to WIFI_BW20. */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
@@ -35,6 +41,77 @@
 
 static const uint8_t TX_MAC[6] = {0x1a, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const char *TAG = "wifisense_tx";
+static volatile uint32_t s_sent, s_errors;
+
+/* One wave: the right-hand part of a circle (+-45 degrees) around the mast tip. Within +-45 degrees the arc is steeper
+ * than diagonal, so one pixel per row draws it without gaps. */
+static void wave_arc(int cx, int cy, int r)
+{
+    int lim = (r * 7) / 10;
+    for (int d = -lim; d <= lim; d++) {
+        oled_pixel(cx + (int)(sqrtf((float)(r * r - d * d)) + 0.5f), cy + d);
+    }
+}
+
+/* Broadcast symbol right of "SENDING": a small mast with a signal dot, and waves that leave it one by one toward the
+ * receiver. frame 0..3 = how many waves are out; frozen with no waves when sending fails. */
+static void draw_broadcast(int frame)
+{
+    const int cx = 93, cy = 22;                  /* mast tip */
+    for (int y = cy + 2; y <= cy + 11; y++) {    /* mast */
+        oled_pixel(cx, y);
+    }
+    for (int i = 1; i <= 3; i++) {               /* splayed legs */
+        oled_pixel(cx - i, cy + 8 + i);
+        oled_pixel(cx + i, cy + 8 + i);
+    }
+    for (int dx = -1; dx <= 1; dx++) {           /* signal dot */
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 || dy == 0) {
+                oled_pixel(cx + dx, cy + dy);
+            }
+        }
+    }
+    static const int radii[3] = {5, 9, 13};      /* the largest stays between the divider line and the text below */
+    for (int i = 0; i < frame && i < 3; i++) {
+        wave_arc(cx, cy, radii[i]);
+    }
+}
+
+/* Refreshes the display four times a second (smooth waves); runs at low priority so it never delays a frame. */
+static void display_task(void *arg)
+{
+    char line[24];
+    uint32_t last = 0, rate = 0, tick = 0;
+    for (;;) {
+        uint32_t sent = s_sent;
+        uint32_t up = (uint32_t)(esp_timer_get_time() / 1000000);
+        bool failing = s_errors > sent / 10 + 5;
+        if (tick % 4 == 0) {                     /* frames per second, measured over one whole second */
+            rate = sent - last;
+            last = sent;
+        }
+        oled_clear();
+        snprintf(line, sizeof(line), "WIFI SENSE  TX  CH%d", WIFISENSE_CHANNEL);
+        oled_text(0, 0, line);
+        oled_hline(1);
+        oled_text_big(2, 0, failing ? "SEND ERR" : "SENDING");
+        if (!failing) {
+            draw_broadcast(tick % 4);
+        }
+        snprintf(line, sizeof(line), "frames %lu", (unsigned long)sent);
+        oled_text(4, 0, line);
+        snprintf(line, sizeof(line), "rate %lu/s  6 Mbps", (unsigned long)rate);
+        oled_text(5, 0, line);
+        snprintf(line, sizeof(line), "send errors %lu", (unsigned long)s_errors);
+        oled_text(6, 0, line);
+        snprintf(line, sizeof(line), "up %02lu:%02lu:%02lu", (unsigned long)(up / 3600), (unsigned long)(up / 60 % 60), (unsigned long)(up % 60));
+        oled_text(7, 0, line);
+        oled_flush();
+        tick++;
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
+}
 
 static void wifi_init(void)
 {
@@ -84,13 +161,22 @@ void app_main(void)
     };
     esp_now_setup(&peer);
 
+#if CONFIG_WIFISENSE_OLED_ENABLE
+    if (oled_init(CONFIG_WIFISENSE_OLED_SDA, CONFIG_WIFISENSE_OLED_SCL)) {
+        xTaskCreate(display_task, "oled", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
+    }
+#endif
+
     ESP_LOGI(TAG, "TX ready: channel %d HT20, legacy OFDM 6 Mbps, %d frames/s, source MAC " MACSTR,
              WIFISENSE_CHANNEL, SEND_FREQUENCY_HZ, MAC2STR(TX_MAC));
 
     for (uint32_t count = 0;; ++count) {
         esp_err_t err = esp_now_send(peer.peer_addr, (const uint8_t *)&count, sizeof(count));
         if (err != ESP_OK) {
+            s_errors++;
             ESP_LOGW(TAG, "send error <%s>", esp_err_to_name(err));
+        } else {
+            s_sent++;
         }
         usleep(1000 * 1000 / SEND_FREQUENCY_HZ);
     }

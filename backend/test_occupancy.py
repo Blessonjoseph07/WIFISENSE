@@ -19,6 +19,8 @@ API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 RNG = np.random.default_rng(21)
 BASE = RNG.uniform(25, 45, 104)
 NOISE = {"empty": 1.0, "few": 2.6, "busy": 7.0}
+# A person sitting still: the same tiny fluctuation as an empty room, but their body shadows part of the band (different shape).
+STILL_BASE = BASE * np.where((np.arange(104) >= 30) & (np.arange(104) < 60), 0.7, 1.0)
 
 
 def call(path, method="GET", data=None, token=None, headers=None):
@@ -40,11 +42,12 @@ def login(email, password):
     return body["access_token"]
 
 
-def send(tok, n, noise, seq0=0):
+def send(tok, n, noise, seq0=0, base=None):
+    base = BASE if base is None else base
     for i in range(0, n, 50):
         pk = []
         for j in range(i, min(i + 50, n)):
-            iq = [int(v) for v in np.clip(np.round(BASE + RNG.normal(0, noise, 104)), -127, 127)]
+            iq = [int(v) for v in np.clip(np.round(base + RNG.normal(0, noise, 104)), -127, 127)]
             pk.append({"sequence_number": seq0 + j, "rssi": int(-50 + RNG.normal(0, max(0.3, noise / 3))), "noise_floor": -92, "channel": 6,
                        "bandwidth_mhz": 20, "subcarrier_count": 52, "provenance": "simulated", "csi_data": {"iq": iq}})
         st, body = call("/sensing/ingest", "POST", {"packets": pk}, headers={"X-Device-Token": tok})
@@ -63,7 +66,24 @@ def new_device(fm, room):
     return dev["id"], dev["hardware_token"]
 
 
+def check_reconcile():
+    """The movement check decides moving vs not moving; the model only chooses within that."""
+    from app.routers.occupancy import reconcile
+    quiet = {"state": "QUIET", "blocks": [0.05] * 10, "threshold": 0.07}
+    moving = {"state": "MOVEMENT", "blocks": [0.09] * 9 + [0.05], "threshold": 0.07}
+    walk = {"label": "walking", "text": "Someone walking", "confidence": 0.67, "probabilities": {"empty": 0.1, "still": 0.23, "walking": 0.67}}
+    shown, why = reconcile(walk, quiet, False)
+    assert shown["label"] == "still" and abs(shown["confidence"] - 0.23 / 0.33) < 0.01 and "does not show" in why, (shown, why)
+    still = {"label": "still", "text": "Someone sitting or lying still", "confidence": 0.8, "probabilities": {"still": 0.8, "empty": 0.2}}
+    shown, why = reconcile(still, moving, False)
+    assert shown["label"] == "presence" and shown["confidence"] == 0.9 and "clear movement" in why, (shown, why)
+    shown, why = reconcile(walk, moving, True)
+    assert shown["label"] == "walking" and why is None
+    print("[PASS] walking is never shown without movement, and still/empty never during clear movement")
+
+
 def run():
+    check_reconcile()
     fm = login("elizabeth@wifisense.com", "elizabethpassword")
     care = login("mary@wifisense.com", "marypassword")
     corp = login("abhinand@wifisense.com", "abhinandpassword")
@@ -102,7 +122,7 @@ def run():
     ev = tr["evaluation"]
     assert st == 200 and ev["reliable"] is True and ev["heldout_accuracy"] >= 0.9, ev
     assert all(v >= 6 for v in ev["heldout_blocks"].values()) and ev["majority_baseline"] < 0.5, ev
-    assert "never used to train" in ev["note"]
+    assert ev["method"] == "leave-one-recording-out" and "trained without it" in ev["note"], ev
     print(f"[PASS] held-out accuracy {ev['heldout_accuracy']} on blocks never used for training (majority guess would be {ev['majority_baseline']}); reliable={ev['reliable']}")
 
     print("--- live predictions follow the signal")
@@ -124,6 +144,48 @@ def run():
     st, tr = call(f"/sensing/devices/{did2}/occupancy/train", "POST", {}, fm)
     assert st == 200 and tr["evaluation"]["reliable"] is False and "did not separate" in tr["evaluation"]["reason"], tr
     print(f"[PASS] identical signals labelled differently: held-out accuracy {tr['evaluation']['heldout_accuracy']}, reliable=False ({tr['evaluation']['reason']})")
+
+    print("--- someone sitting still is told apart from an empty room (same fluctuation, different signal shape)")
+    did3, tok3 = new_device(fm, room)
+    for rnd in range(2):
+        for label, base in (("empty", BASE), ("still", STILL_BASE)):
+            first = latest_id(fm, did3)
+            send(tok3, 1000, NOISE["empty"], rnd * 5000, base)
+            st, cap = call(f"/sensing/devices/{did3}/occupancy/capture", "POST", {"label": label, "seconds": 5, "from_packet_id": first + 1}, fm)
+            assert st == 200, cap
+    st, tr = call(f"/sensing/devices/{did3}/occupancy/train", "POST", {}, fm)
+    assert st == 200 and tr["evaluation"]["reliable"] is True and tr["evaluation"]["heldout_accuracy"] >= 0.9, tr
+    for label, base in (("still", STILL_BASE), ("empty", BASE)):
+        send(tok3, 700, NOISE["empty"], 20000, base)
+        time.sleep(1.7)
+        o = call(f"/sensing/devices/{did3}/occupancy", token=fm)[1]
+        assert o["prediction"]["label"] == label, (label, o["prediction"])
+    print(f"[PASS] still vs empty: held-out accuracy {tr['evaluation']['heldout_accuracy']}, live predictions follow")
+
+    print("--- one recording per situation: never called reliable, and its confidence is held down")
+    did4, tok4 = new_device(fm, room)
+    for label in ("empty", "busy"):
+        first = latest_id(fm, did4)
+        send(tok4, 1000, NOISE[label], 0)
+        assert call(f"/sensing/devices/{did4}/occupancy/capture", "POST", {"label": label, "seconds": 5, "from_packet_id": first + 1}, fm)[0] == 200
+    st, tr = call(f"/sensing/devices/{did4}/occupancy/train", "POST", {}, fm)
+    ev1 = tr["evaluation"]
+    assert st == 200 and ev1["method"] == "end-of-recording" and ev1["reliable"] is False and "at least 2 recordings" in ev1["reason"], ev1
+    send(tok4, 700, NOISE["busy"], 20000)
+    time.sleep(1.7)
+    o = call(f"/sensing/devices/{did4}/occupancy", token=fm)[1]
+    assert o["prediction"]["label"] == "busy" and o["prediction"]["confidence"] <= 0.81, o["prediction"]
+    print(f"[PASS] single recordings: reliable=False ({ev1['reason']}); confidence held to {o['prediction']['confidence']}")
+    assert ev["method"] == "leave-one-recording-out", ev
+    print("[PASS] with two recordings each, every recording was tested by a model trained without it")
+
+    print("--- the board can read its own state with its device token (for its display)")
+    st, own = call("/sensing/device/state", headers={"X-Device-Token": tok3})
+    assert st == 200 and own["room_state"]["label"] == "empty" and own["room_state"]["reliable"] is True, own
+    assert set(own) == {"presence", "movement_state", "headline", "seconds_since_last_packet", "room_state"}, own
+    assert call("/sensing/device/state")[0] == 401
+    assert call("/sensing/device/state", headers={"X-Device-Token": "TK-wrong"})[0] == 401
+    print(f"[PASS] device state: {own['headline']} / {own['room_state']['text']}; no token or a wrong token -> 401")
 
     print("--- reset")
     st, _ = call(f"/sensing/devices/{did}/occupancy", "DELETE", None, fm)

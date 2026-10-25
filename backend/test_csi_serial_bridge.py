@@ -96,6 +96,19 @@ def run():
     assert "read=0" in r.stdout and "dropped_format=1" in r.stdout, r.stdout
     print("[PASS] only the configured transmitter's packets are used")
 
+    # OLED line the bridge writes back to the receiver
+    assert bridge.display_lines({"movement_state": "MOVEMENT", "room_state": {"label": "walking", "confidence": 0.874, "reliable": True}}) \
+        == "WS_STATE,PRESENCE+MOVE,WALKING 87%\n"
+    assert bridge.display_lines({"movement_state": "QUIET", "room_state": {"label": "still", "confidence": 0.6, "reliable": False}}) \
+        == "WS_STATE,NO PRESENCE,STILL 60%?\n"
+    assert bridge.display_lines({"movement_state": "STALE", "room_state": None}) == "WS_STATE,NOT SENDING,NOT TRAINED\n"
+    assert bridge.display_lines({}) == "WS_STATE,NO DATA,NOT TRAINED\n"
+    assert bridge.display_lines({"movement_state": "MOVEMENT", "room_state": {"label": "moving", "confidence": None, "reliable": True}}) \
+        == "WS_STATE,PRESENCE+MOVE,MOVING\n"
+    assert bridge.display_lines({"movement_state": "MOVEMENT", "room_state": {"label": "presence", "confidence": 0.9, "reliable": True}}) \
+        == "WS_STATE,PRESENCE+MOVE,PRESENCE 90%\n"
+    print("[PASS] display line: presence + learned state, '?' when the model is not reliable, never a comma or non-ASCII")
+
 
 if __name__ == "__main__":
     print("=== CSI SERIAL BRIDGE TESTS ===")
