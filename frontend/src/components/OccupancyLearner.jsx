@@ -230,7 +230,8 @@ export default function OccupancyLearner({ deviceId, authToken, API_BASE }) {
                 ))}
                 {data.movement_override && (
                   <div className="text-[11px] text-amber-700">
-                    The movement check sees clear movement, so the board shows <strong>Movement detected</strong> instead of "{pred.text}".
+                    The movement check sees clear movement, so the board shows <strong>Presence detected</strong> (with the share of the last
+                    10 seconds above the empty-room level) instead of "{pred.text}".
                     {!(data.evaluation?.recordings || {}).walking && " Record \"Someone walking\" so the model learns movement too."}
                   </div>
                 )}

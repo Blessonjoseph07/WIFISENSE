@@ -85,6 +85,18 @@ def movement_overrides(pred: Optional[Dict[str, Any]], mv: Dict[str, Any]) -> bo
     return bool(pred) and mv.get("state") == "MOVEMENT" and pred.get("label") in ("empty", "still")
 
 
+PRESENCE_WINDOW_BLOCKS = 10    # about the last 10 seconds
+
+
+def presence_from_movement(mv: Dict[str, Any]) -> Dict[str, Any]:
+    """'Presence detected' with a measured confidence: the share of the last ~10 one-second blocks in which the signal was
+    above the empty-room threshold. It is a count, not a model probability, so it is always marked reliable."""
+    blocks, thr = (mv.get("blocks") or [])[-PRESENCE_WINDOW_BLOCKS:], mv.get("threshold")
+    share = (sum(1 for b in blocks if thr is not None and b > thr) / len(blocks)) if blocks else 0.0
+    return {"label": "presence", "text": "Presence detected", "confidence": round(share, 2), "reliable": True,
+            "source": "movement", "detail": f"{sum(1 for b in blocks if thr is not None and b > thr)} of the last {len(blocks)} seconds above the empty-room level"}
+
+
 @router.get("/device/state")
 def get_own_state(device: SensingDevice = Depends(get_authenticated_device), session: Session = Depends(get_session)):
     """What the board itself may show on its display: presence from the empty-room reference and, once a model has been trained in
@@ -100,7 +112,7 @@ def get_own_state(device: SensingDevice = Depends(get_authenticated_device), ses
             ev = _state(session, device.id).get("evaluation") or {}
             room = {"label": pred["label"], "text": pred["text"], "confidence": pred["confidence"], "reliable": bool(ev.get("reliable"))}
             if movement_overrides(pred, mv):
-                room = {"label": "moving", "text": "Movement detected", "confidence": None, "reliable": room["reliable"]}
+                room = presence_from_movement(mv)
     return {"presence": mv["presence"], "movement_state": mv["state"], "headline": mv["headline"],
             "seconds_since_last_packet": mv["seconds_since_last_packet"], "room_state": room}
 

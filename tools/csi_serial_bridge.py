@@ -261,7 +261,8 @@ class Poster:
                 f"server p50={s[len(s) // 2]:.0f}ms")
 
 
-ROOM_SHORT = {"empty": "EMPTY", "still": "STILL", "walking": "WALKING", "few": "FEW PEOPLE", "busy": "BUSY", "moving": "MOVING"}
+ROOM_SHORT = {"empty": "EMPTY", "still": "STILL", "walking": "WALKING", "few": "FEW PEOPLE", "busy": "BUSY", "moving": "MOVING",
+              "presence": "PRESENCE"}
 PRESENCE_SHORT = {"MOVEMENT": "PRESENCE+MOVE", "PRESENT": "PRESENCE", "QUIET": "NO PRESENCE", "STALE": "NOT SENDING", "NO_DATA": "NO DATA"}
 
 
