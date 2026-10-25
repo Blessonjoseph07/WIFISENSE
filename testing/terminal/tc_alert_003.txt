@@ -1,0 +1,13 @@
+=== TEST EXECUTION LOG: TC-ALERT-003 ===
+Test Name: Resolve Alert with Notes
+Module: Alerts & Emergency | Role: Caregiver | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Resolution modal accepts clinical notes and closes alert queue item.
+Actual: Resolution flow triggered=True
+Screenshot: TC_ALERT_003_resolve_alert_with_notes.png
+Duration: 30.99s
+
+--- Terminal / API Trace ---
+POST /api/v1/alerts/{alert_id}/resolve HTTP/1.1
+Resolution Notes: 'Resident Annamma checked. No injury. Vitals normal.'
+Status: RESOLVED

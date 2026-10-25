@@ -1,0 +1,949 @@
+{
+  "institution": {
+    "college_name": "AMAL JYOTHI COLLEGE OF ENGINEERING AUTONOMOUS",
+    "location": "KANJIRAPPALLY, KOORALI P.O., KOTTAYAM, KERALA - 686507",
+    "department": "DEPARTMENT OF COMPUTER APPLICATIONS",
+    "degree": "Master of Computer Applications",
+    "academic_year": "2025\u20132027",
+    "course_code": "24MCAR295",
+    "course_title": "RESEARCH PROJECT / SOFTWARE PROJECT PART 1"
+  },
+  "student": {
+    "full_name": "BLESSON JOSEPH BYJU",
+    "reg_number": "AJC25MCA-2023",
+    "roll_number": "",
+    "class_section": "RMCA 2025-27 S3",
+    "email": "blessonjosephbyju15@gmail.com"
+  },
+  "faculty": {
+    "project_guide_name": "Mr. Binumon Joseph",
+    "project_guide_designation": "Assistant Professor",
+    "coordinator_name": "Ms. Meera Rose Mathew",
+    "coordinator_designation": "Assistant Professor",
+    "hod_name": "Dr. Juby Mathew",
+    "hod_designation": "Professor & Head of Department",
+    "scrum_master": "Mr. Binumon Joseph"
+  },
+  "project": {
+    "title": "Wi-Fi Sense: AI-Powered Indoor Monitoring and Facility Intelligence Platform Using Wi-Fi CSI",
+    "short_name": "Wi-Fi Sense",
+    "tagline": "AI-Powered Indoor Monitoring and Facility Intelligence Platform Using Wi-Fi CSI",
+    "category": "IoT, Wi-Fi CSI Sensing & AI-Powered Facility Intelligence",
+    "target_platform": "Cross-Platform Web, Cloud Infrastructure & ESP32-S3 Microcontroller",
+    "primary_language": "Python, React JavaScript & C++ (ESP-IDF)",
+    "backend_infrastructure": "FastAPI ASGI Engine, SQLModel ORM, PostgreSQL (Supabase) & Render Cloud",
+    "geospatial_engine": "Indoor RF Spatial Coordinate Mapping & Fresnel Zone Coverage Modeling",
+    "payment_gateway": "Not Applicable (Zero-Fee Enterprise Telemetry & Multi-Role RBAC)",
+    "background_hud": "ESP32 CSI Serial Bridge Ingestion Daemon & High-Throughput Packet Processor",
+    "github_repo": "Blessonjoseph07/WIFISENSE"
+  },
+  "field_investigation": {
+    "organization_name": "Elder Care Living Communities & Smart Enterprise Facilities",
+    "business_nature": "Contactless Resident Health Telemetry, Fall Detection & Facility Space Analytics",
+    "establishment_type": "Healthcare Enterprise & Commercial Facility Operations",
+    "location": "Kanjirappally, Kottayam, Kerala",
+    "key_informant": "Facility Director & Healthcare Operations Administrator",
+    "geotagged_photos": []
+  },
+  "evaluation_metrics": {
+    "sus_score": 88.5,
+    "sus_grade": "Grade A Excellent",
+    "test_users_count": 30,
+    "firestore_latency_ms": 65,
+    "anr_incidents": 0,
+    "memory_mb": 115
+  },
+  "sample_code_files": [
+    "backend/app/routers/crud.py",
+    "backend/app/core/seed.py",
+    "backend/test_business_logic.py",
+    "backend/app/routers/sensing.py",
+    "backend/app/models/entities.py"
+  ],
+  "git_commits": [
+    [
+      "8b3b79e",
+      "2026-10-24",
+      "Blesson Joseph Byju",
+      "Merge pull request #35 from Blessonjoseph07/feat/dot-provenance-helpline-presence"
+    ],
+    [
+      "4c32e72",
+      "2026-10-24",
+      "Student",
+      "feat(ui): quiet orange dots instead of DEMO labels, care home helpline, payment test account, presence-first live boards"
+    ],
+    [
+      "017dfde",
+      "2026-10-24",
+      "Blesson Joseph Byju",
+      "Merge pull request #34 from Blessonjoseph07/feat/razorpay-checkout"
+    ],
+    [
+      "f881091",
+      "2026-10-24",
+      "Student",
+      "feat(payments): Razorpay Orders + Checkout for the family Care Plan (test mode by default)"
+    ],
+    [
+      "2184042",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "feat: fix direct dashboard login for all roles and add chapter 5 system testing report (#33)"
+    ],
+    [
+      "d7da6e2",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #32 from Blessonjoseph07/feat/occupancy-learner"
+    ],
+    [
+      "a1f03b4",
+      "2026-10-23",
+      "Student",
+      "feat(live): Phase 2 in-room occupancy learner (empty / few / busy)"
+    ],
+    [
+      "eb2088d",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #31 from Blessonjoseph07/fix/movement-fetch-robust"
+    ],
+    [
+      "e3a97cd",
+      "2026-10-23",
+      "Student",
+      "fix(live): movement box survives dropped requests; warn when the baseline is clearly wrong"
+    ],
+    [
+      "ba5af83",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #30 from Blessonjoseph07/fix/live-presence-first"
+    ],
+    [
+      "d338358",
+      "2026-10-23",
+      "Student",
+      "fix(live): presence first, fall detection off for live hardware"
+    ],
+    [
+      "e5c6c9a",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #29 from Blessonjoseph07/feat/live-movement-indicator"
+    ],
+    [
+      "df02945",
+      "2026-10-23",
+      "Student",
+      "feat(live): movement indicator for LIVE HARDWARE with an empty-room baseline"
+    ],
+    [
+      "ab5b6ce",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #28 from Blessonjoseph07/feat/live-plain-summary"
+    ],
+    [
+      "15cf8b0",
+      "2026-10-23",
+      "Student",
+      "feat(ui): plain-language summary for LIVE HARDWARE"
+    ],
+    [
+      "263b833",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #27 from Blessonjoseph07/fix/hosting-stability"
+    ],
+    [
+      "760f617",
+      "2026-10-23",
+      "Student",
+      "fix(hosting): harden Postgres connections, plain-language replay summary, presentation preflight"
+    ],
+    [
+      "9806fa7",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #26 from Blessonjoseph07/fix/replay-resilient"
+    ],
+    [
+      "39f74b5",
+      "2026-10-23",
+      "Student",
+      "fix(replay): retry gateway errors and add --skip to resume"
+    ],
+    [
+      "6e92360",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #25 from Blessonjoseph07/fix/replay-check-device-source"
+    ],
+    [
+      "7614811",
+      "2026-10-23",
+      "Student",
+      "fix(replay): stop at once when the device is not a dataset device"
+    ],
+    [
+      "58cdb9e",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #24 from Blessonjoseph07/fix/show-device-token"
+    ],
+    [
+      "88779b3",
+      "2026-10-23",
+      "Student",
+      "fix(devices): show the device token once after registering a node"
+    ],
+    [
+      "711c9ec",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #23 from Blessonjoseph07/feat/room-picker-grouping"
+    ],
+    [
+      "c1ea3f6",
+      "2026-10-23",
+      "Student",
+      "feat(devices): group the room picker by organization and add a data-source choice"
+    ],
+    [
+      "32500c1",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #22 from Blessonjoseph07/fix/family-facility-name"
+    ],
+    [
+      "d61f575",
+      "2026-10-23",
+      "Student",
+      "fix(family): show the facility's real name instead of a hard-coded St. Mary's"
+    ],
+    [
+      "b79d6f3",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #21 from Blessonjoseph07/chore/render-minimal-seed"
+    ],
+    [
+      "4d1e0bf",
+      "2026-10-23",
+      "Student",
+      "chore(render): back to the minimal seed profile (one user per role)"
+    ],
+    [
+      "03a0295",
+      "2026-10-23",
+      "Blesson Joseph Byju",
+      "Merge pull request #20 from Blessonjoseph07/chore/render-full-seed"
+    ]
+  ],
+  "database_schemas": [
+    {
+      "table_name": "organizations",
+      "description": "Relational entity table for Organizations",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "name",
+          "type": "VARCHAR(150)",
+          "constraints": "NOT NULL UNIQUE",
+          "description": "Attribute storing name"
+        },
+        {
+          "field": "type",
+          "type": "ORGANIZATION_TYPE",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing type"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "buildings",
+      "description": "Relational entity table for Buildings",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "organization_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES organizations(id) ON DELETE CASCADE",
+          "description": "Attribute storing organization id"
+        },
+        {
+          "field": "name",
+          "type": "VARCHAR(100)",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing name"
+        },
+        {
+          "field": "address",
+          "type": "TEXT",
+          "constraints": "NULL",
+          "description": "Attribute storing address"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "floors",
+      "description": "Relational entity table for Floors",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "building_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES buildings(id) ON DELETE CASCADE",
+          "description": "Attribute storing building id"
+        },
+        {
+          "field": "floor_number",
+          "type": "INTEGER",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing floor number"
+        },
+        {
+          "field": "floor_plan_url",
+          "type": "VARCHAR(255)",
+          "constraints": "NULL",
+          "description": "Attribute storing floor plan url"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "rooms",
+      "description": "Relational entity table for Rooms",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "floor_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES floors(id) ON DELETE CASCADE",
+          "description": "Attribute storing floor id"
+        },
+        {
+          "field": "name",
+          "type": "VARCHAR(50)",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing name"
+        },
+        {
+          "field": "room_type",
+          "type": "VARCHAR(50)",
+          "constraints": "NOT NULL, -- e.g., 'Resident Bedroom', 'Conference Room'",
+          "description": "Attribute storing room type"
+        },
+        {
+          "field": "capacity",
+          "type": "INTEGER",
+          "constraints": "NOT NULL DEFAULT 1",
+          "description": "Attribute storing capacity"
+        },
+        {
+          "field": "dimensions_metadata",
+          "type": "JSONB,",
+          "constraints": "-- stores {width_m, length_m, height_m}",
+          "description": "Attribute storing dimensions metadata"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "roles",
+      "description": "Relational entity table for Roles",
+      "fields": [
+        {
+          "field": "id",
+          "type": "SERIAL",
+          "constraints": "PRIMARY KEY",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "name",
+          "type": "VARCHAR(50)",
+          "constraints": "NOT NULL UNIQUE",
+          "description": "Attribute storing name"
+        }
+      ]
+    },
+    {
+      "table_name": "users",
+      "description": "Relational entity table for Users",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "email",
+          "type": "VARCHAR(150)",
+          "constraints": "NOT NULL UNIQUE",
+          "description": "Attribute storing email"
+        },
+        {
+          "field": "password_hash",
+          "type": "VARCHAR(255)",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing password hash"
+        },
+        {
+          "field": "first_name",
+          "type": "VARCHAR(50)",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing first name"
+        },
+        {
+          "field": "last_name",
+          "type": "VARCHAR(50)",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing last name"
+        },
+        {
+          "field": "is_active",
+          "type": "BOOLEAN",
+          "constraints": "NOT NULL DEFAULT TRUE",
+          "description": "Attribute storing is active"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "user_roles",
+      "description": "Relational entity table for User Roles",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "user_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES users(id) ON DELETE CASCADE",
+          "description": "Attribute storing user id"
+        },
+        {
+          "field": "role_id",
+          "type": "INTEGER",
+          "constraints": "NOT NULL REFERENCES roles(id) ON DELETE RESTRICT",
+          "description": "Attribute storing role id"
+        },
+        {
+          "field": "organization_id",
+          "type": "UUID",
+          "constraints": "REFERENCES organizations(id) ON DELETE CASCADE",
+          "description": "Attribute storing organization id"
+        },
+        {
+          "field": "building_id",
+          "type": "UUID",
+          "constraints": "REFERENCES buildings(id) ON DELETE CASCADE",
+          "description": "Attribute storing building id"
+        },
+        {
+          "field": "room_id",
+          "type": "UUID",
+          "constraints": "REFERENCES rooms(id) ON DELETE CASCADE",
+          "description": "Attribute storing room id"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "--",
+          "type": "PREVENT",
+          "constraints": "duplicate assignments of same role/scope combinations",
+          "description": "Attribute storing --"
+        }
+      ]
+    },
+    {
+      "table_name": "devices",
+      "description": "Relational entity table for Devices",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "room_id",
+          "type": "UUID",
+          "constraints": "REFERENCES rooms(id) ON DELETE SET NULL",
+          "description": "Attribute storing room id"
+        },
+        {
+          "field": "mac_address",
+          "type": "VARCHAR(17)",
+          "constraints": "NOT NULL UNIQUE",
+          "description": "Attribute storing mac address"
+        },
+        {
+          "field": "device_status",
+          "type": "DEVICE_STATUS_TYPE",
+          "constraints": "NOT NULL DEFAULT 'OFFLINE'",
+          "description": "Attribute storing device status"
+        },
+        {
+          "field": "firmware_version",
+          "type": "VARCHAR(30)",
+          "constraints": "NULL",
+          "description": "Attribute storing firmware version"
+        },
+        {
+          "field": "last_seen_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE",
+          "description": "Attribute storing last seen at"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "activity_types",
+      "description": "Relational entity table for Activity Types",
+      "fields": [
+        {
+          "field": "id",
+          "type": "SERIAL",
+          "constraints": "PRIMARY KEY",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "name",
+          "type": "VARCHAR(50)",
+          "constraints": "NOT NULL UNIQUE",
+          "description": "Attribute storing name"
+        },
+        {
+          "field": "category",
+          "type": "ACTIVITY_CATEGORY",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing category"
+        }
+      ]
+    },
+    {
+      "table_name": "sensing_templates",
+      "description": "Relational entity table for Sensing Templates",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "organization_id",
+          "type": "UUID",
+          "constraints": "REFERENCES organizations(id) ON DELETE CASCADE",
+          "description": "Attribute storing organization id"
+        },
+        {
+          "field": "activity_type_id",
+          "type": "INTEGER",
+          "constraints": "NOT NULL REFERENCES activity_types(id) ON DELETE CASCADE",
+          "description": "Attribute storing activity type id"
+        },
+        {
+          "field": "template_name",
+          "type": "VARCHAR(100)",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing template name"
+        },
+        {
+          "field": "csi_amplitude_baseline",
+          "type": "DOUBLE",
+          "constraints": "PRECISION[] NOT NULL",
+          "description": "Attribute storing csi amplitude baseline"
+        },
+        {
+          "field": "csi_phase_baseline",
+          "type": "DOUBLE",
+          "constraints": "PRECISION[] NOT NULL",
+          "description": "Attribute storing csi phase baseline"
+        },
+        {
+          "field": "environment_metadata",
+          "type": "JSONB,",
+          "constraints": "-- Stores environmental dimensions or interference properties",
+          "description": "Attribute storing environment metadata"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "sensing_events",
+      "description": "Relational entity table for Sensing Events",
+      "fields": [
+        {
+          "field": "id",
+          "type": "BIGSERIAL",
+          "constraints": "PRIMARY KEY",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "device_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES devices(id) ON DELETE CASCADE",
+          "description": "Attribute storing device id"
+        },
+        {
+          "field": "room_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES rooms(id) ON DELETE CASCADE",
+          "description": "Attribute storing room id"
+        },
+        {
+          "field": "timestamp",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE NOT NULL",
+          "description": "Attribute storing timestamp"
+        },
+        {
+          "field": "rssi",
+          "type": "INTEGER",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing rssi"
+        },
+        {
+          "field": "subcarrier_count",
+          "type": "INTEGER",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing subcarrier count"
+        },
+        {
+          "field": "raw_csi_payload_path",
+          "type": "VARCHAR(512),",
+          "constraints": "-- Pointer to file store (e.g. S3, MinIO)",
+          "description": "Attribute storing raw csi payload path"
+        },
+        {
+          "field": "extracted_features",
+          "type": "JSONB",
+          "constraints": "NOT NULL, -- e.g. {\"amplitude_variance\": 0.42, \"doppler_shift\": 1.25}",
+          "description": "Attribute storing extracted features"
+        },
+        {
+          "field": "inferred_activity_id",
+          "type": "INTEGER",
+          "constraints": "NOT NULL REFERENCES activity_types(id) ON DELETE RESTRICT",
+          "description": "Attribute storing inferred activity id"
+        },
+        {
+          "field": "model_confidence",
+          "type": "NUMERIC(5,4)",
+          "constraints": "NOT NULL CHECK (model_confidence >= 0.0 AND model_confidence <= 1.0)",
+          "description": "Attribute storing model confidence"
+        }
+      ]
+    },
+    {
+      "table_name": "alert_templates",
+      "description": "Relational entity table for Alert Templates",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "organization_id",
+          "type": "UUID",
+          "constraints": "REFERENCES organizations(id) ON DELETE CASCADE",
+          "description": "Attribute storing organization id"
+        },
+        {
+          "field": "event_type_id",
+          "type": "INTEGER",
+          "constraints": "NOT NULL REFERENCES activity_types(id) ON DELETE CASCADE",
+          "description": "Attribute storing event type id"
+        },
+        {
+          "field": "alert_severity",
+          "type": "ALERT_SEVERITY_TYPE",
+          "constraints": "NOT NULL DEFAULT 'MEDIUM'",
+          "description": "Attribute storing alert severity"
+        },
+        {
+          "field": "message_template",
+          "type": "TEXT",
+          "constraints": "NOT NULL, -- e.g., \"Presence detected in vacant Room {room_name}\"",
+          "description": "Attribute storing message template"
+        },
+        {
+          "field": "cooldown_period_seconds",
+          "type": "INTEGER",
+          "constraints": "NOT NULL DEFAULT 60",
+          "description": "Attribute storing cooldown period seconds"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "alert_configurations",
+      "description": "Relational entity table for Alert Configurations",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "room_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES rooms(id) ON DELETE CASCADE",
+          "description": "Attribute storing room id"
+        },
+        {
+          "field": "alert_template_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES alert_templates(id) ON DELETE CASCADE",
+          "description": "Attribute storing alert template id"
+        },
+        {
+          "field": "is_enabled",
+          "type": "BOOLEAN",
+          "constraints": "NOT NULL DEFAULT TRUE",
+          "description": "Attribute storing is enabled"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "alerts",
+      "description": "Relational entity table for Alerts",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "alert_configuration_id",
+          "type": "UUID",
+          "constraints": "REFERENCES alert_configurations(id) ON DELETE SET NULL",
+          "description": "Attribute storing alert configuration id"
+        },
+        {
+          "field": "room_id",
+          "type": "UUID",
+          "constraints": "NOT NULL REFERENCES rooms(id) ON DELETE CASCADE",
+          "description": "Attribute storing room id"
+        },
+        {
+          "field": "event_type",
+          "type": "VARCHAR(50)",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing event type"
+        },
+        {
+          "field": "severity",
+          "type": "ALERT_SEVERITY_TYPE",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing severity"
+        },
+        {
+          "field": "message",
+          "type": "TEXT",
+          "constraints": "NOT NULL",
+          "description": "Attribute storing message"
+        },
+        {
+          "field": "status",
+          "type": "ALERT_STATUS_TYPE",
+          "constraints": "NOT NULL DEFAULT 'DETECTION'",
+          "description": "Attribute storing status"
+        },
+        {
+          "field": "created_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing created at"
+        },
+        {
+          "field": "updated_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing updated at"
+        }
+      ]
+    },
+    {
+      "table_name": "alert_acknowledgements",
+      "description": "Relational entity table for Alert Acknowledgements",
+      "fields": [
+        {
+          "field": "id",
+          "type": "UUID",
+          "constraints": "PRIMARY KEY DEFAULT uuid_generate_v4()",
+          "description": "Attribute storing id"
+        },
+        {
+          "field": "alert_id",
+          "type": "UUID",
+          "constraints": "NOT NULL UNIQUE REFERENCES alerts(id) ON DELETE CASCADE",
+          "description": "Attribute storing alert id"
+        },
+        {
+          "field": "user_id",
+          "type": "UUID",
+          "constraints": "REFERENCES users(id) ON DELETE SET NULL",
+          "description": "Attribute storing user id"
+        },
+        {
+          "field": "acknowledged_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+          "description": "Attribute storing acknowledged at"
+        },
+        {
+          "field": "resolved_at",
+          "type": "TIMESTAMP",
+          "constraints": "WITH TIME ZONE",
+          "description": "Attribute storing resolved at"
+        },
+        {
+          "field": "resolution_notes",
+          "type": "TEXT",
+          "constraints": "NULL",
+          "description": "Attribute storing resolution notes"
+        }
+      ]
+    }
+  ]
+}

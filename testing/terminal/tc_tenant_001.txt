@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-TENANT-001 ===
+Test Name: Elder Care Cannot View Corporate Data
+Module: Multi-Tenant Isolation | Role: Caregiver | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: St. Peter's Caregiver sees only St. Peter's rooms and residents. Corporate assets are hidden.
+Actual: has_amal_jyothi=False, has_corporate_room=False
+Screenshot: TC_TENANT_001_elder_care_cannot_view_corpora.png
+Duration: 25.33s
+
+--- Terminal / API Trace ---
+GET /api/v1/buildings HTTP/1.1
+Org-Filter: 63affe18-bfbe-4fc3-81e5-075058c55c61 (St. Peter's)
+Amal Jyothi excluded from query set.
+Isolation: VERIFIED

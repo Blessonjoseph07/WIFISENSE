@@ -1,0 +1,13 @@
+=== TEST EXECUTION LOG: TC-AUTH-006 ===
+Test Name: Negative Unknown User
+Module: Authentication | Role: Unauthenticated Visitor | Context: SECURITY
+Status: PASS | Severity: INFO
+Expected: Authentication rejected with HTTP 401 and error banner displayed
+Actual: is_logged_in=False, Error='Incorrect email or password.'
+Screenshot: TC_AUTH_006_negative_unknown_user.png
+Duration: 20.28s
+
+--- Terminal / API Trace ---
+POST /auth/login HTTP/1.1
+Email: nonexistent_user@wifisense.com
+Response: 401 Unauthorized

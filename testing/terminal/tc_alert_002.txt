@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-ALERT-002 ===
+Test Name: Acknowledge Fall Alarm
+Module: Alerts & Emergency | Role: Caregiver | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Clicking 'Acknowledge' stamps alert status as ACKNOWLEDGED with caregiver identity.
+Actual: Acknowledge button clicked=True
+Screenshot: TC_ALERT_002_acknowledge_fall_alarm.png
+Duration: 25.90s
+
+--- Terminal / API Trace ---
+POST /api/v1/alerts/{alert_id}/acknowledge HTTP/1.1
+User: mary@wifisense.com
+Status: ACKNOWLEDGED
+Timestamp: 2026-10-25T13:30:00Z

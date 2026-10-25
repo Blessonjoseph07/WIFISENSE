@@ -1,0 +1,15 @@
+=== TEST EXECUTION LOG: TC-AUTH-003 ===
+Test Name: Corporate Staff Valid Login
+Module: Authentication | Role: Corporate Staff | Context: CORPORATE
+Status: PASS | Severity: INFO
+Expected: Staff authenticates into Space Management shell, displaying SPACE badge
+Actual: Login status=True, Badge='SPACE APP', User=''
+Screenshot: TC_AUTH_003_corporate_staff_valid_login.png
+Duration: 23.44s
+
+--- Terminal / API Trace ---
+POST /auth/login HTTP/1.1
+Email: tomy@wifisense.com
+Response: 200 OK
+Role: corporate_staff
+AppContext: CORPORATE

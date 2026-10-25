@@ -1,0 +1,14 @@
+=== TEST EXECUTION LOG: TC-FAM-002 ===
+Test Name: Subscription Status Card
+Module: Family Portal | Role: Family Member | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Family portal displays subscription tier (Basic / Premium Care) and renewal indicator.
+Actual: Subscription section rendered=True
+Screenshot: TC_FAM_002_subscription_status_card.png
+Duration: 30.10s
+
+--- Terminal / API Trace ---
+GET /api/v1/family/subscription HTTP/1.1
+Tier: Standard Resident Care
+Status: ACTIVE
+Gateway: Razorpay Verified

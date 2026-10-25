@@ -1,0 +1,15 @@
+=== TEST EXECUTION LOG: TC-FAM-001 ===
+Test Name: Resident Presence Status Badge
+Module: Family Portal | Role: Family Member | Context: ELDER_CARE
+Status: PASS | Severity: INFO
+Expected: Family Member observes real-time contactless presence badge for Annamma.
+Actual: Family Portal rendered=True, Presence indicator=True
+Screenshot: TC_FAM_001_resident_presence_status_badge.png
+Duration: 30.36s
+
+--- Terminal / API Trace ---
+GET /api/v1/family/resident-status HTTP/1.1
+Resident: Annamma Joseph
+Presence: IN_ROOM (Safe)
+CSI Signal: Active
+Status: 200 OK

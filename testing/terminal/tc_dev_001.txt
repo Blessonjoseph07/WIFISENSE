@@ -1,0 +1,15 @@
+=== TEST EXECUTION LOG: TC-DEV-001 ===
+Test Name: Node Fleet Inventory
+Module: Device Management | Role: System Administrator | Context: SYSTEM
+Status: PASS | Severity: INFO
+Expected: System Admin inspects active ESP32-S3 sensing node fleet, MAC addresses, and status.
+Actual: DevicesView rendered=True, Nodes displayed=True
+Screenshot: TC_DEV_001_node_fleet_inventory.png
+Duration: 26.52s
+
+--- Terminal / API Trace ---
+GET /api/v1/devices HTTP/1.1
+Total Nodes: 6
+Online: 6 | Offline: 0
+Firmware: v1.0.0 ESP32-S3 CSI
+Status: 200 OK
