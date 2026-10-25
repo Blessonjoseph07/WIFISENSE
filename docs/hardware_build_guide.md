@@ -26,7 +26,7 @@ OLED (128×64), 1 × breadboard, 4 jumper wires, 1 × USB-C data cable.
 | **Current budget** | Per node: ESP32-S3 with Wi-Fi ≈ 100–150 mA average, **peaks ≈ 350 mA** while transmitting; OLED 10–25 mA. A USB 2.0 port (500 mA) or any phone charger is enough. | The board's own 3.3 V regulator feeds the OLED, so there is no separate supply. |
 | **Power bank on the TX** | If the TX board **switches off after 10–60 seconds**, the power bank is cutting out at low load. Use a phone wall charger instead, or a bank with an "always on / low-current" mode. | Many power banks turn off below about 50–100 mA. The TX usually draws more than that, but some banks are stricter. |
 | **One power source per board** | Power each board from **one** USB-C cable only. Do not also feed the 5V or 3V3 pins from another supply. | Two supplies fighting each other can damage the regulator or the PC's USB port. |
-| **Which USB-C port** | Many ESP32-S3 boards have two ports: **"COM"/"UART"** (through a USB-UART chip) and **"USB"** (native). For the **RX**, use **COM/UART**: that is the port the board reads the bridge's display line from. Either port works for the TX. | Both ports carry the CSI output, but only the UART port carries the state line back to the OLED. |
+| **Which USB-C port** | Many ESP32-S3 boards have two ports: **"COM"/"UART"** (through a USB-UART chip, shows up as e.g. *Silicon Labs CP210x*) and **"USB"** (native, shows up as *USB Serial Device*). **Either port works for both boards**: the RX sends its CSI out of both and reads the bridge's display line on both. | If flashing over the UART port fails with "No serial data received", use the native USB port: it enters download mode by itself. |
 | **Static** | Touch a grounded metal object before handling the boards; hold them by the edges. | |
 
 ---
@@ -196,7 +196,7 @@ recorded safely (on a crash mat) in this room, and an unvalidated "fall" alert i
 | TX turns off after a minute on the power bank | Power-bank auto-off. Use a wall charger (section 0). |
 | RX `CSI 0/s`, `no frames from TX` | TX unpowered, antenna missing, boards too far apart, or different firmware/channel. |
 | RX `dropped` keeps rising | Frames in the wrong format: re-flash `csi_send` (6 Mbps legacy OFDM, channel 11). |
-| RX says `start the bridge` but the bridge runs | The bridge is on the native "USB" port: move the cable to the **COM/UART** port, or ignore it (data still flows; only the OLED state line needs the UART port). |
+| RX says `start the bridge` but the bridge runs | The bridge cannot reach the API (check its window for HTTP errors), or the RX still runs firmware older than the display update: re-flash `csi_recv`. |
 | `PC LINK LOST` | The bridge stopped or the API is unreachable: check the bridge window. |
 | Predictions flip constantly | Boards moved, or not enough recordings: record each situation again (section 6). |
 | Bridge stops with `rejected the device token` | Wrong or rotated token: copy a fresh one from the Devices page. |
