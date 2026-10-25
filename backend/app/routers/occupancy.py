@@ -78,6 +78,13 @@ def room_state_snapshot(session: Session, device_id: str, model: Dict[str, Any])
     return movement.cached(f"occ:{device_id}", build)
 
 
+def movement_overrides(pred: Optional[Dict[str, Any]], mv: Dict[str, Any]) -> bool:
+    """True when the movement check clearly sees movement but the model answers with a motionless situation. That happens when
+    'walking' was not recorded (a model can only answer with what it was taught), so the board shows the movement instead
+    of a confident 'still' or 'empty'."""
+    return bool(pred) and mv.get("state") == "MOVEMENT" and pred.get("label") in ("empty", "still")
+
+
 @router.get("/device/state")
 def get_own_state(device: SensingDevice = Depends(get_authenticated_device), session: Session = Depends(get_session)):
     """What the board itself may show on its display: presence from the empty-room reference and, once a model has been trained in
@@ -92,6 +99,8 @@ def get_own_state(device: SensingDevice = Depends(get_authenticated_device), ses
         if pred:
             ev = _state(session, device.id).get("evaluation") or {}
             room = {"label": pred["label"], "text": pred["text"], "confidence": pred["confidence"], "reliable": bool(ev.get("reliable"))}
+            if movement_overrides(pred, mv):
+                room = {"label": "moving", "text": "Movement detected", "confidence": None, "reliable": room["reliable"]}
     return {"presence": mv["presence"], "movement_state": mv["state"], "headline": mv["headline"],
             "seconds_since_last_packet": mv["seconds_since_last_packet"], "room_state": room}
 
@@ -121,6 +130,7 @@ def get_occupancy(device_id: str, session: Session = Depends(get_session), curre
     if model:
         res = room_state_snapshot(session, device_id, model)
         out["prediction"], out["prediction_state"], out["prediction_detail"] = res["prediction"], res["state"], res["detail"]
+        out["movement_override"] = movement_overrides(res["prediction"], movement_snapshot(session, device_id))
     return out
 
 

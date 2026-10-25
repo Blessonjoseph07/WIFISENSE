@@ -228,7 +228,13 @@ export default function OccupancyLearner({ deviceId, authToken, API_BASE }) {
                     <span className="w-9 text-right font-mono">{Math.round(p * 100)}%</span>
                   </div>
                 ))}
-                {!ev?.reliable && <div className="text-[11px] text-amber-700">This model did not pass its own test, so treat this as a guess, not a measurement.</div>}
+                {data.movement_override && (
+                  <div className="text-[11px] text-amber-700">
+                    The movement check sees clear movement, so the board shows <strong>Movement detected</strong> instead of "{pred.text}".
+                    {!(data.evaluation?.recordings || {}).walking && " Record \"Someone walking\" so the model learns movement too."}
+                  </div>
+                )}
+                {!ev?.reliable && <div className="text-[11px] text-amber-700">This model did not pass its own test, so treat this as a guess, not a measurement.{ev?.reason ? ` (${ev.reason})` : ""}</div>}
               </>
             ) : (
               <div className="text-xs text-slate-500">{data.prediction_state === "NOT_SENDING" ? "The board is not sending, so there is no current estimate." : "Waiting for a few seconds of readings."}</div>

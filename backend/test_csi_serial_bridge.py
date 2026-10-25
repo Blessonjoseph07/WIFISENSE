@@ -103,6 +103,8 @@ def run():
         == "WS_STATE,NO PRESENCE,STILL 60%?\n"
     assert bridge.display_lines({"movement_state": "STALE", "room_state": None}) == "WS_STATE,NOT SENDING,NOT TRAINED\n"
     assert bridge.display_lines({}) == "WS_STATE,NO DATA,NOT TRAINED\n"
+    assert bridge.display_lines({"movement_state": "MOVEMENT", "room_state": {"label": "moving", "confidence": None, "reliable": True}}) \
+        == "WS_STATE,PRESENCE+MOVE,MOVING\n"
     print("[PASS] display line: presence + learned state, '?' when the model is not reliable, never a comma or non-ASCII")
 
 

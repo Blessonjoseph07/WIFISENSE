@@ -105,7 +105,7 @@ def run():
     ev = tr["evaluation"]
     assert st == 200 and ev["reliable"] is True and ev["heldout_accuracy"] >= 0.9, ev
     assert all(v >= 6 for v in ev["heldout_blocks"].values()) and ev["majority_baseline"] < 0.5, ev
-    assert "never used to train" in ev["note"]
+    assert ev["method"] == "leave-one-recording-out" and "trained without it" in ev["note"], ev
     print(f"[PASS] held-out accuracy {ev['heldout_accuracy']} on blocks never used for training (majority guess would be {ev['majority_baseline']}); reliable={ev['reliable']}")
 
     print("--- live predictions follow the signal")
@@ -144,6 +144,23 @@ def run():
         o = call(f"/sensing/devices/{did3}/occupancy", token=fm)[1]
         assert o["prediction"]["label"] == label, (label, o["prediction"])
     print(f"[PASS] still vs empty: held-out accuracy {tr['evaluation']['heldout_accuracy']}, live predictions follow")
+
+    print("--- one recording per situation: never called reliable, and its confidence is held down")
+    did4, tok4 = new_device(fm, room)
+    for label in ("empty", "busy"):
+        first = latest_id(fm, did4)
+        send(tok4, 1000, NOISE[label], 0)
+        assert call(f"/sensing/devices/{did4}/occupancy/capture", "POST", {"label": label, "seconds": 5, "from_packet_id": first + 1}, fm)[0] == 200
+    st, tr = call(f"/sensing/devices/{did4}/occupancy/train", "POST", {}, fm)
+    ev1 = tr["evaluation"]
+    assert st == 200 and ev1["method"] == "end-of-recording" and ev1["reliable"] is False and "at least 2 recordings" in ev1["reason"], ev1
+    send(tok4, 700, NOISE["busy"], 20000)
+    time.sleep(1.7)
+    o = call(f"/sensing/devices/{did4}/occupancy", token=fm)[1]
+    assert o["prediction"]["label"] == "busy" and o["prediction"]["confidence"] <= 0.81, o["prediction"]
+    print(f"[PASS] single recordings: reliable=False ({ev1['reason']}); confidence held to {o['prediction']['confidence']}")
+    assert ev["method"] == "leave-one-recording-out", ev
+    print("[PASS] with two recordings each, every recording was tested by a model trained without it")
 
     print("--- the board can read its own state with its device token (for its display)")
     st, own = call("/sensing/device/state", headers={"X-Device-Token": tok3})
