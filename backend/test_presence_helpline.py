@@ -70,8 +70,12 @@ def run():
         assert fs["facility_phone"] == "+91 481 2000 123" and fs["facility_name"], fs
         assert call(f"/organizations/{home_id}/contact", "PATCH", {"contact_phone": "+91 481 2000 123"}, corp)[0] == 404, "another organization's manager must not edit it"
         assert call(f"/organizations/{home_id}/contact", "PATCH", {"contact_phone": "+91 481 2000 123"}, care)[0] == 403, "a caregiver must not edit it"
-        for bad in ("call me!", "<script>", "12", "1" * 40):
+        for bad in ("call me!", "<script>", "12", "1" * 40, "+91 00000 1234666660000", "+91 00000 00000", "+91 98470", "98+470 12345"):
             assert call(f"/organizations/{home_id}/contact", "PATCH", {"contact_phone": bad}, fm)[0] == 422, bad
+        for good in ("+91 98470 12345", "0481 2000123", "1800 425 1234", "+44 20 7946 0958"):
+            st, org = call(f"/organizations/{home_id}/contact", "PATCH", {"contact_phone": good}, fm)
+            assert st == 200 and org["contact_phone"] == good, (good, st, org)
+        print("[PASS] helpline numbers: wrong digit counts, repeated digits and a misplaced + are refused; real formats accepted")
         st, org = call(f"/organizations/{home_id}/contact", "PATCH", {"contact_phone": ""}, fm)
         assert st == 200 and org["contact_phone"] is None
         assert call("/family/resident-status", token=john)[1]["facility_phone"] is None, "nothing may be invented when no helpline is set"
