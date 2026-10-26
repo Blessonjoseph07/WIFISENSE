@@ -1347,7 +1347,7 @@ def seed_database(session: Session, force: bool = False):
         event_type="Fall_Detected",
         severity="HIGH",
         status="resolved",
-        message="Sudden Descent: Annamma Joseph dropped glasses in Resident Room 102",
+        message="Sudden Descent: Mary Joseph dropped glasses in Resident Room 102",
         created_at=now - timedelta(days=2, hours=6)
     ))
 

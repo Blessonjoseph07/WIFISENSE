@@ -74,6 +74,7 @@ def apply_demo_profile(session: Session) -> None:
 
 
 PAYER_EMAIL = "payer@wifisense.com"
+WRONG_SEED_ALERT = "Sudden Descent: Annamma Joseph dropped glasses in Resident Room 102"
 PLACEHOLDER_HELPLINE = "+91 00000 00000"      # obviously not a real number: the facility sets its own (PATCH /organizations/{id}/contact)
 
 
@@ -84,7 +85,13 @@ def ensure_demo_extras(session: Session) -> None:
     from datetime import datetime, timezone
 
     from app.core.seed import ROLE_MAPPING
-    from app.models.entities import FamilyConnection, Organization, Resident, UserRole
+    from app.models.entities import Alert, FamilyConnection, Organization, Resident, UserRole
+
+    # Older seeds put a resident of Room 204 into a Room 102 alert, so Room 102's families saw someone else's name.
+    for alert in session.exec(select(Alert).where(Alert.message == WRONG_SEED_ALERT)).all():
+        alert.message = WRONG_SEED_ALERT.replace("Annamma Joseph", "Mary Joseph")
+        session.add(alert)
+    session.commit()
 
     if session.exec(select(User).where(User.email == PAYER_EMAIL)).first():
         return
