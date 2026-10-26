@@ -12,6 +12,7 @@ What it can NOT do, and the API says so:
 It is only meaningful against a reference: an operator records a baseline while the room is empty and still, and a block counts
 as movement only when it is clearly above that baseline. Without a baseline the state is NO_BASELINE and no judgement is made.
 """
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -26,7 +27,9 @@ MIN_BASELINE_BLOCKS = 6    # a baseline needs at least this many blocks (about 6
 SIGMA = 4.0                # blocks above baseline mean + SIGMA * std ...
 MIN_RATIO = 1.5            # ... and above baseline mean * MIN_RATIO count as movement
 RECENT_BLOCKS = 3          # the state follows the latest blocks, so one noisy block does not flip it
-CACHE_SECONDS = 1.5
+# How long a computed reading is reused. The free hosted instance has a tenth of a CPU, and several panels plus the board
+# poll every 1-2.5 s, so production reuses each result longer; set SENSING_CACHE_SECONDS to override.
+CACHE_SECONDS = float(os.getenv("SENSING_CACHE_SECONDS") or ("3.0" if os.getenv("ENVIRONMENT", "").lower() == "production" else "1.5"))
 
 _cache_lock = threading.Lock()
 _cache: Dict[str, Any] = {}
