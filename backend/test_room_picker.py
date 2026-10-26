@@ -49,6 +49,17 @@ def run():
     assert st == 200 and {r["organization_type"] for r in corp_rooms} == {"CORPORATE"}, "corporate manager must only see corporate rooms"
     assert not {r["id"] for r in care_rooms} & {r["id"] for r in corp_rooms}
     print("[PASS] organization managers still see only their own rooms")
+
+    # GET /devices must say where each device is: the fields used to be dropped from the response, so the Devices page
+    # showed the elder-care home for every device, corporate rooms included.
+    st, devices = call("/devices", token=admin)
+    assert st == 200 and devices
+    room_org = {r["id"]: r["organization_type"] for r in rooms}
+    placed = [d for d in devices if d.get("room_id") in room_org]
+    assert placed and all(d.get("organization_type") == room_org[d["room_id"]] and d.get("organization_name") and d.get("room_name")
+                          for d in placed), [(d["mac_address"], d.get("organization_type"), d.get("room_name")) for d in placed[:5]]
+    assert {d["organization_type"] for d in placed} == {"CORPORATE", "ELDER_CARE"}
+    print(f"[PASS] /devices labels all {len(placed)} placed devices with their own room's organization (corporate and elder care)")
     print("\nALL ROOM PICKER TESTS PASSED")
 
 
