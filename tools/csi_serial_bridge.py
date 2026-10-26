@@ -232,12 +232,19 @@ class Poster:
                     if e.code in (401, 403):
                         self.fatal = f"the API rejected the device token ({e.code}): {e.body}"
                         return
+                    hint = provenance_hint(e.body) if e.code == 400 else None
+                    if hint:                                   # every batch would be refused the same way: stop now
+                        self.fatal = hint
+                        return
                     if not (e.code == 429 or e.code >= 500):
                         self.dropped_rejected += len(batch)
                         print(f"\nHTTP {e.code} from the API, batch of {len(batch)} dropped: {e.body}", flush=True)
                         break
                 except (OSError, http.client.HTTPException):
                     self.http_errors += 1
+                except Exception as exc:                      # anything else would kill this thread silently
+                    self.fatal = f"the sender stopped: {type(exc).__name__}: {exc}"
+                    return
                 if self._conn is not None:
                     try:
                         self._conn.close()
@@ -259,6 +266,23 @@ class Poster:
         s = sorted(self.server_ms) if self.server_ms else [0.0]
         return (f"rtt p50={r[len(r) // 2]:.0f} p95={r[min(len(r) - 1, int(len(r) * 0.95))]:.0f}ms "
                 f"server p50={s[len(s) // 2]:.0f}ms")
+
+
+def clean_token(raw: Optional[str]) -> str:
+    """The token as typed or pasted, without what copying from a web page or an example adds: spaces and line breaks
+    anywhere (a token never contains them), surrounding quotes, and the <...> of a 'put your token here' example."""
+    t = re.sub(r"\s+", "", raw or "")
+    return t.strip("\"'").strip("<>").strip("\"'")
+
+
+def provenance_hint(body: str) -> Optional[str]:
+    """A plain explanation when the API refuses packets because the token belongs to another kind of device."""
+    m = re.search(r"device is restricted to '(\w+)'", body or "")
+    if not m:
+        return None
+    kind = {"dataset": "DATASET REPLAY", "simulated": "DEMO", "live": "LIVE HARDWARE"}.get(m.group(1), m.group(1))
+    return (f"this token belongs to a {kind} device, not to the live receiver. On Devices & Service Desk press RESET "
+            "TOKEN on the receiver's own row (its MAC, data source Live hardware) and start the bridge with that token.")
 
 
 ROOM_SHORT = {"empty": "EMPTY", "still": "STILL", "walking": "WALKING", "few": "FEW PEOPLE", "busy": "BUSY", "moving": "MOVING",
@@ -361,8 +385,12 @@ def main() -> None:
                     help="must match the registered device; 'live' for real hardware")
     ap.add_argument("--dry-run", action="store_true", help="parse and verify, send nothing")
     a = ap.parse_args()
+    a.token = clean_token(a.token)
     if not a.dry_run and not a.token:
         ap.error("--token (or WIFISENSE_DEVICE_TOKEN) is required unless --dry-run")
+    if a.token and not re.fullmatch(r"[A-Za-z0-9_\-]+", a.token):
+        ap.error("the device token contains characters a token never has (spaces or symbols). Copy it again from "
+                 "Devices & Service Desk > RESET TOKEN and pass it as --token \"TK-ESP32-...\" on one line.")
     if a.every < 1:
         ap.error("--every must be 1 or more")
 
