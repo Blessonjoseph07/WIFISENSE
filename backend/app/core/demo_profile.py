@@ -14,7 +14,7 @@ from sqlmodel import Session, SQLModel, select
 
 import app.models.entities  # noqa: F401  (registers every table on the metadata)
 from app.core.config import settings
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.models.entities import User
 
 KEEP_EMAILS = {
@@ -76,6 +76,24 @@ def apply_demo_profile(session: Session) -> None:
 PAYER_EMAIL = "payer@wifisense.com"
 WRONG_SEED_ALERT = "Sudden Descent: Annamma Joseph dropped glasses in Resident Room 102"
 PLACEHOLDER_HELPLINE = "+91 00000 00000"      # obviously not a real number: the facility sets its own (PATCH /organizations/{id}/contact)
+
+
+def sync_demo_passwords(session: Session) -> int:
+    """Runs on every start when demo data is on: every demo account (the KEEP_EMAILS list and the payment test account) gets
+    SEED_PASSWORD. apply_demo_profile() only runs on an empty database, so a database that already had accounts (migrated,
+    or seeded before SEED_PASSWORD was set or changed) would otherwise keep their old passwords while new accounts get the
+    new one. Other users are never touched. Returns how many passwords were changed."""
+    if not settings.SEED_PASSWORD:
+        return 0
+    changed = 0
+    for user in session.exec(select(User).where(User.email.in_(sorted(KEEP_EMAILS | {PAYER_EMAIL})))).all():
+        if not user.password_hash or not verify_password(settings.SEED_PASSWORD, user.password_hash):
+            user.password_hash = hash_password(settings.SEED_PASSWORD)
+            session.add(user)
+            changed += 1
+    if changed:
+        session.commit()
+    return changed
 
 
 def ensure_demo_extras(session: Session) -> None:

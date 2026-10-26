@@ -49,6 +49,22 @@ def run():
         assert old.status_code in (400, 401), old.status_code
         print("[PASS] every remaining account logs in with SEED_PASSWORD; the well-known password no longer works")
 
+    # A database that already had accounts (migrated, or seeded before SEED_PASSWORD was set or changed): on the next start
+    # every demo account must still end up with SEED_PASSWORD, not only the ones created then.
+    from app.core.security import hash_password
+    with Session(engine) as s:
+        for email in ("elizabeth@wifisense.com", "mary@wifisense.com"):
+            u = s.exec(select(User).where(User.email == email)).first()
+            u.password_hash = hash_password(email.split("@")[0] + "password")
+            s.add(u)
+        s.commit()
+    with TestClient(app) as client:                      # a restart runs the startup hook again (not a first run any more)
+        for email in ("elizabeth@wifisense.com", "mary@wifisense.com"):   # few logins: the login rate limit is 15 a minute
+            r = client.post("/auth/login", json={"email": email, "password": SECRET})
+            assert r.status_code == 200, (email, r.text)
+        assert client.post("/auth/login", json={"email": "elizabeth@wifisense.com", "password": "elizabethpassword"}).status_code in (400, 401)
+    print("[PASS] after a restart on an existing database, accounts with an old password get SEED_PASSWORD too")
+
     # production guard (a new Settings() reads the environment)
     from app.core.config import Settings
     saved = dict(os.environ)
