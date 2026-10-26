@@ -233,6 +233,13 @@ class SensingDeviceOut(BaseModel):
     last_seen_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
+    # Where the device is. The routers fill these in; without them in the schema they were silently dropped from every
+    # response and the Devices page fell back to one organization for all devices.
+    organization_id: Optional[str] = None
+    organization_name: Optional[str] = None
+    organization_type: Optional[str] = None
+    building_name: Optional[str] = None
+    room_name: Optional[str] = None
 
     class Config:
         from_attributes = True

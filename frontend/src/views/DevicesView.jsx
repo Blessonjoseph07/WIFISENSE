@@ -22,22 +22,21 @@ export default function DevicesView({
   const isElderCareOnly = !isSystemAdmin && appContext === "ELDER_CARE";
 
   // Segment devices strictly by organization domain
-  const corpDevices = devices.filter(
-    (d) =>
-      d.organization_type === "CORPORATE" ||
-      (!d.firmware_version?.includes("EC") &&
+  // The API sends each device's organization; the name/firmware guesses below are only for a response without it.
+  const corpDevices = devices.filter((d) =>
+    d.organization_type
+      ? d.organization_type === "CORPORATE"
+      : !d.firmware_version?.includes("EC") &&
         (d.organization_name?.includes("Amal") ||
           d.firmware_version?.includes("101") ||
           d.firmware_version?.includes("102") ||
-          d.firmware_version?.includes("103")))
+          d.firmware_version?.includes("103"))
   );
 
-  const careDevices = devices.filter(
-    (d) =>
-      d.organization_type === "ELDER_CARE" ||
-      d.firmware_version?.includes("EC") ||
-      d.organization_name?.includes("Peter") ||
-      d.organization_name?.includes("Elder")
+  const careDevices = devices.filter((d) =>
+    d.organization_type
+      ? d.organization_type === "ELDER_CARE"
+      : d.firmware_version?.includes("EC") || d.organization_name?.includes("Peter") || d.organization_name?.includes("Elder")
   );
 
   // Segment fault reports strictly by organization domain
@@ -558,10 +557,7 @@ export default function DevicesView({
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
                           <span className="font-semibold text-slate-900 dark:text-white">
-                            {dev.organization_name ||
-                              (dev.organization_type === "CORPORATE"
-                                ? "Amal Jyothi College of Engineering"
-                                : "St. Peter's Elder Care Home")}
+                            {dev.organization_name || "Unassigned"}
                           </span>
                           <span
                             className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase w-max ${
@@ -570,7 +566,7 @@ export default function DevicesView({
                                 : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200"
                             }`}
                           >
-                            {dev.organization_type || (isCorporateOnly ? "CORPORATE" : "ELDER_CARE")}
+                            {dev.organization_type || "UNASSIGNED"}
                           </span>
                         </div>
                       </td>
