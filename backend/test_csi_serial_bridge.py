@@ -85,6 +85,11 @@ def run():
     assert "read=5" in r.stdout and "sent=5" in r.stdout and "dropped_format=1" in r.stdout and "raw_checks_ok=1" in r.stdout, r.stdout
     print("[PASS] 5 packets read and 'sent' (dry run), 1 foreign-MAC packet dropped, raw cross-check passed")
 
+    r = run_bridge([iq_line(i, ref.convert(fake_buffer(i))) for i in range(7)], "--every", "3")
+    assert r.returncode == 0 and "read=7" in r.stdout and "sent=3" in r.stdout, r.stdout + r.stderr
+    assert run_bridge([good[0]], "--every", "0").returncode != 0
+    print("[PASS] --every 3 forwards packets 1, 4 and 7 of 7 (all are still read and checked); --every 0 is refused")
+
     swapped = [iq[i + 1] if i % 2 == 0 else iq[i - 1] for i in range(104)]   # firmware forgot to swap imag/real back
     r = run_bridge([iq_line(0, swapped), raw_line(0, buf)])
     assert r.returncode != 0 and "DISAGREES" in (r.stdout + r.stderr), r.stdout + r.stderr

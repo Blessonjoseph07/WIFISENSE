@@ -180,6 +180,11 @@ It refuses to target LIVE devices, and everything it sends is badged DEMO.
 * **Live boards on the hosted site**: register `7c:4f:ad:26:05:78` there (Devices & Service Desk, data source LIVE
   HARDWARE), press **RESET TOKEN**, then run the bridge with `--api https://wifisense-api.onrender.com --token <hosted token>`.
   The bridge sends to one API at a time, and the room must be trained again on the hosted site.
+* **Add `--every 3` for the hosted site.** The free instance has a tenth of a CPU: at the full ~90 packets/s plus the
+  website's panels it falls behind ("connection to the server is unstable", seconds of lag). `--every 3` forwards ~30
+  packets/s, which it keeps up with. Record the baseline and the training **with the same `--every` setting** you run
+  with, because a block of 50 packets then covers a longer time. Live demos stay smoothest on the laptop (localhost);
+  a paid instance (Render Starter, 0.5 CPU) removes the need for `--every`.
 
 ---
 
