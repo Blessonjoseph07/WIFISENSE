@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.core.database import init_db, engine, sync_postgres_sequences
 from app.core.seed import seed_database
 from app.core.bootstrap import bootstrap_system_admin
-from app.core.demo_profile import apply_demo_profile, ensure_demo_extras
+from app.core.demo_profile import apply_demo_profile, ensure_demo_extras, sync_demo_passwords
 from app.services.retention import start_background_pruner
 from app.services.detection import close_stale_live_fall_alerts
 from app.models.entities import Organization
@@ -53,6 +53,7 @@ def on_startup():
             if first_run:
                 apply_demo_profile(session)
             ensure_demo_extras(session)
+            sync_demo_passwords(session)
         bootstrap_system_admin(session)
         close_stale_live_fall_alerts(session)
     sync_postgres_sequences()
