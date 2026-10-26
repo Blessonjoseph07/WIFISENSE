@@ -352,6 +352,9 @@ def main() -> None:
     ap.add_argument("--tx-mac", default="1a:00:00:00:00:00", help="only packets from this transmitter are used")
     ap.add_argument("--batch", type=int, default=50, help="send when this many packets are waiting (the API accepts up to 100)")
     ap.add_argument("--max-wait-ms", type=int, default=250, help="...or when the oldest waiting packet is this old")
+    ap.add_argument("--every", type=int, default=1,
+                    help="forward only every Nth packet (e.g. 3 for the free hosted API: ~30/s instead of ~90/s). Record the "
+                         "baseline and the training at the same setting you run with.")
     ap.add_argument("--wire", choices=["b64", "list"], default="b64",
                     help="I/Q encoding on the wire: b64 (compact, needs this repo's API) or list (plain integers)")
     ap.add_argument("--provenance", default="live", choices=["live", "simulated", "dataset"],
@@ -360,6 +363,8 @@ def main() -> None:
     a = ap.parse_args()
     if not a.dry_run and not a.token:
         ap.error("--token (or WIFISENSE_DEVICE_TOKEN) is required unless --dry-run")
+    if a.every < 1:
+        ap.error("--every must be 1 or more")
 
     poster = Poster(a.api, a.token, a.dry_run, wire=a.wire, batch_max=max(1, min(a.batch, 100)), max_wait=a.max_wait_ms / 1000)
     relay = StateRelay(a.api, a.token) if (a.port and not a.dry_run) else None
@@ -380,7 +385,8 @@ def main() -> None:
                     pkt = to_packet(p, a.provenance)
                     # when the bridge read it: lets the API measure how long delivery took (ingest delay)
                     pkt["timestamp"] = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-                    poster.submit(pkt)
+                    if (read - 1) % a.every == 0:          # --every N: forward 1 packet in N (a slow hosted API)
+                        poster.submit(pkt)
             elif line.startswith("CSI_RAW,"):
                 raw = parse_raw_line(line)
                 try:

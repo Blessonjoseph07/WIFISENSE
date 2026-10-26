@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SourceBadge } from "./DetectionBadges";
 
-const POLL_MS = 1000;
+const POLL_MS = 2000;   // every 2 s: each poll reads and decodes recent packets, which the free hosted API feels
 const KEEP = 600; // packets kept for the waterfalls (several seconds at ~90 packets/s)
 const HISTORY = 300; // one-second statistics kept for the trend charts
 
