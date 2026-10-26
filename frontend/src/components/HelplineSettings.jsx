@@ -52,6 +52,7 @@ export default function HelplineSettings({ organizations = [], authToken, API_BA
         {homes.map((org) => {
           const draft = drafts[org.id];
           const problem = draft !== undefined ? phoneProblem(draft) : null;   // only judge what the manager typed
+          const savedProblem = draft === undefined && org.contact_phone ? phoneProblem(org.contact_phone) : null;
           return (
           <div key={org.id} className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 min-w-[180px]">{org.name}</span>
@@ -71,6 +72,11 @@ export default function HelplineSettings({ organizations = [], authToken, API_BA
               {busy === org.id ? "Saving..." : "Save"}
             </button>
             {problem && <div className="basis-full text-[11px] text-rose-600 sm:pl-[188px]" role="alert">{problem}</div>}
+            {savedProblem && (
+              <div className="basis-full text-[11px] text-amber-700 sm:pl-[188px]" role="alert">
+                The saved number is not valid ({savedProblem}), so families see "Helpline not set". Enter the correct number and save.
+              </div>
+            )}
           </div>
           );
         })}

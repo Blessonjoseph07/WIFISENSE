@@ -17,7 +17,7 @@ import uuid
 from sqlmodel import Session, select
 
 from app.core.database import engine
-from app.models.entities import Alert, AlertAcknowledgement, FamilySubscription, Organization, Room, User
+from app.models.entities import Alert, AlertAcknowledgement, FamilySubscription, Organization, Resident, Room, User
 
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 
@@ -80,6 +80,42 @@ def run():
         assert st == 200 and org["contact_phone"] is None
         assert call("/family/resident-status", token=john)[1]["facility_phone"] is None, "nothing may be invented when no helpline is set"
         print("[PASS] set by its own manager (families see it), others refused (404/403), bad numbers 422, cleared = no number shown")
+        with Session(engine) as s:                      # a number saved before validation existed
+            org = s.get(Organization, home_id)
+            org.contact_phone = "+91 00000 12346666600000"
+            s.add(org)
+            s.commit()
+        assert call("/family/resident-status", token=john)[1]["facility_phone"] is None, "an invalid stored number must not be shown"
+        print("[PASS] a stored number that fails the check is hidden from families")
+
+        print("--- a shared room: a family never reads another resident's alert")
+        st, em = call("/family/emergency-status", token=payer)
+        assert st == 200, em
+        mine = em["resident_name"]
+        with Session(engine) as s:
+            me = s.exec(select(Resident).where(Resident.id == em["resident_id"])).first()
+            other = s.exec(select(Resident).where(Resident.room_id == me.room_id, Resident.id != me.id)).first()
+            assert other, "the seed puts two residents in this room"
+            theirs = f"{other.first_name} {other.last_name}"
+            tag = uuid.uuid4().hex[:6]
+            rows = [Alert(room_id=me.room_id, event_type="Fall_Detected", severity="HIGH", status="new", message=m)
+                    for m in (f"Possible fall: {theirs} near the bed [{tag}]", f"{mine} and {theirs} both up at night [{tag}]",
+                              f"Possible fall in the room [{tag}]")]
+            for r in rows:
+                s.add(r)
+            s.commit()
+            row_ids = [r.id for r in rows]
+        try:
+            texts = [a["message"] for a in call("/family/emergency-status", token=payer)[1]["emergency"]["open_alerts"] if tag in a["message"]]
+            assert not any(theirs in t for t in texts), texts
+            assert f"{mine} and another resident both up at night [{tag}]" in texts and f"Possible fall in the room [{tag}]" in texts, texts
+            assert len(texts) == 2, texts
+        finally:
+            with Session(engine) as s:
+                for rid in row_ids:
+                    s.delete(s.get(Alert, rid))
+                s.commit()
+        print(f"[PASS] alerts naming only {theirs} are hidden from {mine}'s family; shared ones show 'another resident'")
 
         print("--- stale live fall alerts are closed, other alerts are not")
         with Session(engine) as s:

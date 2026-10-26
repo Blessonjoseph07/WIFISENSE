@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select, or_
 from typing import List, Optional
 from datetime import datetime, timezone
+import re
 import uuid
 
 from app.core.audit import record_audit_event
+from app.schemas.schemas import phone_problem
 from app.core.database import get_session
 from app.core.timeutil import as_utc, utcnow
 from app.services.payments import lifecycle
@@ -113,7 +115,36 @@ def _building_of(session, room):
 
 def _facility_fields(session, building):
     org = session.get(Organization, building.organization_id) if building else None
-    return {"facility_name": org.name if org else None, "facility_phone": org.contact_phone if org else None}
+    phone = org.contact_phone if org else None
+    # A number saved before validation existed (or edited in the database) is not shown: families see "not set" rather
+    # than a number that cannot be dialled.
+    if phone and phone_problem(phone):
+        phone = None
+    return {"facility_name": org.name if org else None, "facility_phone": phone}
+
+
+def _family_alerts(session: Session, resident: Resident, alerts) -> list:
+    """Alerts a family member of `resident` may read. Alerts are stored per ROOM, and rooms can be shared, so an alert
+    that names another resident of the facility (and not this one) is about someone else and is left out; when it names
+    both, the other names are replaced. Alerts that name nobody are room-level events and stay."""
+    me = f"{resident.first_name} {resident.last_name}".lower()
+    building = _building_of(session, session.get(Room, resident.room_id)) if resident.room_id else None
+    others = []
+    for r in session.exec(select(Resident).where(Resident.id != resident.id)).all():
+        room = session.get(Room, r.room_id) if r.room_id else None
+        b = _building_of(session, room) if room else None
+        if building is None or (b is not None and b.organization_id == building.organization_id):
+            others.append(f"{r.first_name} {r.last_name}")
+    out = []
+    for a in alerts:
+        text = a.message or ""
+        named_others = [n for n in others if n.lower() in text.lower() and n.lower() != me]
+        if named_others and me not in text.lower():
+            continue
+        for n in named_others:
+            text = re.sub(re.escape(n), "another resident", text, flags=re.IGNORECASE)
+        out.append((a, text))
+    return out
 
 
 @router.get("/connections", response_model=List[FamilyConnectionOut])
@@ -333,9 +364,9 @@ def emergency_block(session: Session, resident: Resident) -> dict:
     alerts = session.exec(
         select(Alert).where(Alert.room_id == resident.room_id, Alert.status != "RESOLVED").order_by(Alert.created_at.desc()).limit(20)
     ).all()
-    items = [{"id": a.id, "severity": a.severity, "message": a.message, "status": a.status,
+    items = [{"id": a.id, "severity": a.severity, "message": text, "status": a.status,
               "created_at": a.created_at.isoformat() if hasattr(a.created_at, "isoformat") else str(a.created_at)}
-             for a in alerts if SEV_ORDER.get(a.severity, 1) >= SEV_ORDER["HIGH"]]
+             for a, text in _family_alerts(session, resident, alerts) if SEV_ORDER.get(a.severity, 1) >= SEV_ORDER["HIGH"]]
     return {"available_without_subscription": True, "open_alerts": items,
             "note": "Shows open HIGH/CRITICAL alerts. Fall alerts are possible falls that need verification, not confirmed falls."}
 
@@ -506,13 +537,13 @@ def get_linked_resident_status(
         alerts = session.exec(
             select(Alert).where(Alert.room_id == target_res.room_id).order_by(Alert.created_at.desc()).limit(5)
         ).all()
-        for a in alerts:
+        for a, text in _family_alerts(session, target_res, alerts):
             if SEV_ORDER.get(a.severity, 1) >= min_sev:
                 alerts_list.append({
                     "id": a.id,
                     "event_type": a.event_type,
                     "severity": a.severity,
-                    "message": a.message,
+                    "message": text,
                     "status": a.status,
                     "created_at": a.created_at.isoformat() if hasattr(a.created_at, "isoformat") else str(a.created_at)
                 })
