@@ -101,6 +101,19 @@ def run():
     assert "read=0" in r.stdout and "dropped_format=1" in r.stdout, r.stdout
     print("[PASS] only the configured transmitter's packets are used")
 
+    # Tokens pasted from a web page or copied from an example
+    assert bridge.clean_token("TK-ESP32-Ab_c-9\n") == "TK-ESP32-Ab_c-9"
+    assert bridge.clean_token('  "<TK-ESP32-Ab\n_c>" ') == "TK-ESP32-Ab_c"
+    assert bridge.clean_token(None) == ""
+    assert run_bridge([good[0]], "--token", "<TK-ESP32-abc\n>").returncode == 0
+    r = run_bridge([good[0]], "--token", "TK-ESP32-abc!#")
+    assert r.returncode != 0 and "characters a token never has" in r.stderr, r.stderr
+    hint = bridge.provenance_hint("Provenance conflict: packet specifies 'live' but device is restricted to 'dataset'.")
+    assert hint and "DATASET REPLAY device" in hint and "RESET TOKEN" in hint
+    assert bridge.provenance_hint("some other 400") is None
+    print("[PASS] tokens: line breaks, spaces, quotes and <...> are removed; impossible characters stop the bridge; "
+          "a wrong-device token gets a plain explanation")
+
     # OLED line the bridge writes back to the receiver
     assert bridge.display_lines({"movement_state": "MOVEMENT", "room_state": {"label": "walking", "confidence": 0.874, "reliable": True}}) \
         == "WS_STATE,PRESENCE+MOVE,WALKING 87%\n"
