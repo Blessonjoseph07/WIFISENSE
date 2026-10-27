@@ -8,6 +8,7 @@ const STATES = {
   MOVEMENT: { label: "Presence detected, moving", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200", icon: "directions_walk" },
   NO_BASELINE: { label: "Not calibrated", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "tune" },
   STALE: { label: "Board not sending", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "signal_disconnected" },
+  PAUSED: { label: "Paused", tone: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300", icon: "pause_circle" },
   NO_DATA: { label: "No readings yet", tone: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200", icon: "hourglass_empty" },
 };
 
@@ -100,7 +101,7 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
 
       {error && <div className="text-xs text-rose-600">{error}</div>}
       {data && <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{data.headline}. {data.detail}</p>}
-      {data?.reference === "default" && data.state !== "STALE" && (
+      {data?.reference === "default" && data.state !== "STALE" && data.state !== "PAUSED" && (
         <p className="text-[11px] text-slate-500" data-testid="default-reference-note">
           Using the default reference, from a quiet-room recording with these boards. For the best accuracy in this room, record an empty-room
           baseline below.

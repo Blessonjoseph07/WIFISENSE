@@ -1,5 +1,6 @@
 import secrets
 import time
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, Request, Response, Query
 from sqlalchemy import insert
 from sqlmodel import Session, select, or_, func
@@ -587,6 +588,13 @@ def _calibration(session: Session, device_id: str) -> Optional[RoomCalibration]:
     return session.exec(select(RoomCalibration).where(RoomCalibration.device_id == device_id)).first()
 
 
+def device_paused(session: Session, device_id: str) -> bool:
+    """An operator paused sensing for this device: the bridge stops forwarding, the board's display says PAUSED and the
+    website freezes. Stored with the device's calibration, so it survives restarts."""
+    cal = _calibration(session, device_id)
+    return bool((cal.subcarrier_profile or {}).get("paused")) if cal else False
+
+
 def _recent_records(session: Session, device_id: str, n: int):
     rows = session.exec(
         select(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id).order_by(RawCsiTelemetry.id.desc()).limit(n)
@@ -638,7 +646,40 @@ def movement_snapshot(session: Session, device_id: str) -> Dict[str, Any]:
                 "reference_mean": baseline_view["mean"] if baseline_view else None,
                 "seconds_since_last_packet": round(idle, 1) if idle is not None else None,
                 "block_packets": movement.BLOCK}
-    return movement.cached(f"{device_id}", build)
+    out = dict(movement.cached(f"{device_id}", build))
+    out["paused"] = device_paused(session, device_id)
+    if out["paused"]:
+        out.update(state="PAUSED", headline="Sensing paused", presence=False,
+                   detail="An operator paused sensing for this board. Nothing new is measured until someone presses Resume.")
+    return out
+
+
+class PauseIn(BaseModel):
+    paused: bool
+
+
+@router.post("/devices/{device_id}/pause", dependencies=[Depends(require_roles(["system_admin", "facility_manager"]))])
+def set_device_pause(device_id: str, body: PauseIn, request: Request, session: Session = Depends(get_session),
+                     current_user=Depends(get_current_user)):
+    """Pause or resume sensing for one board. The bridge reads this with the device token every ~2 s: while paused it
+    forwards nothing and the receiver's display shows PAUSED. The transmitter keeps broadcasting (it takes no commands)."""
+    device = _movement_device(device_id, session, current_user)
+    cal = _calibration(session, device_id)
+    profile = dict((cal.subcarrier_profile or {}) if cal else {})
+    profile["paused"] = body.paused
+    if cal:
+        cal.subcarrier_profile = profile
+        cal.updated_at = datetime.now(timezone.utc)
+        session.add(cal)
+    else:
+        session.add(RoomCalibration(room_id=device.room_id, device_id=device.id, subcarrier_profile=profile))
+    session.commit()
+    with movement._cache_lock:
+        movement._cache.pop(f"{device_id}", None)
+        movement._cache.pop(f"occ:{device_id}", None)
+    record_audit_event(session=session, what_action="SENSING_PAUSED" if body.paused else "SENSING_RESUMED", resource_type="DEVICE",
+                       resource_id=device.id, who_user_id=current_user.id, who_email=current_user.email, request=request)
+    return {"device_id": device.id, "paused": body.paused}
 
 
 @router.get("/devices/{device_id}/movement", dependencies=[Depends(require_roles(STAFF_ROLES))])
@@ -751,6 +792,7 @@ def get_device_live_stream(
     return {
         "device_id": device.id, "mac_address": device.mac_address, "mode": mode, "provenance": source,
         "device_status": device.device_status,
+        "paused": device_paused(session, device.id),
         "last_seen_at": device.last_seen_at.isoformat() if device.last_seen_at else None,
         "packets_total": int(total), "has_data": bool(rows),
         "link": link,

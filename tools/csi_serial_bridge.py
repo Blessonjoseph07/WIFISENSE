@@ -293,6 +293,8 @@ PRESENCE_SHORT = {"MOVEMENT": "PRESENCE+MOVE", "PRESENT": "PRESENCE", "QUIET": "
 def display_lines(state: Dict) -> str:
     """The WS_STATE line for the receiver's OLED (ASCII, no commas, each part at most 16 characters). A learned room state the
     API marked not reliable gets a '?' so the display never looks more certain than the model is."""
+    if state.get("paused"):
+        return "WS_STATE,PAUSED,RESUME ON SITE\n"
     top = PRESENCE_SHORT.get(state.get("movement_state"), "NO DATA")
     room = state.get("room_state")
     if room and room.get("confidence") is None:      # from the movement check, not the model: no percentage to show
@@ -315,6 +317,7 @@ class StateRelay:
         u = urllib.parse.urlparse(api)
         self._https, self._host, self._prefix = u.scheme == "https", u.netloc, u.path.rstrip("/")
         self.token, self.period, self.ser, self.updates, self.errors = token, period, None, 0, 0
+        self.paused = False   # an operator pressed Pause on the website: forward nothing until Resume
         threading.Thread(target=self._run, name="state-relay", daemon=True).start()
 
     def _run(self) -> None:
@@ -331,7 +334,9 @@ class StateRelay:
                 data = resp.read()
                 if resp.status != 200:
                     raise OSError(f"HTTP {resp.status}")
-                self.ser.write(display_lines(json.loads(data)).encode("ascii"))
+                state = json.loads(data)
+                self.paused = bool(state.get("paused"))
+                self.ser.write(display_lines(state).encode("ascii"))
                 self.updates += 1
             except Exception:
                 self.errors += 1
@@ -376,6 +381,8 @@ def main() -> None:
     ap.add_argument("--tx-mac", default="1a:00:00:00:00:00", help="only packets from this transmitter are used")
     ap.add_argument("--batch", type=int, default=50, help="send when this many packets are waiting (the API accepts up to 100)")
     ap.add_argument("--max-wait-ms", type=int, default=250, help="...or when the oldest waiting packet is this old")
+    ap.add_argument("--max-queue", type=int, default=1000,
+                    help="packets kept while the API is slow; older ones are dropped so the view stays live (default 1000)")
     ap.add_argument("--every", type=int, default=1,
                     help="forward only every Nth packet (e.g. 3 for the free hosted API: ~30/s instead of ~90/s). Record the "
                          "baseline and the training at the same setting you run with.")
@@ -394,7 +401,9 @@ def main() -> None:
     if a.every < 1:
         ap.error("--every must be 1 or more")
 
-    poster = Poster(a.api, a.token, a.dry_run, wire=a.wire, batch_max=max(1, min(a.batch, 100)), max_wait=a.max_wait_ms / 1000)
+    poster = Poster(a.api, a.token, a.dry_run, wire=a.wire, batch_max=max(1, min(a.batch, 100)), max_wait=a.max_wait_ms / 1000,
+                    max_queue=a.max_queue)
+    paused_skipped = 0
     relay = StateRelay(a.api, a.token) if (a.port and not a.dry_run) else None
     last_iq: Dict[int, List[int]] = {}
     read = dropped = raw_ok = 0
@@ -413,7 +422,9 @@ def main() -> None:
                     pkt = to_packet(p, a.provenance)
                     # when the bridge read it: lets the API measure how long delivery took (ingest delay)
                     pkt["timestamp"] = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-                    if (read - 1) % a.every == 0:          # --every N: forward 1 packet in N (a slow hosted API)
+                    if relay is not None and relay.paused:
+                        paused_skipped += 1                   # paused on the website: measure nothing
+                    elif (read - 1) % a.every == 0:          # --every N: forward 1 packet in N (a slow hosted API)
                         poster.submit(pkt)
             elif line.startswith("CSI_RAW,"):
                 raw = parse_raw_line(line)
@@ -431,7 +442,8 @@ def main() -> None:
                 sys.exit(f"\nSTOPPED: {poster.fatal}")
             if now - t_report >= 2:
                 span = max(now - t_start, 1e-6)
-                print(f"\rread={read} ({read / span:.0f}/s) sent={poster.sent} queued={poster.queued} dropped_format={dropped} "
+                print(f"\r{'PAUSED (Resume on the website) ' if relay is not None and relay.paused else ''}"
+                      f"read={read} ({read / span:.0f}/s) sent={poster.sent} queued={poster.queued} dropped_format={dropped} "
                       f"raw_checks_ok={raw_ok} http_errors={poster.http_errors} retries={poster.retries} "
                       f"overflow_dropped={poster.dropped_overflow} last_http={poster.last_status} {poster.latency()}   ", end="", flush=True)
                 t_report = now

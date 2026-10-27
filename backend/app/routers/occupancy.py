@@ -134,8 +134,10 @@ def get_own_state(device: SensingDevice = Depends(get_authenticated_device), ses
         if pred:
             ev = _state(session, device.id).get("evaluation") or {}
             room, _ = reconcile(pred, mv, bool(ev.get("reliable")))
+    if mv.get("paused"):
+        room = None                                   # nothing is being measured: no estimate to show
     return {"presence": mv["presence"], "movement_state": mv["state"], "headline": mv["headline"],
-            "seconds_since_last_packet": mv["seconds_since_last_packet"], "room_state": room}
+            "seconds_since_last_packet": mv["seconds_since_last_packet"], "room_state": room, "paused": bool(mv.get("paused"))}
 
 
 @router.get("/devices/{device_id}/occupancy", dependencies=[Depends(require_roles(STAFF_ROLES))])
