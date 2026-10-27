@@ -185,6 +185,12 @@ It refuses to target LIVE devices, and everything it sends is badged DEMO.
   packets/s, which it keeps up with. Record the baseline and the training **with the same `--every` setting** you run
   with, because a block of 50 packets then covers a longer time. Live demos stay smoothest on the laptop (localhost);
   a paid instance (Render Starter, 0.5 CPU) removes the need for `--every`.
+* **The bridge keeps the view live.** When the API is slower than the packets arrive, it keeps only the newest
+  `--max-queue` packets (default 1000) and drops older ones, so the website never shows minutes-old data. Watch
+  "Delivery delay" in the CSI packet stream: it should stay at a few seconds.
+* **Pause / Resume** (CSI packet stream, facility manager or admin): pauses sensing for that board everywhere. The
+  bridge stops forwarding, the receiver's screen shows **PAUSED / RESUME ON SITE**, and every viewer's panels freeze
+  until someone presses Resume. The transmitter keeps broadcasting: it takes no commands.
 
 ---
 

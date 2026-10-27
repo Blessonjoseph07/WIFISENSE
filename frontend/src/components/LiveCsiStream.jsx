@@ -143,7 +143,7 @@ export default function LiveCsiStream({ deviceId, authToken, API_BASE }) {
   const [snap, setSnap] = useState(null);
   const [buffer, setBuffer] = useState([]);
   const [history, setHistory] = useState([]);
-  const [paused, setPaused] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [distance, setDistance] = useState("");
   const [hoverK, setHoverK] = useState(null);
@@ -164,6 +164,12 @@ export default function LiveCsiStream({ deviceId, authToken, API_BASE }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const stamp = Date.now();
+      if (data.paused) {
+        // Paused for this board (by anyone): keep the last picture frozen, only remember that it is paused.
+        setSnap((prev) => (prev ? { ...prev, paused: true } : data));
+        setError(null);
+        return;
+      }
       setSnap(data);
       setNow(stamp);
       setError(null);
@@ -182,14 +188,34 @@ export default function LiveCsiStream({ deviceId, authToken, API_BASE }) {
   }, [API_BASE, authToken, deviceId]);
 
   useEffect(() => {
-    if (paused) return undefined;
     const first = setTimeout(poll, 0);
-    const t = setInterval(poll, POLL_MS);
+    const t = setInterval(poll, POLL_MS);      // keeps asking while paused, so a Resume from anywhere shows up
     return () => {
       clearTimeout(first);
       clearInterval(t);
     };
-  }, [poll, paused]);
+  }, [poll]);
+
+  const paused = Boolean(snap?.paused);
+  const togglePause = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/sensing/devices/${deviceId}/pause`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ paused: !paused }),
+      });
+      if (res.status === 403) throw new Error("Only a facility manager or the system administrator can pause sensing.");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSnap((prev) => (prev ? { ...prev, paused: !paused } : prev));
+      setError(null);
+      if (paused) setTimeout(poll, 0);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const last = buffer[buffer.length - 1];
   const link = snap?.link;
@@ -228,7 +254,7 @@ export default function LiveCsiStream({ deviceId, authToken, API_BASE }) {
           </span>
           <span className="font-mono text-[11px] text-slate-500 truncate">{snap?.mac_address}</span>
         </div>
-        <button type="button" onClick={() => setPaused((p) => !p)} className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+        <button type="button" onClick={togglePause} disabled={busy} title={paused ? "Resume sensing for this board" : "Pause sensing for this board: the bridge stops forwarding and the receiver's screen shows PAUSED"} className="disabled:opacity-50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
           {paused ? "Resume" : "Pause"}
         </button>
       </div>

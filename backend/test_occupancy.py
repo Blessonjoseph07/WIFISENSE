@@ -182,10 +182,24 @@ def run():
     print("--- the board can read its own state with its device token (for its display)")
     st, own = call("/sensing/device/state", headers={"X-Device-Token": tok3})
     assert st == 200 and own["room_state"]["label"] == "empty" and own["room_state"]["reliable"] is True, own
-    assert set(own) == {"presence", "movement_state", "headline", "seconds_since_last_packet", "room_state"}, own
+    assert set(own) == {"presence", "movement_state", "headline", "seconds_since_last_packet", "room_state", "paused"}, own
+    assert own["paused"] is False
     assert call("/sensing/device/state")[0] == 401
     assert call("/sensing/device/state", headers={"X-Device-Token": "TK-wrong"})[0] == 401
     print(f"[PASS] device state: {own['headline']} / {own['room_state']['text']}; no token or a wrong token -> 401")
+
+    print("--- pause and resume sensing for one board")
+    assert call(f"/sensing/devices/{did3}/pause", "POST", {"paused": True}, care)[0] == 403, "a caregiver must not pause sensing"
+    st, pr = call(f"/sensing/devices/{did3}/pause", "POST", {"paused": True}, fm)
+    assert st == 200 and pr["paused"] is True, pr
+    own = call("/sensing/device/state", headers={"X-Device-Token": tok3})[1]
+    assert own["paused"] is True and own["movement_state"] == "PAUSED" and own["room_state"] is None, own
+    assert call(f"/sensing/devices/{did3}/movement", token=fm)[1]["state"] == "PAUSED"
+    assert call(f"/sensing/devices/{did3}/live", token=fm)[1]["paused"] is True
+    st, pr = call(f"/sensing/devices/{did3}/pause", "POST", {"paused": False}, fm)
+    own = call("/sensing/device/state", headers={"X-Device-Token": tok3})[1]
+    assert st == 200 and own["paused"] is False and own["movement_state"] != "PAUSED", own
+    print("[PASS] pause: board state, movement and live view all say PAUSED (caregiver refused); resume clears it")
 
     print("--- reset")
     st, _ = call(f"/sensing/devices/{did}/occupancy", "DELETE", None, fm)
