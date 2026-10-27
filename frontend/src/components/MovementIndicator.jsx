@@ -33,7 +33,7 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
     if (!deviceId || inFlight.current) return;
     inFlight.current = true;
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 8000);
+    const timer = setTimeout(() => ctl.abort(), 15000);
     try {
       const res = await fetch(`${API_BASE}/sensing/devices/${deviceId}/movement`, {
         headers: { Authorization: `Bearer ${authToken}` }, signal: ctl.signal,
@@ -46,7 +46,7 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
     } catch (e) {
       failures.current += 1;
       if (failures.current >= 3) {
-        setError(`The connection to the server is unstable (${e.name === "AbortError" ? "no answer in 8 s" : e.message}). Retrying; the reading below is the last one received.`);
+        setError(`The connection to the server is unstable (${e.name === "AbortError" ? "no answer in 15 s" : e.message}). Retrying; the reading below is the last one received.`);
       }
     } finally {
       clearTimeout(timer);
@@ -58,7 +58,7 @@ export default function MovementIndicator({ deviceId, authToken, API_BASE }) {
     setData(null);
     failures.current = 0;
     load();
-    const t = setInterval(load, 2000);
+    const t = setInterval(load, 3000);
     return () => clearInterval(t);
   }, [load]);
 
