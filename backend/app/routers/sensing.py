@@ -14,6 +14,10 @@ from app.models.entities import SensingDevice, Room, Floor, Building, SensingEve
 from app.schemas.schemas import SensingEventSimulate, CsiPacketIn, CsiIngestBatch, CsiIngestOut, SensingHistoryOut
 from app.core.confidence import confidence_level, signal_level, requires_verification
 from app.services.notifications import process_alert_notifications
+import threading
+
+import numpy as np
+
 from app.services import detection, fall_model, csi_physics, ingest_metrics, movement
 from app.core.audit import record_audit_event
 
@@ -622,11 +626,45 @@ def _seconds_since(dt) -> Optional[float]:
     return max(0.0, (datetime.now(timezone.utc) - dt).total_seconds())
 
 
+_blocks_lock = threading.Lock()
+_blocks_state: Dict[str, Dict[str, Any]] = {}     # device id -> {"last_id", "pending" amplitudes, "blocks", "last_at"}
+
+
+def _recent_blocks(session: Session, device_id: str, n_blocks: int):
+    """The latest n_blocks movement blocks and the time of the newest packet, computed incrementally: each call reads and
+    decodes only the packets stored since the previous call (a few dozen) instead of the whole window (n_blocks * BLOCK),
+    which matters on a small hosted instance. The blocks are the same as movement.block_variations() over the window."""
+    window = n_blocks * movement.BLOCK
+    with _blocks_lock:
+        st = _blocks_state.get(device_id)
+        stmt = select(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id)
+        if st:
+            stmt = stmt.where(RawCsiTelemetry.id > st["last_id"])
+        rows = session.exec(stmt.order_by(RawCsiTelemetry.id.desc()).limit(window)).all()
+        rows.reverse()
+        if not st or len(rows) >= window:              # first call, or so much is new that the old blocks are irrelevant
+            st = {"last_id": 0, "pending": [], "blocks": [], "last_at": None}
+        for r in rows:
+            data = r.csi_data if isinstance(r.csi_data, dict) else {}
+            ap = csi_physics.iq_to_amp_phase(data.get("iq"))
+            if ap and ap.get("amplitude"):
+                st["pending"].append(ap["amplitude"])
+        while len(st["pending"]) >= movement.BLOCK:
+            a = np.asarray(st["pending"][:movement.BLOCK], dtype=float)
+            st["blocks"].append(float((a.std(axis=0) / (a.mean(axis=0) + 1e-9)).mean()))
+            st["pending"] = st["pending"][movement.BLOCK:]
+        st["blocks"] = st["blocks"][-n_blocks:]
+        if rows:
+            st["last_id"], st["last_at"] = rows[-1].id, rows[-1].created_at
+        _blocks_state[device_id] = st
+        return list(st["blocks"]), st["last_at"]
+
+
 def movement_snapshot(session: Session, device_id: str) -> Dict[str, Any]:
-    """Movement verdict from the device's latest stored packets (cached ~1.5 s). Shared by the staff view and the device itself."""
+    """Movement verdict from the device's latest stored packets (cached a few seconds). Shared by the staff view and the device itself."""
     def build():
-        records = _recent_records(session, device_id, MOVEMENT_BLOCKS_SHOWN * movement.BLOCK)
-        blocks = movement.block_variations(records)[-MOVEMENT_BLOCKS_SHOWN:]
+        blocks, last_at = _recent_blocks(session, device_id, MOVEMENT_BLOCKS_SHOWN)
+        records = [True] if last_at else []
         cal = _calibration(session, device_id)
         baseline = ((cal.subcarrier_profile or {}).get("movement_baseline") if cal else None)
         verdict = movement.classify(blocks, baseline)
@@ -634,7 +672,7 @@ def movement_snapshot(session: Session, device_id: str) -> Dict[str, Any]:
             baseline_view = dict(movement.DEFAULT_REFERENCE)
         else:
             baseline_view = baseline
-        idle = _seconds_since(records[-1].created_at) if records else None
+        idle = _seconds_since(last_at) if last_at else None
         if records and idle is not None and idle > STALE_SECONDS:
             verdict = {"state": "STALE", "headline": "Board is not sending",
                        "detail": f"The last packet arrived {_human_duration(idle)} ago, so there is no current reading."}
@@ -788,7 +826,15 @@ def get_device_live_stream(
          "amplitude": p["amp"], "phase": p["phase"], "meta": p["meta"]}
         for p in parsed if p["id"] > after_id
     ]
-    total = session.exec(select(func.count()).select_from(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id)).one()
+    # A full count of a growing table on every 2 s poll is wasted work on a small instance: 15 s is fresh enough.
+    with movement._cache_lock:
+        hit = movement._cache.get(f"count:{device_id}")
+    if hit and time.time() - hit[0] < 15:
+        total = hit[1]
+    else:
+        total = session.exec(select(func.count()).select_from(RawCsiTelemetry).where(RawCsiTelemetry.device_id == device_id)).one()
+        with movement._cache_lock:
+            movement._cache[f"count:{device_id}"] = (time.time(), total)
     return {
         "device_id": device.id, "mac_address": device.mac_address, "mode": mode, "provenance": source,
         "device_status": device.device_status,
