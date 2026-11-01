@@ -1,5 +1,5 @@
-# The API in a container, for running the whole project locally with Docker (see docker-compose.yml and docs/DOCKER.md).
-# Render does not use this file: render.yaml builds the API with Render's own Python runtime.
+# The API in a container. Render builds the hosted API from this file (render.yaml, runtime: docker), and docker-compose.yml
+# uses it to run the whole project locally (see docs/DOCKER.md).
 FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -22,8 +22,11 @@ RUN useradd --create-home --uid 1000 wifisense \
     && chown -R wifisense:wifisense /app
 USER wifisense
 
+# Render tells the container which port to listen on in $PORT; locally it is unset and 8000 is used.
+ENV PORT=8000
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"
+    CMD python -c "import os,urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:' + os.environ['PORT'] + '/health', timeout=4).status == 200 else 1)"
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# exec, so uvicorn receives the stop signal directly and shuts down cleanly on a redeploy.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
