@@ -1,0 +1,14 @@
+# Keep local databases, secrets and the virtual environment out of the image.
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.db
+*.db.*
+*.log
+.env
+.env.*
+uploads/
+supabase_data.sql
+test_*.py
+ci_backend_tests.sh
