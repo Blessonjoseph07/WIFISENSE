@@ -1,11 +1,12 @@
 # Running Wi-Fi Sense with Docker
 
-Docker is an **extra** way to run the whole project on one laptop: Postgres, the API and the website, each in its own
-container, with one command. It does not replace or change anything else:
+The hosted API on Render runs in Docker, built from `backend/Dockerfile`. The same image runs the whole project on one
+laptop with `docker compose`: Postgres, the API and the website, each in its own container, with one command.
 
 | Setup | Uses Docker? | Ports |
 |---|---|---|
-| Hosted site (Render API + Vercel website + Supabase) | No. Render builds from `render.yaml` (Python runtime), Vercel from `package.json` | — |
+| Hosted API (Render) | Yes. `render.yaml` has `runtime: docker` and builds `backend/Dockerfile`; Render sets `$PORT` | — |
+| Hosted website (Vercel) | No. Vercel builds the static site from `package.json` | — |
 | `start-live.bat` / `start-all.bat` (local, with the boards) | No. `backend\venv` + `npm run dev` | API 8000, website 5173 |
 | `docker compose` (this page) | Yes | website **8081**, API **8080** (Postgres stays inside Docker) |
 
@@ -42,8 +43,9 @@ docker compose up --build -d      # rebuild after changing code
 
 ## What is inside
 
-- `backend/Dockerfile`: Python 3.10 slim, `pip install -r requirements.txt`, runs `uvicorn` as a non-root user, with a
-  health check on `/health`.
+- `backend/Dockerfile`: Python 3.10 slim, `pip install -r requirements.txt`, runs `uvicorn` as a non-root user on `$PORT`
+  (8000 when unset), with a health check on `/health`. CI builds it and starts it in production mode on every pull
+  request (the "Docker image (API)" check), so a change that would break the Render build fails there first.
 - `frontend/Dockerfile`: builds the site with Node 22 (`VITE_API_BASE=http://localhost:8080`), then serves it with nginx
   (`frontend/nginx.conf`, same page fallback as `vercel.json`).
 - `docker-compose.yml`: `db` (Postgres 16, data in the `pgdata` volume, not published), `api`, `web`. The published
