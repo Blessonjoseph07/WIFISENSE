@@ -6,16 +6,14 @@
 services:
   - type: web
     name: wifisense-api
-    runtime: python
+    runtime: docker               # built from backend/Dockerfile (Python 3.10, non-root); the same image docker-compose.yml runs
     region: singapore
     plan: free                    # free services sleep when idle; use "starter" (always on) for continuous device uploads
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health      # needs the /health endpoint (on the demo/all-features branch)
+    rootDir: backend              # only changes under backend/ trigger a redeploy; the paths below are relative to it
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.10.13"
       - key: ENVIRONMENT
         value: production
       - key: DATABASE_URL            # Neon or Render Postgres connection string: postgresql://USER:PASS@HOST/DB?sslmode=require
