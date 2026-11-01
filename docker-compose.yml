@@ -1,0 +1,60 @@
+# Whole project in Docker on this laptop: Postgres + API + website.
+#
+#   docker compose up --build        then open http://localhost:8081 (API on http://localhost:8080)
+#   docker compose down              stop (the database is kept in the "pgdata" volume)
+#   docker compose down -v           stop and delete the Docker database
+#
+# The ports are chosen so they never clash with the normal local setup (API 8000, website 5173, local Postgres 5432) or
+# with the port ranges Windows reserves for Hyper-V (here 5080-5632),
+# so start-live.bat, start-all.bat and the serial bridge keep working alongside it. The hosted site (Render + Vercel)
+# does not read this file. See docs/DOCKER.md.
+name: wifisense
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wifisense
+      POSTGRES_PASSWORD: wifisense-local
+      POSTGRES_DB: wifisense
+    # No published port: only the api container talks to this database.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wifisense -d wifisense"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://wifisense:wifisense-local@db:5432/wifisense
+      ALLOWED_ORIGINS: http://localhost:8081,http://127.0.0.1:8081
+      FRONTEND_URL: http://localhost:8081
+      PAYMENTS_MODE: sandbox
+      SEED_DEMO_DATA: "1"
+      SEED_PROFILE: ${SEED_PROFILE:-minimal}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+    ports:
+      - "127.0.0.1:8080:8000"
+    volumes:
+      - uploads:/app/uploads
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: http://localhost:8080
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:8081:80"
+
+volumes:
+  pgdata:
+  uploads:
