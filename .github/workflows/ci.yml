@@ -79,6 +79,47 @@ jobs:
         run: npm test
 
 
+  # The hosted API runs this image on Render, so every change must still build and start. Started the way Render starts it: a
+  # $PORT other than 8000, ENVIRONMENT=production with throwaway secrets, and PostgreSQL (production refuses SQLite).
+  docker-image:
+    name: Docker image (API)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: wifisense
+          POSTGRES_PASSWORD: ci-postgres-not-a-credential
+          POSTGRES_DB: wifisense_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wifisense"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build the API image
+        run: docker build -t wifisense-api:ci backend
+
+      - name: Start it like Render does and wait for /health
+        run: |
+          docker run -d --name api --network host \
+            -e PORT=10000 -e ENVIRONMENT=production \
+            -e SECRET_KEY=ci-docker-secret-not-a-credential \
+            -e PAYMENT_WEBHOOK_SECRET=ci-docker-webhook-not-a-credential \
+            -e SEED_DEMO_DATA=0 \
+            -e DATABASE_URL=postgresql://wifisense:ci-postgres-not-a-credential@127.0.0.1:5432/wifisense_ci \
+            wifisense-api:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:10000/health; then echo; exit 0; fi
+            sleep 2
+          done
+          docker logs api; exit 1
+
   # Branch protection on master requires a check with this exact name; it passes only if every matrix leg passed.
   backend-gate:
     name: Backend Boundary & Regression Tests

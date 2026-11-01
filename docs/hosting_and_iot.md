@@ -95,7 +95,8 @@ research, export it before it ages out or move to the Phase 2 design below.
 ## Steps you do (accounts and secrets stay with you)
 1. **Database**: create a Neon project (or a Render Postgres) in the region you will use for Render, and copy the connection
    string (`postgresql://USER:PASS@HOST/DB?sslmode=require`).
-2. **Render**: New > Blueprint, connect this GitHub repo (`render.yaml`). In the dashboard set:
+2. **Render**: New > Blueprint, connect this GitHub repo (`render.yaml`). The API is built from `backend/Dockerfile`
+   (`runtime: docker`). In the dashboard set:
    - `DATABASE_URL` = the connection string
    - `ALLOWED_ORIGINS` = your Vercel URL (set after step 3, then redeploy)
    - `SEED_PASSWORD` = a password only you know (12+ characters)
