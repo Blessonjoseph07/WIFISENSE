@@ -7,6 +7,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Quiet Signal redesign: one ink, one paper, one accent per area (care = Elder Care, work = Workplaces).
+        "ink": "#0E1013",
+        "paper": "#F6F6F3",
+        "line": "#E4E4DF",
+        "muted": "#5B5F66",
+        "body": "#3D4148",
+        "care": "#1F6F66",
+        "work": "#3A47B8",
         "surface-variant": "#d3e4fe",
         "secondary-container": "#86f2e4",
         "on-secondary-fixed-variant": "#005049",
@@ -68,6 +76,8 @@ export default {
         "stack-lg": "1.5rem"
       },
       fontFamily: {
+        "display": ["Inter Tight", "Inter", "sans-serif"],
+        "accent": ["Instrument Serif", "serif"],
         "headline-sm": ["Inter", "sans-serif"],
         "body-md": ["Inter", "sans-serif"],
         "data-mono": ["JetBrains Mono", "monospace"],

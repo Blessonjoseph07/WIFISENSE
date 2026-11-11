@@ -203,3 +203,17 @@ main > div > *:nth-child(n+4) { animation-delay: 110ms; }
 tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
 nav button .material-symbols-outlined { transition: transform 180ms var(--ease-out); }
 nav button:hover .material-symbols-outlined { transform: scale(1.12); }
+
+/* Quiet Signal landing: the hardware layers settle into their exploded positions, and the signal line draws itself. */
+@keyframes ws-explode {
+  from { transform: translateY(var(--ws-from, 0)); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes ws-draw { from { stroke-dashoffset: 1600; } to { stroke-dashoffset: 0; } }
+@keyframes ws-ripple { 0% { opacity: .8; transform: scale(.8); } 100% { opacity: 0; transform: scale(1.5); } }
+.ws-explode { animation: ws-explode 1.6s cubic-bezier(.2,.8,.2,1) .3s both; }
+.ws-draw { stroke-dasharray: 1600; animation: ws-draw 2.4s ease-out forwards; }
+.ws-ripple { transform-box: fill-box; transform-origin: center; animation: ws-ripple 2.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ws-explode, .ws-draw, .ws-ripple { animation: none; stroke-dasharray: none; }
+}
